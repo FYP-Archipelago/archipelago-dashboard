@@ -5,24 +5,26 @@ import { rememberRun,readRecentRuns } from '../runs/recent-runs.js';
 const Dashboard=await compile('src/app/DashboardApp.jsx');
 const Workspace=({runId})=>React.createElement('p',null,`Selected ${runId}`);
 
-test('backend-only shell has persistent run browser and no scale, upload or local analysis controls',async()=>{
+test('dashboard retains run browser and original study/about navigation without unsupported upload controls',async()=>{
   const view=await mount(Dashboard,{api:makeApi(),Workspace});
   try{
     assert.ok(document.querySelector('aside[aria-label="Run browser"]'));
     assert.match(document.body.textContent,/Start a new run/);
-    assert.doesNotMatch(document.body.textContent,/Scale study|Upload an existing run|Local file library/);
+    assert.ok(button('Scale study'));
+    assert.ok(button('About'));
+    assert.doesNotMatch(document.body.textContent,/Upload an existing run|Local file library/);
     for(const label of ['Migration','Convergence','Clustering','Run details'])assert.ok(button(label).disabled);
     assert.equal(find('preset').value,'de_rastrigin');
   }finally{await view.close();}
 });
 
-test('analysis tabs retain selected run ID and show placeholders without loading Person 2 data',async()=>{
+test('analysis tabs retain selected run ID and hand each view to the shared workspace',async()=>{
   let requests=0;
   const view=await mount(Dashboard,{api:makeApi({result:async()=>{requests++;}}),Workspace},()=>window.history.replaceState(null,'',`#archipelago?run_id=${runId}`));
   try{
     for(const [label,page] of [['Migration','migration'],['Convergence','convergence'],['Clustering','diagnostics'],['Run details','run']]){
       await click(button(label));assert.equal(window.location.hash,`#${page}?run_id=${runId}`);
-      assert.match(document.body.textContent,/No backend result loaded for this view/);
+      assert.match(document.body.textContent,new RegExp(`Selected ${runId}`));
     }
     assert.equal(requests,0);
   }finally{await view.close();}

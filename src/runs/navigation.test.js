@@ -11,7 +11,8 @@ test('backend IDs survive refresh and current-run tabs',()=>{
   assert.throws(()=>runHash('bad/id'),/run ID/);
   assert.throws(()=>runHash(id,'study'),/view/);
 });
-test('Scale is retired while analysis placeholders retain the current run',()=>{
-  assert.deepEqual(readRoute('#study'),{page:'library',runId:null});
+test('Scale and About remain standalone while backend analysis retains the current run',()=>{
+  assert.deepEqual(readRoute('#study'),{page:'study',runId:null});
+  assert.deepEqual(readRoute('#about'),{page:'about',runId:null});
   for(const page of ['migration','convergence','diagnostics','run'])assert.deepEqual(readRoute(runHash(id,page)),{page,runId:id});
 });
