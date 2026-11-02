@@ -30,14 +30,14 @@
 
 **Files:** create `src/backend/api.js`, `src/backend/api.test.js`, `server/backend-proxy.js`, `server/backend-proxy.test.js`; modify `vite.config.js`, `server/index.js`, `.env.example`, `server/run.test.js`.
 
-**Interfaces:** `createBackendClient({baseUrl, fetchImpl, timeoutMs})` produces `health({signal})`, `presets({signal})`, `createRun(body)`, `result(runId,{signal})`, `url(path)`, `baseUrl`. Proxy consumes a fixed configured backend URL.
+**Interfaces:** `createBackendClient({baseUrl, fetchImpl, timeoutMs})` produces `health({signal})`, `presets({signal})`, `createRun(body)`, `result(runId,{signal})`, `identity({signal})`, `url(path)`, `baseUrl`. Proxy consumes a fixed configured backend URL.
 
-- [ ] Write tests for URL prefixes, run creation, health, FastAPI errors, non-JSON and network failures, abort/timeout, and malformed create success.
-- [ ] Run `node --test src/backend/api.test.js` and observe missing implementation.
-- [ ] Implement client; add streaming fixed-target proxy with path allowlist and no response buffering.
-- [ ] Test proxy status/body forwarding, SSE flush/disconnect and invalid paths using local HTTP servers.
-- [ ] Correct the existing Windows path assertion to use native path semantics.
-- [ ] Run `npm test`; record results and commit this task.
+- [x] Write tests for URL prefixes, run creation, health, FastAPI errors, non-JSON and network failures, abort/timeout, and malformed create success.
+- [x] Run `node --test src/backend/api.test.js` and observe missing implementation.
+- [x] Implement client; add streaming fixed-target proxy with path allowlist and no response buffering.
+- [x] Test proxy status/body forwarding, SSE flush/disconnect and invalid paths using local HTTP servers.
+- [x] Correct the existing Windows path assertion to use native path semantics.
+- [x] Run `npm test`; record results and commit this task.
 
 ### Task 2: Validated new-run model and history (screenshots 2, 9)
 
@@ -45,23 +45,23 @@
 
 **Interfaces:** `validatePresets(payload)`, `buildRunRequest({catalog,preset,values,clustering,stream})`; `readRecentRuns(storage,backend)`, `rememberRun(storage,backend,entry)`, `forgetRun(storage,backend,id)`; `readRoute(hash)`, `runHash(runId)`.
 
-- [ ] Test actual runner catalog shape, bounds/choices/bools/unknown rules, optional seed, default omission, cross-field restrictions, stages and current clustering fields.
-- [ ] Test corrupted/disabled storage, duplicate runs, per-backend filtering and 30-entry limit; route encoding, malformed hashes and refresh parsing.
-- [ ] Observe tests fail, implement pure helpers, run `npm test`, commit.
+- [x] Test actual runner catalog shape, bounds/choices/bools/unknown rules, optional seed, default omission, cross-field restrictions, stages and current clustering fields.
+- [x] Test corrupted/disabled storage, duplicate runs, per-backend filtering and 30-entry limit; route encoding, malformed hashes and refresh parsing.
+- [x] Observe tests fail, implement pure helpers, run `npm test`, commit.
 
 ### Task 3: Runs page and application handoff (screenshots 2, 7, 9; 6 blocked)
 
-**Files:** create `src/runs/RunsPage.jsx`, `src/runs/ClusteringControls.jsx`, `src/runs/runs.css`, `src/backend/RunWorkspace.jsx`; modify `src/main.jsx`, `README.md`.
+**Files:** create `src/runs/RunsPage.jsx`, `src/runs/ClusteringControls.jsx`, `src/runs/LocalRuns.jsx`, `src/runs/runs.css`, `src/backend/RunWorkspace.jsx`; modify `src/main.jsx`, `README.md`.
 
 **Interfaces:** `RunsPage({api=backendApi,onOpenRun,localLibrary})`; `RunWorkspace({runId,api=backendApi,onBack})` is Person 2's replacement point. Shell routes are `#library` and `#archipelago?run_id=<id>`.
 
-- [ ] Add interaction tests for catalog loading/retry, validation, stage selection, accepted submission/navigation, no duplicate POST, retained values on errors, browser history/removal and tab changes.
-- [ ] Observe missing UI, implement page and controls using existing design tokens.
-- [ ] Replace old Runs entry with new page; retain clearly labeled local-file import, remove obsolete clustering form and copy. Keep viewer/analysis files unchanged.
-- [ ] Show upload as unavailable with the exact missing service capability; do not call a legacy endpoint.
-- [ ] Wire backend ID route/refresh/back, local selection clearing, and minimal selected-run boundary.
-- [ ] Run `npm test`, `npm run build`, controlled browser smoke check. Document local setup and Person 2's handoff.
-- [ ] Review diff, verify branch and clean staging, commit; push only the personal branch and link actual issues if they exist. Leave integration merge for teammates.
+- [x] Add interaction tests for catalog loading/retry, validation, stage selection, accepted submission/navigation, no duplicate POST, retained values on errors, browser history/removal and tab changes.
+- [x] Observe missing UI, implement page and controls using existing design tokens.
+- [x] Replace old Runs entry with new page; retain clearly labeled local-file import, remove obsolete clustering form and copy. Keep viewer/analysis files unchanged.
+- [x] Show upload as unavailable with the exact missing service capability; do not call a legacy endpoint.
+- [x] Wire backend ID route/refresh/back, local selection clearing, and minimal selected-run boundary.
+- [x] Run `npm test`, `npm run build`, controlled browser smoke check. Document local setup and Person 2's handoff.
+- [x] Review diff, verify branch and clean staging, commit; push only the personal branch and link actual issues if they exist. Leave integration merge for teammates.
 
 ## Progress
 
@@ -83,3 +83,5 @@
 - Review exclusions accepted: real service E2E remains unverified because Docker is unavailable; Person 2's graph/SSE work and the backend upload endpoint remain outside this branch. Deployment is outside the user's requested scope. No deferred minor findings.
 - Final verification: `npm test` passes 35/35; `npm run build` succeeds (existing large Plotly bundle warning); `git diff --check` passes. Browser verified the unchanged local graph and analysis-page selection, then created another contract-fixture run through the resolved proxy identity.
 - Issue lookup repeated before push: no open dashboard issues exist yet, so no issue can accurately be closed or linked by number.
+
+- Delivery: personal branch pushed; draft PR https://github.com/FYP-Archipelago/archipelago-dashboard/pull/6 targets `feat/backend-integration`. GitHub reports CLEAN at verification. Shared branch is unmerged. Temporary fixture and development servers stopped.
