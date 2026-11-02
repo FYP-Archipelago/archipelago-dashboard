@@ -55,7 +55,7 @@ code{padding:1px 5px;border-radius:3px;background:var(--tint);color:var(--accent
 
 /* Forms */
 label{display:flex;flex-direction:column;gap:5px;color:var(--ink);font-size:13px;font-weight:500}
-input:not([type=checkbox]):not([type=file]):not([type=range]),select{min-height:34px;width:100%;max-width:100%;padding:6px 9px;border:1px solid var(--line);border-radius:5px;background:var(--bg);color:var(--ink);font-size:13px}
+input:not([type=checkbox]):not([type=radio]):not([type=file]):not([type=range]),select{min-height:34px;width:100%;max-width:100%;padding:6px 9px;border:1px solid var(--line);border-radius:5px;background:var(--bg);color:var(--ink);font-size:13px}
 input[type=file]{width:100%;padding:16px;border:1px dashed var(--line);border-radius:5px;background:var(--panel);color:var(--soft)}
 select{cursor:pointer}
 .check{flex-direction:row;align-items:center;gap:8px;margin:12px 0;font-weight:400}

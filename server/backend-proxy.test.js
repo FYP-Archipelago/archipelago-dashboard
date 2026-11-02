@@ -30,6 +30,16 @@ test('local dashboard metadata and proxy use the same upstream and identity is n
   }
 });
 
+test('retired local data and upload APIs cannot expose or compute run data',async()=>{
+  const dashboard=await listen(handler);
+  try{
+    for(const [method,path] of [['GET','/api/runs'],['GET','/api/config'],['GET','/api/health'],['POST','/api/runs/upload'],['POST','/api/runs/import']]){
+      const response=await fetch(url(dashboard)+path,{method,...(method==='POST'?{headers:{'content-type':'application/json'},body:'{}'}:{})});
+      assert.equal(response.status,404,`${method} ${path} is retired`);
+    }
+  }finally{await close(dashboard);}
+});
+
 test('local backend proxy preserves JSON status, body and prefix without invoking legacy API', async () => {
   let received;
   const upstream=await listen(async (req,res)=>{

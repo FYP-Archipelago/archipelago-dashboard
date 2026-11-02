@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { validatePresets, buildRunRequest, initialClustering, FormError } from './run-form.js';
 
-import { catalog } from './fixtures/presets.js';
+import { catalog } from '../../test-support/presets.js';
 
 const build=(extra={})=>buildRunRequest({catalog,preset:'de_rastrigin',values:{},clustering:initialClustering(),stream:true,...extra});
 

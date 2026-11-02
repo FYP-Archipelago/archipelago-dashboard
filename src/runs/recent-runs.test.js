@@ -25,3 +25,20 @@ test('malformed, versionless and disabled storage never crash reading',()=>{
   assert.throws(()=>rememberRun(disabled,'/backend',entry(1)),/remember/);
   assert.throws(()=>rememberRun(storage,'/backend',{run_id:'bogus'}),/run ID/);
 });
+
+test('accepted configuration survives refresh and manual reopen without inferred status',()=>{
+  const storage=memory();
+  const configuration={preset:'de_rastrigin',overrides:{seed:0},stream:false,clustering:{birch:true,detail:1}};
+  rememberRun(storage,'http://localhost:8000',{...entry(1),configuration,status:'queued'});
+  rememberRun(storage,'http://localhost:8000',{run_id:entry(1).run_id,source:'manual'});
+  const saved=readRecentRuns(storage,'http://localhost:8000')[0];
+  assert.deepEqual(saved.configuration,configuration);assert.equal(saved.preset,'de_rastrigin');
+  assert.equal(saved.status,undefined);assert.equal(saved.source,'new');
+});
+
+test('corrupted remembered metadata is discarded without losing its valid run ID',()=>{
+  const storage=memory();
+  storage.setItem(HISTORY_KEY,JSON.stringify({version:1,runs:[{...entry(1),backend:'/backend',preset:{bad:true},configuration:{preset:'broken',stream:false,overrides:null,clustering:{}}}]}));
+  const saved=readRecentRuns(storage,'/backend')[0];
+  assert.equal(saved.run_id,entry(1).run_id);assert.equal(saved.preset,'');assert.equal(saved.configuration,undefined);
+});

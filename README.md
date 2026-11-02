@@ -1,6 +1,6 @@
 # Archipelago dashboard
 
-React dashboard for Archipelago's distributed evolutionary searches. The Runs page starts searches through the current Python backend; the local file library opens finished schema 2.0 logs for local analysis.
+Backend-driven run configuration and run browsing for Archipelago. Search execution, clustering, layout, graph statistics and island-separation calculations belong to the Python backend/module.
 
 ## Local development
 
@@ -10,56 +10,63 @@ cp .env.example .env
 npm run dev
 ```
 
-Open <http://127.0.0.1:5173>. Start `archipelago-backend` and its runner, Postgres and Redis separately, following the backend repository's README. The default backend address is `http://127.0.0.1:8000`; change `ARCHIPELAGO_BACKEND_URL` in `.env` and restart Vite if needed.
+Open <http://127.0.0.1:5173>. Run `archipelago-backend` and its runner/Postgres/Redis separately. The default backend address is `http://127.0.0.1:8000`; edit `ARCHIPELAGO_BACKEND_URL` in `.env` and restart Vite when changing it.
 
-- `/backend/*` goes to the current Python backend; Vite removes the prefix and streams SSE without buffering.
-- `/api/*` goes to this dashboard's local Node service on port 4174 for local-file analysis.
-- `/api/backend-config` identifies the actual proxy target without caching it, so remembered IDs stay separate when you change backends. Vite and the local Node server report their own configured target.
-- Alternatively, set `VITE_BACKEND_URL` to a direct backend URL and allow this dashboard origin in the backend's CORS configuration. This value is read at frontend build/start time.
-- For local `npm start` after `npm run build`, export `ARCHIPELAGO_BACKEND_URL` in the shell; Node does not automatically read `.env`. The Node service serves the UI and the same `/backend` proxy.
+Vite serves the UI, uncached `/api/backend-config` metadata and the fixed-target `/backend/*` proxy directly. The old second development server is no longer needed. For local static serving, run `npm run build` then `npm start`; export `ARCHIPELAGO_BACKEND_URL` in the shell for that Node process, which does not automatically load `.env`. An optional `VITE_BACKEND_URL` bypasses the proxy and requires backend CORS to allow the dashboard origin.
 
-## Run entry
+## Current workflow
 
-**Start a new run:** preset descriptions, algorithm, benchmark, default values, override types, choices and limits come from `GET /presets`. Choose at least one clustering stage, optionally tune supported settings, then submit `{preset, overrides, stream, clustering}` to `POST /runs`. An accepted run is remembered and opens `#archipelago?run_id=<id>`. Creation requests are never automatically retried: a lost response may mean the run was accepted.
+- The persistent **Run browser** sidebar remembers up to 30 IDs per actual backend target. It offers manual ID entry, selection, and Forget (browser storage only). This is not a global backend run list.
+- **New run** loads the backend's presets, defaults and override constraints. Choose runner overrides, supported clustering settings and either **Live updates** (`stream: true`) or **Final result only** (`stream: false`). Creation posts `{preset, overrides, stream, clustering}` to `/runs` and passes the accepted `run_id` to the shared workspace.
+- **Run configuration** shows the accepted request settings remembered in this browser, including after refresh. It does not infer run status or resolve automatic clustering values. A pasted ID with no remembered settings shows an explicit unavailable state.
+- Top tabs stay attached to the selected run: Archipelago, Migration, Convergence, Clustering, Run details, Run configuration. Analysis tabs remain explicit placeholders for Person 2; no fake charts, metrics or progress are displayed.
+- Form drafts survive run/tab navigation. Requests are never automatically retried after creation failures because a lost response may mean the search was accepted. Storage failures still preserve the run ID handoff and display a keep-the-ID warning.
 
-**Upload an existing run:** currently unavailable. Backend main has no upload endpoint, and no other backend branch existed when checked on 2026-11-02. No upload request format is assumed and the page does not fall back to the retired clustering API. This requires backend work before screenshot task 6 and the upload half of task 7 can be completed.
+**Status/SSE, live graph deltas, completed backend graph rendering, diagnostics and analysis are still Person 2's work in [#8](https://github.com/FYP-Archipelago/archipelago-dashboard/issues/8).** The full live/batched visualization flow is not complete on this branch.
 
-**Reopen a run:** paste its ID or select a run remembered by this browser. History is scoped to the configured backend, deduplicated, and limited to 30 IDs per backend. It is not a global server run list. Removing a remembered ID only changes browser storage. A shareable page URL also retains the ID through refresh and browser navigation.
+## Removed legacy paths
 
-**Local files:** the expandable local file library accepts a zip, loose files, or a directory readable by the Node process. It requires `evaluations.csv`; `run.jsonl` and `summary.json` enable additional analysis pages. This imports files into local `data/`, not into the current backend. Existing local-file visualization remains available. The old clustering submission form has been removed from the Runs page. Local summaries, names, and confirmed deletion remain available. Switching local runs retains the current analysis page.
+Scale and its synthetic dataset are removed. Local file imports, CSV decoding, PCA/projection, per-evaluation aggregation, local metrics and the retired clustering API are removed from the application and Node server. The unused archive, matrix and plotting dependencies are removed. Ignored local `data/` files are preserved on disk and no longer loaded, exposed or bundled.
+
+There is no upload endpoint in backend main, so no unsupported upload form is shown. Upload is tracked separately in [dashboard #9](https://github.com/FYP-Archipelago/archipelago-dashboard/issues/9), blocked by [backend #2](https://github.com/FYP-Archipelago/archipelago-backend/issues/2). No multipart contract is guessed and no old clustering route is used as a fallback.
+
+The Node server only serves static files, `/api/status`, `/api/backend-config`, and the fixed-target backend HTTP/SSE proxy. Retired `/api/runs`, upload/import, local health/config and clustering routes return 404. It performs no run-data processing.
 
 ## Person 2 handoff
 
-The integration base and frontend rewrite branch were identical at `f46fd41`. Person 1's branch is `feat/person1-run-entry`, intended to merge into `feat/backend-integration` after both tracks are ready.
+`src/backend/RunWorkspace.jsx` remains unchanged as the graph/status entry point, consuming `{runId, api, onBack, warning}`. `src/app/AnalysisPlaceholder.jsx` preserves the other tabs. Replace those boundaries as needed, keeping the current-run URL and sidebar. The shell and run form do not consume SSE or fetch results.
 
-`src/backend/RunWorkspace.jsx` is deliberately a small selected-run boundary. **Live status and backend graph rendering are not implemented on Person 1's branch.** Person 2 replaces this component with the SSE/status/result/viewer work, consuming:
-
-```jsx
-<RunWorkspace runId={backendRunId} api={backendApi} onBack={...} warning={...} />
-```
-
-The shared client lives in `src/backend/api.js`:
+The shared API client (`src/backend/api.js`) provides:
 
 ```js
 api.url(`/runs/${encodeURIComponent(runId)}/events`); // EventSource URL
-api.result(runId, {signal});                       // GET persisted final result
-api.cancelRun(runId);                            // POST cancel
-api.request(path, {method, body, signal});
+api.result(runId, {signal});
+api.cancelRun(runId);
+await api.identity({signal}); // actual backend target for storage
 ```
 
-Use `api.baseUrl` for request URLs and `await api.identity({signal})` for storage identity. With the local proxy, identity resolves its actual upstream address; with a direct URL it returns that URL. Creation returns the backend's `RunStatus` with `run_id`, not the old `job_id`. Status values include `cancelled`. There is no backend `GET /runs` or `GET /runs/{id}` status route; consume SSE status events. Handle a persisted result after event-stream expiry. Person 2 owns cleanup/reconnect/delta semantics and graph adaptation. The existing graph, migration and convergence files were not changed in this branch.
+There is no backend GET run-list or run-status route. Status comes from events, final graphs from `/runs/{id}/result`. Use the backend's node IDs, coordinates, percentiles, island assignments, best markers and links directly; do not rebuild clusters or recompute their metrics.
 
-Person 1 owns `src/runs/**`, `src/backend/api*`, local proxy/config, and the small Runs/navigation wiring in `src/main.jsx`. Person 2 should concentrate on `src/backend/RunWorkspace.jsx` and graph modules; analysis-page wiring in `src/main.jsx` should be merged deliberately rather than replacing the entire shell.
+The old WebGL source (`src/viewer/stn-viewer.js`) is retained as an **unbundled rendering reference**, not imported by the application. Its legacy evaluation-aggregation path must not be used by the backend adapter. A narrow display-only change hides migration edges connected to hidden islands or filtered paths by default; **Include migrations for hidden paths** explicitly opts in. Reuse `src/viewer/visibility.js` in the backend renderer to retain that preference. No status, delta or graph adapter was added here.
 
-See the [design](docs/superpowers/specs/2026-11-02-person1-run-entry-design.md) and [action plan](docs/superpowers/plans/2026-11-02-person1-run-entry.md) for task acceptance and remaining dependencies.
+| View | Backend contract / remaining data |
+|---|---|
+| Graph and inspection | Columnar `graph.nodes`, `graph.edges`, `graph.migrations`, best flags and coordinates already supplied |
+| Clustering statistics | `clustering.counts`, `resolved`, `diagnostics`, `elapsed_seconds`, `malformed_rows`, `warnings` already supplied |
+| Island separation | Backend `separation` pairs, windows and window pairs already supplied |
+| Run details | Backend result `run` and `layout`; request settings may be remembered by this browser |
+| Convergence time series | Generation histories are absent from the current result; backend/module must expose them if required |
+| Detailed migration timings | Graph route counts exist; delivery latency and event timing are absent and require backend/module support if needed |
 
-## Checks
+Missing analytical data must be added to the module/backend or shown as unavailable. Do not calculate substitute results in the frontend.
+
+## Checks and branch
 
 ```sh
 npm test
 npm run build
 ```
 
-Tests use Node's test runner, local HTTP fixture servers for JSON/SSE proxy behavior, and jsdom for React form interactions. The browser test bundle is generated under ignored `.superpowers/ui-tests/`. No real EA execution is performed by tests.
+Node tests cover API/proxy behavior, retired endpoints, preset/cluster validation, sidebar/history/configuration, modes, navigation, storage failures and migration display filtering. jsdom/esbuild are development-only. Fixtures live under `test-support/` and are not imported into the application. Browser verification uses a controlled API fixture, not real EA execution.
 
-Colour tokens and the workspace layout live in `src/designs.css`. Island hues, migration cyan and best-solution pink remain data encodings.
+Working branch: `feat/backend-run-workflow`, intended for review against `feat/backend-integration`. **Do not merge into main.** See the [current design](docs/superpowers/specs/2026-11-02-backend-run-workflow-design.md) and [plan](docs/superpowers/plans/2026-11-02-backend-run-workflow.md). No Claude attribution is added to commits.

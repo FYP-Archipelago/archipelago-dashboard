@@ -1,3 +1,5 @@
+import {migrationVisible,MIGRATION_VISIBILITY_DEFAULTS} from './visibility.js';
+
 /* Archipelago STN viewer — WebGL2, no libraries.
  *
  * Draws one run's search trajectory network: density rendering into an
@@ -248,11 +250,12 @@ const TEMPLATE = `
           <div class="grp layers">
             <button class="btn-wide" id="t-edges" aria-pressed="true">Trajectory edges</button>
             <button class="btn-wide" id="mig-all" aria-pressed="true">Migration routes</button>
+            <button class="btn-wide" id="include-hidden-migrations" aria-pressed="false">Include migrations for hidden paths</button>
             <button class="btn-wide" id="b-isl" aria-pressed="true">Island bests</button>
             <button class="btn-wide" id="b-run" aria-pressed="true">Run bests</button>
             <button class="btn-wide" id="contest" aria-pressed="false">Contested clusters</button>
             <button class="btn-wide" id="b-sel" aria-pressed="true">Selection marker</button>
-            <p class="hint">Turn trajectory edges off to leave only the clusters and the migration arcs &mdash; the exchange skeleton on its own.</p>
+            <p class="hint">Migrations follow visible islands and paths by default. Enable hidden-path migrations to inspect exchanges beyond the current filters, including a migration-only view.</p>
           </div>
           </div>
         </details>
@@ -392,6 +395,7 @@ export function mountStnViewer(root, cfg) {
   let rx = null, ry = null, rf = null, gOff = null, gLen = null, gRun = null, gIsl = null;
   let migEvents = [], fSorted = null;
   let G = null;
+  let visiblePathNodes = new Set();
   let alive = true;
   // The base alphas are tuned for ~250k edges. A real run is often a
   // few thousand, so each line would accumulate almost no light. Scale the
@@ -690,15 +694,24 @@ export function mountStnViewer(root, cfg) {
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, bIdx);
     gl.bindVertexArray(null);
 
+  }
+
+  function buildMigrationGeometry() {
+    const v=nodeData;
+    const visibleMigrations=G.mig.filter(migration=>migrationVisible({
+      sourcePathVisible:state.edges&&visiblePathNodes.has(migration.a),
+      targetPathVisible:state.edges&&visiblePathNodes.has(migration.b),
+      includeHiddenPaths:state.includeHiddenPaths,
+    }));
     // migration ribbons: 10 segments, 6 verts each, 27 floats per vertex.
     // The stride must equal the floats actually written, or every following
     // vertex shifts and the ribbons shred into shards.
-    const SEG = 10, m = G.mig.length, ST = 27;
+    const SEG = 10, m = visibleMigrations.length, ST = 27;
     const arc = new Float32Array(m * SEG * 6 * ST);
     const quad = [[0, -1], [0, 1], [1, -1], [1, -1], [0, 1], [1, 1]];
     let p = 0;
     for (let i = 0; i < m; i++) {
-      const A = G.mig[i].a * NF, B = G.mig[i].b * NF, rid = G.mig[i].route;
+      const A = visibleMigrations[i].a * NF, B = visibleMigrations[i].b * NF, rid = visibleMigrations[i].route;
       for (let s = 0; s < SEG; s++) {
         for (let j = 0; j < 6; j++) {
           const t = (s + quad[j][0]) / SEG;
@@ -737,11 +750,16 @@ export function mountStnViewer(root, cfg) {
     const e = G.e, ew = G.ew, floor = state.wt;
     const idx = new Uint32Array(G.edgeCount * 2);
     let o = 0;
+    visiblePathNodes=new Set();
     for (let i = 0; i < G.edgeCount; i++)
-      if (ew[i] >= floor) { idx[o++] = e[i * 2]; idx[o++] = e[i * 2 + 1]; }
+      if (ew[i] >= floor) {
+        idx[o++] = e[i * 2]; idx[o++] = e[i * 2 + 1];
+        visiblePathNodes.add(e[i * 2]);visiblePathNodes.add(e[i * 2 + 1]);
+      }
     drawnEdges = o / 2;
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, bIdx);
     gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, idx.subarray(0, o), gl.DYNAMIC_DRAW);
+    buildMigrationGeometry();
   }
 
   /* ── state + camera ──────────────────────────────────────────── */
@@ -749,6 +767,7 @@ export function mountStnViewer(root, cfg) {
     ds: 0, res: 2, wt: 2, ns: 100, zMode: 0, op: 180, dom: 140, exI: 0, exR: 0,
     colourBy: "island", grpOn: [], routesOn: [],
     contest: false, edges: true, selMark: true, bestIsl: true, bestRun: true,
+    includeHiddenPaths: MIGRATION_VISIBILITY_DEFAULTS.includeHiddenPaths,
     group: false, exIBefore: 0, flat: false, hs: 100, hsBefore: 100
   };
   let selected = -1;
@@ -1235,7 +1254,8 @@ export function mountStnViewer(root, cfg) {
   });
   toggle("contest", "contest");
   toggle("b-sel", "selMark");
-  toggle("t-edges", "edges", () => updateStats());
+  toggle("t-edges", "edges", () => {buildMigrationGeometry();updateStats();});
+  toggle("include-hidden-migrations", "includeHiddenPaths", () => buildMigrationGeometry());
   toggle("b-isl", "bestIsl");
   toggle("b-run", "bestRun");
   // Group by island: islands pulled fully apart into their own patches, laid
@@ -1410,7 +1430,7 @@ export function mountStnViewer(root, cfg) {
     }
     for (let k = 0; k < G.routes.length && k < MAXG * 2; k++) {
       const rt = G.routes[k];
-      routeArr[k] = (state.routesOn[k] && grpVisible(rt.sg) && grpVisible(rt.dg)) ? 1 : 0;
+      routeArr[k] = migrationVisible({routeEnabled:state.routesOn[k],sourceVisible:!!grpVisible(rt.sg),targetVisible:!!grpVisible(rt.dg),includeHiddenPaths:state.includeHiddenPaths}) ? 1 : 0;
       const cs = groupColour(rt.sg), cd = groupColour(rt.dg);
       routeSrc[k * 3] = cs[0]; routeSrc[k * 3 + 1] = cs[1]; routeSrc[k * 3 + 2] = cs[2];
       routeDst[k * 3] = cd[0]; routeDst[k * 3 + 1] = cd[1]; routeDst[k * 3 + 2] = cd[2];

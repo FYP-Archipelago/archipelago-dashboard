@@ -1,6 +1,6 @@
 import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
-import { backendIdentity } from './server/backend-proxy.js';
+import { handleLocalApi } from './server/local-api.js';
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
@@ -10,14 +10,11 @@ export default defineConfig(({ mode }) => {
     name:'local-backend-identity',
     configureServer(server) {
       server.middlewares.use((req,res,next)=>{
-        if (req.method !== 'GET' || req.url?.split('?')[0] !== '/api/backend-config') return next();
-        res.writeHead(200,{'content-type':'application/json','cache-control':'no-store'});
-        res.end(JSON.stringify({backend_id:backendIdentity(backend)}));
+        if (!handleLocalApi(req,res,{backendUrl:backend})) next();
       });
     },
   }],
   server: { proxy: {
-    '/api': 'http://127.0.0.1:4174',
     '/backend': {target:backend, changeOrigin:true, rewrite:path=>path.replace(/^\/backend/, ''), timeout:0, proxyTimeout:0},
   } },
   };
