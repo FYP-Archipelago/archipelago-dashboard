@@ -29,7 +29,7 @@ export default function DashboardApp({api=backendApi,storage=browserStorage(),Wo
     navigate(runHash(id,!run&&route.page!=='library'?route.page:'archipelago'));
   };
   const configuration=library.entries.find(entry=>entry.run_id===route.runId)?.configuration ||
-    (accepted?.backendKey===library.backendKey&&accepted?.runId===route.runId?accepted.configuration:undefined);
+    (library.backendKey&&accepted?.backendKey===library.backendKey&&accepted?.runId===route.runId?accepted.configuration:undefined);
   const newRun=()=>{setWarning('');navigate('#library');};
   return <div className="app workspace-shell">
     <header className="workspace-topbar">
@@ -40,7 +40,7 @@ export default function DashboardApp({api=backendApi,storage=browserStorage(),Wo
     <RunBrowserSidebar library={library} selectedId={route.runId} onOpenRun={openRun} onNewRun={newRun} busy={busy}/>
     <main className="workspace-main">
       {warning&&<div className="notice" role="status">{warning}</div>}
-      <div hidden={route.page!=='library'&&!!route.runId}><RunsPage api={api} onOpenRun={openRun} onBusyChange={setBusy}/></div>
+      <div hidden={route.page!=='library'&&!!route.runId}><RunsPage api={api} onOpenRun={openRun} onBusyChange={setBusy} canStart={!!library.backendKey&&!library.loading}/></div>
       {route.runId&&route.page==='configuration'&&<RunConfiguration configuration={configuration} runId={route.runId}/>}
       {route.runId&&route.page==='archipelago'&&<Workspace runId={route.runId} api={api} onBack={newRun} warning=""/>}
       {route.runId&&['migration','convergence','diagnostics','run'].includes(route.page)&&<AnalysisPlaceholder view={route.page} runId={route.runId}/>}

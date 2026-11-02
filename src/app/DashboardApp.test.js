@@ -80,3 +80,25 @@ test('sidebar history is isolated when actual backend identity changes and handl
     assert.ok(document.querySelector(`[data-run-id="${runId}"]`));
   }finally{await view.close();}
 });
+
+test('creation waits for backend identity so accepted settings cannot be lost during loading',async()=>{
+  let identify,creates=0;const identity=new Promise(resolve=>identify=resolve);
+  const view=await mount(Dashboard,{api:makeApi({identity:()=>identity,createRun:async body=>{creates++;return {run_id:runId,status:'queued',...body};}}),Workspace});
+  try{
+    assert.ok(button('Start run').disabled);await submit();assert.equal(creates,0);
+    await act(async()=>identify('http://localhost:8000'));assert.equal(button('Start run').disabled,false);
+    await input('evaluation_budget','3000');await submit();assert.equal(creates,1);
+    assert.equal(readRecentRuns(window.localStorage,'http://localhost:8000')[0].configuration.overrides.evaluation_budget,3000);
+    await click(button('Run configuration'));assert.match(document.body.textContent,/3000/);
+  }finally{await view.close();}
+});
+
+test('identity retry enables creation only after a stable backend target is available',async()=>{
+  let attempts=0;
+  const view=await mount(Dashboard,{api:makeApi({identity:async()=>{if(!attempts++)throw Error('Backend identity unavailable.');return 'http://localhost:8000';}}),Workspace});
+  try{
+    assert.ok(button('Start run').disabled);assert.match(document.body.textContent,/Backend identity unavailable/);
+    await click(button('Retry run browser'));assert.equal(button('Start run').disabled,false);
+    await submit();assert.equal(readRecentRuns(window.localStorage,'http://localhost:8000')[0].run_id,runId);
+  }finally{await view.close();}
+});

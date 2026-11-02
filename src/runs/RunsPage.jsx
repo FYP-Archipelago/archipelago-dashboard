@@ -18,7 +18,7 @@ function OverrideField({name,rule,value,onChange,error}) {
   </label>;
 }
 
-export default function RunsPage({api=backendApi,onOpenRun,onBusyChange}) {
+export default function RunsPage({api=backendApi,onOpenRun,onBusyChange,canStart=true}) {
   const [catalog,setCatalog]=useState(null),[preset,setPreset]=useState(''),[drafts,setDrafts]=useState({});
   const [catalogError,setCatalogError]=useState(''),[loading,setLoading]=useState(true),[retry,setRetry]=useState(0);
   const [health,setHealth]=useState({state:'checking',message:''});
@@ -45,7 +45,7 @@ export default function RunsPage({api=backendApi,onOpenRun,onBusyChange}) {
   const changeValue=(key,value)=>setDrafts(current=>({...current,[preset]:{...current[preset],[key]:value}}));
   const submit=async event=>{
     event.preventDefault();
-    if(submitting.current||loading||health.state!=='connected'||catalogError)return;
+    if(submitting.current||loading||health.state!=='connected'||catalogError||!canStart)return;
     setErrors({});setSubmitError('');
     let body;
     try{body=buildRunRequest({catalog,preset,values,clustering,stream});}
@@ -79,7 +79,8 @@ export default function RunsPage({api=backendApi,onOpenRun,onBusyChange}) {
           <p className="caption">Cluster after the search finishes. The backend saves the completed result in either mode.</p>
         </section>
         {submitError&&<div className="notice error" role="alert">{submitError}</div>}
-        <button className="primary" type="submit" disabled={busy||health.state!=='connected'||loading||!!catalogError}>{busy?'Starting…':'Start run'}</button>
+        {!canStart&&<p className="caption" role="status">Waiting for the run browser to identify this backend. Use “Retry run browser” if it is unavailable.</p>}
+        <button className="primary" type="submit" disabled={busy||health.state!=='connected'||loading||!!catalogError||!canStart}>{busy?'Starting…':'Start run'}</button>
       </fieldset>
     </form></section>}
   </div>;
