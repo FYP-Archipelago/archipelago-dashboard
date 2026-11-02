@@ -1,4 +1,5 @@
 import {migrationVisible,MIGRATION_VISIBILITY_DEFAULTS} from './visibility.js';
+import {backendViewerGraph} from './backend-graph.js';
 
 /* Archipelago STN viewer — WebGL2, no libraries.
  *
@@ -386,10 +387,10 @@ export function mountStnViewer(root, cfg) {
   const $ = id => root.querySelector("#" + id);
   const canvas = $("gl"), note = $("note");
   const gl = canvas.getContext("webgl2", { antialias: false, alpha: false });
-  if (!gl) { note.textContent = "WEBGL2 UNAVAILABLE IN THIS BROWSER"; return { destroy() { }, loadDataset() { } }; }
+  if (!gl) { note.textContent = "WEBGL2 UNAVAILABLE IN THIS BROWSER"; return { destroy() { }, loadDataset() { }, setBackendGraph() {} }; }
 
   /* ── dataset-bound state ─────────────────────────────────────── */
-  const entries = cfg.datasets;
+  const entries = cfg.datasets || [];
   let DS = null;                       // the loaded dataset
   let NG = 0, RAW = 0;
   let rx = null, ry = null, rf = null, gOff = null, gLen = null, gRun = null, gIsl = null;
@@ -668,9 +669,9 @@ export function mountStnViewer(root, cfg) {
       v[o] = G.px[i]; v[o + 1] = G.py[i];
       v[o + 2] = offI[g][0]; v[o + 3] = offI[g][1];
       v[o + 4] = offR[g][0]; v[o + 5] = offR[g][1];
-      v[o + 6] = fitnessPct(G.pf[i]) * 1.8 - 0.9;               // fitness rank
-      v[o + 7] = (G.pg[i] / gLen[g]) * 1.8 - 0.9;               // elapsed time
-      v[o + 8] = (gIsl[g] - (DS.isl - 1) / 2) * PLANE_GAP;       // island plane
+      v[o + 6] = (DS.backend ? G.pct[i] : fitnessPct(G.pf[i])) * 1.8 - 0.9;
+      v[o + 7] = (DS.backend ? G.pg[i] : G.pg[i] / gLen[g]) * 1.8 - 0.9;
+      v[o + 8] = DS.backend ? G.pz[i] : (gIsl[g] - (DS.isl - 1) / 2) * PLANE_GAP;
       v[o + 9] = g;
       v[o + 10] = 1.0 + Math.log2(1 + G.pVis[i]) * 0.85;
       v[o + 11] = G.pShared[i];
@@ -823,7 +824,7 @@ export function mountStnViewer(root, cfg) {
     const r = canvas.getBoundingClientRect(), x = ev.clientX - r.left, y = ev.clientY - r.top, i = pickAt(x, y);
     tip.hidden = i < 0;
     if (i < 0) return;
-    tip.textContent = "Island " + islLabel(gIsl[G.pGrp[i]]) + " · fitness " + ((DS.fitSign || 1) * G.pf[i]).toFixed(4) + " · " + G.pVis[i] + (G.pVis[i] === 1 ? " evaluation" : " evaluations");
+    tip.textContent = "Island " + islLabel(gIsl[G.pGrp[i]]) + " · fitness " + (DS.backend ? (Number.isFinite(G.pf[i]) ? G.pf[i].toFixed(4) : "unavailable") : ((DS.fitSign || 1) * G.pf[i]).toFixed(4)) + " · " + G.pVis[i] + (G.pVis[i] === 1 ? " visit" : " visits");
     tip.style.transform = "translate(" + Math.min(x + 14, r.width - 250) + "px," + (y + 14) + "px)";
   }
   canvas.addEventListener("pointerleave", () => { $("hover-tip").hidden = true; });
@@ -1168,6 +1169,21 @@ export function mountStnViewer(root, cfg) {
         '&mdash; genome, fitness, how many evaluations landed there, and who shares it.</p>';
       return;
     }
+    if (DS.backend) {
+      const node=G.nodes[i],g=G.pGrp[i];
+      title.innerHTML='<i style="background:' + hex(groupColour(g)) + '"></i>Island ' + esc(islLabel(gIsl[g])) + ' &middot; node ' + esc(node.id);
+      x.hidden=false;
+      const value=v=>v===null||v===undefined?'Unavailable':esc(v);
+      box.innerHTML=(node.overall_best?row('best','RUN BEST'):node.island_best?row('best','ISLAND BEST'):'')+
+        row('genome_hash',value(node.genome_hash))+row('mean fitness',value(node.mean_fitness))+
+        row('best fitness',value(node.best_fitness))+row('percentile',value(node.fitness_percentile))+
+        row('visits',value(node.visits))+row('members',value(node.members))+
+        row('eval index',value(node.first_eval)+' &rarr; '+value(node.last_eval))+
+        row('degree',value(node.in_degree)+' in / '+value(node.out_degree)+' out')+
+        row('islands here',value(node.islands_sharing)+' of '+DS.isl)+
+        row('migration',node.migration_endpoint?'endpoint of a migration':'not a migration endpoint');
+      return;
+    }
     const g = G.pGrp[i], isl = islLabel(gIsl[g]), run = gRun[g];
     const sign = DS.fitSign || 1;                       // display in the log's own orientation
     title.innerHTML = '<i style="background:' + hex(groupColour(g)) + '"></i>' +
@@ -1316,7 +1332,7 @@ export function mountStnViewer(root, cfg) {
     const pct = G.edgeCount && state.edges ? (drawnEdges / G.edgeCount * 100) : 0;
     $("k-pct").innerHTML = pct.toFixed(0) + '<small> %</small>';
     $("k-share").innerHTML = G.overlap.toFixed(2) + '<small> of ' + NG + '</small>';
-    $("k-mig").textContent = fmt(G.mig.length);
+    $("k-mig").textContent = fmt(DS.backend ? G.mig.reduce((sum,m)=>sum+m.count,0) : G.mig.length);
     $("meta-run").textContent = DS.title || "";
     const lv = $("meta-level");
     lv.textContent = DS.levelNote || "";
@@ -1363,6 +1379,37 @@ export function mountStnViewer(root, cfg) {
       note.style.display = "none";
       startLoop();
     }, 30);
+  }
+
+  // Backend runs arrive as finished graphs or a sequence of SSE deltas. Rebuild
+  // GPU buffers in place; retain camera, filters and selection across updates.
+  function setBackendGraph(graph, runId='') {
+    if (!alive || !graph?.nodes?.size) return;
+    const oldGroups=DS?.backend ? new Map(DS.islandIds.map((id,i)=>[id,state.grpOn[i]])) : new Map();
+    const oldRoutes=DS?.backend ? new Map(G.routes.map((route,i)=>[
+      `${DS.islandIds[route.sg]}:${DS.islandIds[route.dg]}`,state.routesOn[i]])) : new Map();
+    const selectedId=DS?.backend&&selected>=0 ? G.nodes[selected]?.id : null;
+    const first=!DS?.backend;
+    const adapted=backendViewerGraph(graph,runId);
+    DS=adapted.DS;G=adapted.G;NG=DS.isl;gRun=DS.gRun;gIsl=DS.gIsl;
+    state.grpOn=DS.islandIds.map(id=>oldGroups.get(id)??true);
+    state.routesOn=G.routes.map(route=>oldRoutes.get(`${DS.islandIds[route.sg]}:${DS.islandIds[route.dg]}`)??true);
+    edgeGain=G.edgeCount>=200000?1:Math.min(12,Math.sqrt(250000/Math.max(G.edgeCount,1)));
+    nodeGain=Math.min(4,edgeGain);
+    $("grp-agg").hidden=true;
+    $("z-isle").textContent="GENOME";
+    HEIGHT_NAMES[2]="genome depth";
+    $("s-wt").max=Math.max(4,Math.min(24,Math.round(G.maxW*.25)));
+    if(first){
+      state.wt=1;$("s-wt").value=1;$("s-wt").defaultValue=1;
+      $("v-wt").textContent=GE+" 1 visit";
+      $("cap").textContent="The backend supplies clustered nodes, lineage edges, migrations and genome positions.";
+      $("ins-body").innerHTML='<p class="ins-empty">Click a backend cluster to inspect its fitness, visits, members and genome hash.</p>';
+    }
+    computeOffsets();buildGeometry();buildIndex();buildSelectors();syncSelectors();buildMarks();syncHeight();updateStats();
+    select(selectedId===null?-1:(adapted.idIndex.get(selectedId)??-1));
+    note.style.display="none";
+    startLoop();
   }
 
   /* ── frame ───────────────────────────────────────────────────── */
@@ -1564,10 +1611,11 @@ export function mountStnViewer(root, cfg) {
   }
 
   window.addEventListener("resize", resize);
-  setTimeout(() => loadDataset(cfg.start || 0), 40);
+  if (!cfg.backend) setTimeout(() => loadDataset(cfg.start || 0), 40);
 
   return {
     loadDataset,
+    setBackendGraph,
     destroy() {
       alive = false;
       cancelAnimationFrame(raf);
