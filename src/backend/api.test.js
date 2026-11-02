@@ -45,6 +45,19 @@ test('failed POST is not retried and a lost response warns of ambiguous acceptan
   assert.equal(calls,1);
 });
 
+test('HTML gateway failure after create carries an ambiguous-acceptance warning',async()=>{
+  const api=createBackendClient({fetchImpl:async()=>new Response('<html>Gateway timeout</html>',{status:504})});
+  await assert.rejects(api.createRun({}),error=>error.status===504&&error.ambiguous&&/may have been accepted/.test(error.message));
+});
+
+test('proxy identity resolves the actual configured backend; direct URLs identify themselves',async()=>{
+  let requested;
+  const proxied=createBackendClient({fetchImpl:async url=>{requested=url;return reply({backend_id:'http://localhost:8000'});}});
+  assert.equal(await proxied.identity(),'http://localhost:8000');assert.equal(requested,'/api/backend-config');
+  const direct=createBackendClient({baseUrl:'http://other:8000/v1/'});
+  assert.equal(await direct.identity(),'http://other:8000/v1');
+});
+
 test('malformed create success never yields an invented run ID', async () => {
   for(const value of [{job_id:'old-job'},{...run,run_id:''},{...run,status:'finished'}]) {
     const api=createBackendClient({fetchImpl:async()=>reply(value,202)});

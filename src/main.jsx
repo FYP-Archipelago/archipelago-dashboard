@@ -4,9 +4,10 @@ import Plotly from 'plotly.js-dist-min';
 import { mountViewer, mountStudy } from './viewer.js';
 import { STUDY_DATASETS } from './viewer/study-data.js';
 import RunsPage from './runs/RunsPage.jsx';
+import LocalRuns from './runs/LocalRuns.jsx';
 import RunWorkspace from './backend/RunWorkspace.jsx';
 import { backendApi } from './backend/api.js';
-import { readRoute, runHash } from './runs/navigation.js';
+import { readRoute, runHash, localRunHash } from './runs/navigation.js';
 import './style.css';
 import './designs.css';
 import './viewer/stn-viewer.css';
@@ -18,8 +19,6 @@ const fmt = n => Number(n || 0).toLocaleString();
 const num = (n, digits=2) => Number.isFinite(Number(n)) ? Number(n).toFixed(digits) : '—';
 const median = values => { const a = values.filter(Number.isFinite).sort((x,y)=>x-y); return a.length ? (a[Math.floor((a.length-1)/2)] + a[Math.floor(a.length/2)])/2 : null; };
 const api = async (url, options) => { const r = await fetch(`/api${url}`, options); const v = await r.json(); if (!r.ok) throw Error(v.error || `HTTP ${r.status}`); return v; };
-const post = (url, value) => api(url, { method:'POST', headers:{'content-type':'application/json'}, body:JSON.stringify(value) });
-const file64 = file => new Promise((resolve,reject) => { const reader = new FileReader(); reader.onload = () => resolve(String(reader.result).split(',')[1]); reader.onerror = reject; reader.readAsDataURL(file); });
 
 function Header({ eyebrow, title, question, children }) { return <header className="page-head"><p className="eyebrow">{eyebrow}</p><h1>{title}</h1><p className="question">{question}</p><details className="reading"><summary>How to read this</summary><div className="deck">{children}</div></details></header>; }
 function Caption({ children }) { return <p className="caption">{children}</p>; }
@@ -115,35 +114,6 @@ function RunBrowser({ run }) {
     <Details title="Resolved configuration"><pre>{JSON.stringify(s.config||{},null,2)}</pre></Details></>;
 }
 
-function LocalRuns({ runs, refresh, onOpenLocal }) {
-  const [tab,setTab]=useState('Zip archive'),[file,setFile]=useState(null),[loose,setLoose]=useState([]),[source,setSource]=useState(''),[message,setMessage]=useState(''),[busy,setBusy]=useState(false);
-  const upload=async()=>{
-    if(busy)return;
-    setBusy(true);setMessage('');
-    try {
-      let added;
-      if(tab==='Zip archive') added=await post('/runs/upload',{name:file.name.replace(/\.zip$/,''),archive:await file64(file)});
-      else if(tab==='Loose files'){const files={};for(const f of loose)files[f.name]=await file64(f);added=await post('/runs/upload',{name:'uploaded-run',files});}
-      else added=await post('/runs/import',{path:source});
-      await refresh();setMessage(`Added ${added.id} to the local library.`);
-    }catch(error){setMessage(error.message);}finally{setBusy(false);}
-  };
-  return <>
-    <p className="body-copy">Open finished logs on this machine for local analysis. These files stay in the local library and are not submitted to the backend.</p>
-    <div className="tabs">{['Zip archive','Loose files','From a path'].map(value=><button type="button" disabled={busy} key={value} className={tab===value?'active':''} onClick={()=>setTab(value)}>{value}</button>)}</div>
-    <div className="tab-body">
-      {tab==='Zip archive'&&<label>Local run archive<input disabled={busy} type="file" accept=".zip" onChange={event=>setFile(event.target.files?.[0])}/></label>}
-      {tab==='Loose files'&&<label>Local run files<input disabled={busy} type="file" multiple onChange={event=>setLoose([...event.target.files])}/></label>}
-      {tab==='From a path'&&<label>Directory on the Node server's machine<input disabled={busy} value={source} onChange={event=>setSource(event.target.value)} placeholder="Path to run directory"/></label>}
-      <p className="caption">An evaluations.csv file is required. Add run.jsonl and summary.json for migration, convergence and provenance records.</p>
-      <button type="button" className="primary" disabled={busy||(tab==='Zip archive'&&!file)||(tab==='Loose files'&&!loose.length)||(tab==='From a path'&&!source)} onClick={upload}>{busy?'Adding…':'Add to local library'}</button>
-    </div>
-    {message&&<Notice>{message}</Notice>}
-    <h3>Files in this local library</h3>
-    {runs.length?<div className="local-runs-list">{runs.map(entry=><p key={entry.id}><button type="button" className="secondary" onClick={()=>onOpenLocal(entry.id)}>Open {entry.id}</button> <span className="caption">{entry.algorithm} / {entry.benchmark}</span></p>)}</div>:<Notice>No local runs loaded.</Notice>}
-  </>;
-}
-
 function Overview() {
   const stages=[['Execution','backend starts islands in parallel and they exchange individuals',''],['Logs','every evaluation and migration, one schema','produced elsewhere'],['Clustering','LSH → BIRCH → DenStream compress the stream','produced elsewhere'],['Network','trajectories become a graph, with migration edges',''],['Analytics','backend results include island separation diagnostics','']];
   return <><Header eyebrow="Archipelago" title="About" question="Explaining what a distributed evolutionary algorithm actually did.">A distributed evolutionary algorithm runs several populations at once and lets them trade individuals. Standard tools flatten all of that into a single fitness curve. This one keeps the islands apart and draws where each of them actually searched.</Header>
@@ -173,7 +143,7 @@ function App() {
   const goTo=hash=>{history.pushState(null,'',hash);setRoute(readRoute(hash));};
   const navigate=id=>goTo(backendRunId&&id==='archipelago'?runHash(backendRunId):`#${id}`);
   const openBackend=(id,{warning=''}={})=>{setBackendWarning(warning);goTo(runHash(id));};
-  const openLocal=async id=>{try{setRun(await api(`/runs/${encodeURIComponent(id)}`));setBackendWarning('');goTo('#archipelago');}catch(e){setError(e.message);}};
+  const openLocal=async (id,currentPage)=>{const startingHash=location.hash;try{setRun(await api(`/runs/${encodeURIComponent(id)}`));setBackendWarning('');if(!currentPage&&location.hash===startingHash)goTo(localRunHash());}catch(e){setError(e.message);}};
   const go=[['Analyse',[['archipelago','Archipelago','Where islands searched'],['migration','Migration','Who moved, and arrived'],['convergence','Convergence','Who improved, who stalled'],['study','Scale study','Synthetic data at 400,000 evaluations']]],['The run',[['run','Run browser','What ran, how it ended']]]];
   const pageButton=([id,label,hint])=><button key={id} className={page===id?'active':''} onClick={()=>navigate(id)}><Icon id={id}/>{label}<small>{hint}</small></button>;
   document.documentElement.classList.toggle('on-archipelago',page==='study'||(page==='archipelago'&&!!run&&!backendRunId));
@@ -181,9 +151,9 @@ function App() {
   const best=run?.end?.global_best_fitness;
   return <div className="app"><aside><div className="brand"><Icon id="brand"/><span>Archipelago</span><small>v0.4</small></div>
       <nav>{backendRunId?pageButton(['archipelago','Archipelago','Selected backend run']):runs.length>0&&go.map(([heading,items])=><React.Fragment key={heading}><div className="nav-heading">{heading}</div>{items.map(pageButton)}</React.Fragment>)}<div className="nav-heading">Library</div>{pageButton(['library','Runs','Start or reopen a run'])}{pageButton(['overview','About','What this tool is for'])}</nav>
-      {!backendRunId&&runs.length>0&&['archipelago','migration','convergence','run'].includes(page)&&<div className="runctx"><label>Local run<select value={run?.id||''} onChange={e=>openLocal(e.target.value)}>{runs.map(r=><option key={r.id} value={r.id}>{r.algorithm} / {r.benchmark} · {r.islands} islands</option>)}</select></label><label>Level<select value={level} onChange={e=>setLevel(e.target.value)}><option value="level0">Level 0 · raw trajectory</option><option value="clustered">Clustered</option></select></label>
+      {!backendRunId&&runs.length>0&&['archipelago','migration','convergence','run'].includes(page)&&<div className="runctx"><label>Local run<select value={run?.id||''} onChange={e=>openLocal(e.target.value,page)}>{runs.map(r=><option key={r.id} value={r.id}>{r.algorithm} / {r.benchmark} · {r.islands} islands</option>)}</select></label><label>Level<select value={level} onChange={e=>setLevel(e.target.value)}><option value="level0">Level 0 · raw trajectory</option><option value="clustered">Clustered</option></select></label>
         {run&&<dl className="run-facts"><dt>Islands</dt><dd>{run.islands.length}</dd><dt>Evaluations</dt><dd>{fmt(run.evaluations.length)}</dd><dt>Goal</dt><dd>{run.maximising?'Maximise':'Minimise'}</dd><dt>Best</dt><dd>{best===undefined?'—':num(best,4)}</dd></dl>}</div>}</aside>
-    <main>{error&&<Notice type="error">{error}</Notice>}<div className="page">{page==='library'?<RunsPage api={backendApi} onOpenRun={openBackend} localLibrary={<LocalRuns runs={runs} refresh={refresh} onOpenLocal={openLocal}/>}/>:page==='overview'?<Overview/>:page==='study'?<Study/>:backendRunId?<RunWorkspace runId={backendRunId} api={backendApi} onBack={()=>navigate('library')} warning={backendWarning}/>:run?<>{page==='archipelago'?<Archipelago run={run} level={level} results={results} selectedResult={selectedResult} setSelectedResult={setSelectedResult}/>:page==='migration'?<Migration run={run}/>:page==='convergence'?<Convergence run={run}/>:<RunBrowser run={run}/>}</>:<Notice>No local run selected. Open Runs to start a backend run or add local files.</Notice>}</div><footer>Archipelago v0.4 · Team 21, Amrita Vishwa Vidyapeetham</footer></main></div>;
+    <main>{error&&<Notice type="error">{error}</Notice>}<div className="page">{page==='library'?<RunsPage api={backendApi} onOpenRun={openBackend} localLibrary={<LocalRuns runs={runs} refresh={refresh} onOpenLocal={openLocal} request={api}/>}/>:page==='overview'?<Overview/>:page==='study'?<Study/>:backendRunId?<RunWorkspace runId={backendRunId} api={backendApi} onBack={()=>navigate('library')} warning={backendWarning}/>:run?<>{page==='archipelago'?<Archipelago run={run} level={level} results={results} selectedResult={selectedResult} setSelectedResult={setSelectedResult}/>:page==='migration'?<Migration run={run}/>:page==='convergence'?<Convergence run={run}/>:<RunBrowser run={run}/>}</>:<Notice>No local run selected. Open Runs to start a backend run or add local files.</Notice>}</div><footer>Archipelago v0.4 · Team 21, Amrita Vishwa Vidyapeetham</footer></main></div>;
 }
 
 createRoot(document.getElementById('root')).render(<App/>);

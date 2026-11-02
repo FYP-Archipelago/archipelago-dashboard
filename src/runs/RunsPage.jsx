@@ -27,7 +27,8 @@ export default function RunsPage({api=backendApi,onOpenRun,localLibrary,storage=
   const [health,setHealth] = useState({state:'checking',message:''});
   const [clustering,setClustering] = useState(initialClustering), [stream,setStream] = useState(true);
   const [busy,setBusy] = useState(false), [errors,setErrors] = useState({}), [submitError,setSubmitError] = useState('');
-  const [recent,setRecent] = useState(()=>readRecentRuns(storage,api.baseUrl));
+  const [backendKey,setBackendKey] = useState(api.identity?null:api.baseUrl), [identityError,setIdentityError] = useState('');
+  const [recent,setRecent] = useState(()=>api.identity?[]:readRecentRuns(storage,api.baseUrl));
   const [runId,setRunId] = useState(''), [idError,setIdError] = useState(''), [warning,setWarning] = useState('');
   const submitting = useRef(false), mounted = useRef(true);
   useEffect(()=>{mounted.current=true;return()=>{mounted.current=false;};},[]);
@@ -36,6 +37,10 @@ export default function RunsPage({api=backendApi,onOpenRun,localLibrary,storage=
     let active = true;
     const controller = new AbortController();
     setHealth({state:'checking',message:''});setLoading(true);setCatalogError('');
+    setBackendKey(null);setIdentityError('');
+    Promise.resolve().then(()=>api.identity?api.identity({signal:controller.signal}):api.baseUrl).then(value=>{
+      if (active) setBackendKey(value);
+    }).catch(error=>{if(active)setIdentityError(error.message);});
     api.health({signal:controller.signal}).then(value=>{
       if (!active) return;
       const ok = value?.status === 'ok' && value?.db === true && value?.redis === true;
@@ -49,21 +54,21 @@ export default function RunsPage({api=backendApi,onOpenRun,localLibrary,storage=
   },[api,retry]);
 
   useEffect(()=>{
-    const update = () => setRecent(readRecentRuns(storage,api.baseUrl));
+    const update = () => setRecent(backendKey?readRecentRuns(storage,backendKey):[]);
     update();window.addEventListener('storage',update);
     return ()=>window.removeEventListener('storage',update);
-  },[storage,api.baseUrl]);
+  },[storage,backendKey]);
 
   const selected = catalog?.presets.find(item=>item.preset===preset);
   const values = drafts[preset] || {};
   const changeValue = (key,value) => setDrafts(current=>({...current,[preset]:{...current[preset],[key]:value}}));
   const remember = (entry) => {
-    try {const list=rememberRun(storage,api.baseUrl,entry);if(mounted.current)setRecent(list);return '';}
+    try {const list=rememberRun(storage,backendKey,entry);if(mounted.current)setRecent(list);return '';}
     catch(error) {if(mounted.current)setWarning(error.message);return error.message;}
   };
   const submit = async event => {
     event.preventDefault();
-    if (submitting.current || loading || health.state !== 'connected' || catalogError) return;
+    if (submitting.current || loading || health.state !== 'connected' || catalogError || !backendKey) return;
     setErrors({});setSubmitError('');setWarning('');
     let body;
     try {body=buildRunRequest({catalog,preset,values,clustering,stream});}
@@ -78,12 +83,13 @@ export default function RunsPage({api=backendApi,onOpenRun,localLibrary,storage=
   };
   const open = id => {
     setIdError('');
+    if (!backendKey) {setIdError('Wait for the backend configuration, or retry the connection.');return;}
     if (!isRunId(id)) {setIdError('Enter a run ID such as run-20261102T120000Z-aabbccdd.');return;}
     const notice=remember({run_id:id,source:'manual',preset:recent.find(item=>item.run_id===id)?.preset || ''});
     onOpenRun(id,{warning:notice});
   };
   const remove = id => {
-    try {setRecent(forgetRun(storage,api.baseUrl,id));setWarning('');}
+    try {setRecent(forgetRun(storage,backendKey,id));setWarning('');}
     catch(error) {setWarning(error.message);}
   };
   return <div className="runs-page">
@@ -94,6 +100,7 @@ export default function RunsPage({api=backendApi,onOpenRun,localLibrary,storage=
       <button type="button" onClick={()=>setRetry(value=>value+1)} disabled={busy}>Retry connection</button>
     </div>
     {health.message && <div className="notice error" role="alert">{health.message}</div>}
+    {identityError && <div className="notice error" role="alert">{identityError}</div>}
     <div className="run-layout"><section className="run-entry">
       <div className="tabs" role="tablist" aria-label="Run entry">
         <button type="button" role="tab" aria-selected={tab==='new'} aria-controls="new-run-panel" id="new-run-tab" className={tab==='new'?'active':''} onClick={()=>setTab('new')}>Start a new run</button>
@@ -115,7 +122,7 @@ export default function RunsPage({api=backendApi,onOpenRun,localLibrary,storage=
             <label className="check"><input name="stream" type="checkbox" checked={stream} onChange={event=>setStream(event.target.checked)}/>Stream live graph updates</label>
             <p className="caption">With live updates off, the final result is still saved by the backend.</p>
             {submitError && <div className="notice error" role="alert">{submitError}</div>}
-            <button className="primary" type="submit" disabled={busy || health.state!=='connected' || loading || !!catalogError}>{busy?'Starting…':'Start run'}</button>
+            <button className="primary" type="submit" disabled={busy || health.state!=='connected' || loading || !!catalogError || !backendKey}>{busy?'Starting…':'Start run'}</button>
           </fieldset>
         </form>}
       </div>

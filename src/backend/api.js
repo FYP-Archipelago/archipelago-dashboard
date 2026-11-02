@@ -20,7 +20,7 @@ function errorDetail(body) {
   return null;
 }
 
-export function createBackendClient({baseUrl='/backend', fetchImpl=globalThis.fetch, timeoutMs=15000}={}) {
+export function createBackendClient({baseUrl='/backend', identityUrl, fetchImpl=globalThis.fetch, timeoutMs=15000}={}) {
   const base = String(baseUrl).replace(/\/+$/, '');
   if (!/^https?:\/\/[^\s]+$/.test(base) && !/^\/(?!\/)[^?#\s]*$/.test(base)) throw new Error('Backend URL must be HTTP(S) or a same-origin path.');
   const url = path => {
@@ -28,13 +28,12 @@ export function createBackendClient({baseUrl='/backend', fetchImpl=globalThis.fe
     return base + path;
   };
 
-  async function request(path, {method='GET', body, signal}={}) {
+  async function requestAt(target, {method='GET', body, signal, creating=false}={}) {
     const timeout = AbortSignal.timeout(timeoutMs);
     const combined = signal ? AbortSignal.any([signal, timeout]) : timeout;
-    const creating = method === 'POST' && path === '/runs';
     let response, text;
     try {
-      response = await fetchImpl(url(path), {
+      response = await fetchImpl(target, {
         method, signal:combined, headers:{accept:'application/json', ...(body === undefined ? {} : {'content-type':'application/json'})},
         ...(body === undefined ? {} : {body:JSON.stringify(body)}),
       });
@@ -45,14 +44,22 @@ export function createBackendClient({baseUrl='/backend', fetchImpl=globalThis.fe
     }
     let value;
     try {value = JSON.parse(text);} catch {
-      throw new BackendError(`Backend returned ${response.ok ? 'a' : `HTTP ${response.status} with a`} non-JSON response. Check the backend URL and service logs.`, {status:response.status, ambiguous:creating && response.ok});
+      throw new BackendError(`Backend returned ${response.ok ? 'a' : `HTTP ${response.status} with a`} non-JSON response. Check the backend URL and service logs.`, {status:response.status, ambiguous:creating && (response.ok || response.status >= 500)});
     }
     if (!response.ok) throw new BackendError(errorDetail(value) || `Backend request failed (HTTP ${response.status}).`, {status:response.status, ambiguous:creating && response.status >= 500});
     return value;
   }
+  const request = (path,options={}) => requestAt(url(path),{...options,creating:options.method === 'POST' && path === '/runs'});
+  const identityEndpoint = identityUrl === undefined && base === '/backend' ? '/api/backend-config' : identityUrl;
 
   return {
     baseUrl:base, url, request,
+    async identity(options) {
+      if (!identityEndpoint) return base;
+      const value = await requestAt(identityEndpoint,options);
+      if (typeof value?.backend_id !== 'string' || !/^https?:\/\//.test(value.backend_id)) throw new BackendError('Cannot identify the configured backend. Check the dashboard proxy configuration.');
+      return value.backend_id;
+    },
     health: options => request('/health', options),
     presets: options => request('/presets', options),
     result: (runId, options) => request(`/runs/${encodeURIComponent(runId)}/result`, options),

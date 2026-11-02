@@ -10,3 +10,6 @@ export function runHash(runId) {
   if (!isRunId(runId)) throw new Error('Invalid run ID.');
   return `#archipelago?run_id=${encodeURIComponent(runId)}`;
 }
+export function localRunHash(page='archipelago') {
+  return `#${['archipelago','migration','convergence','run'].includes(page)?page:'archipelago'}`;
+}

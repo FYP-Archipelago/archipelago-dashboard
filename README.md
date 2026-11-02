@@ -14,6 +14,7 @@ Open <http://127.0.0.1:5173>. Start `archipelago-backend` and its runner, Postgr
 
 - `/backend/*` goes to the current Python backend; Vite removes the prefix and streams SSE without buffering.
 - `/api/*` goes to this dashboard's local Node service on port 4174 for local-file analysis.
+- `/api/backend-config` identifies the actual proxy target without caching it, so remembered IDs stay separate when you change backends. Vite and the local Node server report their own configured target.
 - Alternatively, set `VITE_BACKEND_URL` to a direct backend URL and allow this dashboard origin in the backend's CORS configuration. This value is read at frontend build/start time.
 - For local `npm start` after `npm run build`, export `ARCHIPELAGO_BACKEND_URL` in the shell; Node does not automatically read `.env`. The Node service serves the UI and the same `/backend` proxy.
 
@@ -25,7 +26,7 @@ Open <http://127.0.0.1:5173>. Start `archipelago-backend` and its runner, Postgr
 
 **Reopen a run:** paste its ID or select a run remembered by this browser. History is scoped to the configured backend, deduplicated, and limited to 30 IDs per backend. It is not a global server run list. Removing a remembered ID only changes browser storage. A shareable page URL also retains the ID through refresh and browser navigation.
 
-**Local files:** the expandable local file library accepts a zip, loose files, or a directory readable by the Node process. It requires `evaluations.csv`; `run.jsonl` and `summary.json` enable additional analysis pages. This imports files into local `data/`, not into the current backend. Existing local-file visualization remains available. The old clustering submission form has been removed from the Runs page.
+**Local files:** the expandable local file library accepts a zip, loose files, or a directory readable by the Node process. It requires `evaluations.csv`; `run.jsonl` and `summary.json` enable additional analysis pages. This imports files into local `data/`, not into the current backend. Existing local-file visualization remains available. The old clustering submission form has been removed from the Runs page. Local summaries, names, and confirmed deletion remain available. Switching local runs retains the current analysis page.
 
 ## Person 2 handoff
 
@@ -46,7 +47,7 @@ api.cancelRun(runId);                            // POST cancel
 api.request(path, {method, body, signal});
 ```
 
-Use `api.baseUrl` to identify the backend. Creation returns the backend's `RunStatus` with `run_id`, not the old `job_id`. Status values include `cancelled`. There is no backend `GET /runs` or `GET /runs/{id}` status route; consume SSE status events. Handle a persisted result after event-stream expiry. Person 2 owns cleanup/reconnect/delta semantics and graph adaptation. The existing graph, migration and convergence files were not changed in this branch.
+Use `api.baseUrl` for request URLs and `await api.identity({signal})` for storage identity. With the local proxy, identity resolves its actual upstream address; with a direct URL it returns that URL. Creation returns the backend's `RunStatus` with `run_id`, not the old `job_id`. Status values include `cancelled`. There is no backend `GET /runs` or `GET /runs/{id}` status route; consume SSE status events. Handle a persisted result after event-stream expiry. Person 2 owns cleanup/reconnect/delta semantics and graph adaptation. The existing graph, migration and convergence files were not changed in this branch.
 
 Person 1 owns `src/runs/**`, `src/backend/api*`, local proxy/config, and the small Runs/navigation wiring in `src/main.jsx`. Person 2 should concentrate on `src/backend/RunWorkspace.jsx` and graph modules; analysis-page wiring in `src/main.jsx` should be merged deliberately rather than replacing the entire shell.
 

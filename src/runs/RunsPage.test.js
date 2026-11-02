@@ -16,6 +16,9 @@ await mkdir(dir,{recursive:true});
 const bundle=await build({entryPoints:[fileURLToPath(new URL('./RunsPage.jsx',import.meta.url))],bundle:true,write:false,format:'esm',packages:'external',loader:{'.css':'empty'}});
 const compiled=new URL('RunsPage.mjs',dir);await writeFile(compiled,bundle.outputFiles[0].contents);
 const { default:RunsPage }=await import(compiled.href);
+const localBundle=await build({entryPoints:[fileURLToPath(new URL('./LocalRuns.jsx',import.meta.url))],bundle:true,write:false,format:'esm',packages:'external'});
+const localCompiled=new URL('LocalRuns.mjs',dir);await writeFile(localCompiled,localBundle.outputFiles[0].contents);
+const { default:LocalRuns }=await import(localCompiled.href);
 const id='run-20261102T120000Z-aabbccdd';
 const api=(extra={})=>({baseUrl:'/backend',health:async()=>({status:'ok',db:true,redis:true}),presets:async()=>catalog,createRun:async()=>({run_id:id,status:'queued',preset:'de_rastrigin'}),...extra});
 
@@ -114,4 +117,29 @@ test('changing presets preserves each draft and uses the newly selected defaults
     await input('evaluation_budget','4000');await choose('de_rastrigin');assert.equal(find('evaluation_budget').value,'3000');
     await choose('de_sphere');assert.equal(find('evaluation_budget').value,'4000');
   }finally{await view.close();}
+});
+
+test('history follows resolved proxy target when that target changes at the same dashboard origin',async()=>{
+  let target='http://first:8000';
+  const view=await render(api({identity:async()=>target}));
+  try{
+    await input('run_id',id);await click(button('Open run'));
+    assert.equal(readRecentRuns(window.localStorage,target).length,1);
+    target='http://second:8000';await click(button('Retry connection'));
+    assert.match(document.body.textContent,/No runs remembered yet/);
+    assert.equal(readRecentRuns(window.localStorage,'http://first:8000').length,1);
+  }finally{await view.close();}
+});
+
+test('local library retains open, summaries and explicitly confirmed deletion',async()=>{
+  document.body.innerHTML='<div id="test-root"></div>';const root=createRoot(document.getElementById('test-root'));
+  const calls=[],opened=[];let refreshed=0;
+  const runs=[{id:'local-1',algorithm:'de',benchmark:'sphere',summary:{total_evaluations:123},size:1000}];
+  await act(async()=>root.render(React.createElement(LocalRuns,{runs,onOpenLocal:id=>opened.push(id),refresh:async()=>{refreshed++;},request:async(...args)=>{calls.push(args);return {};}})));
+  try{
+    assert.match(document.body.textContent,/123/);await click(button('Open local-1'));assert.deepEqual(opened,['local-1']);
+    assert.ok(button('Delete local run').disabled);assert.equal(calls.length,0);
+    await click(find('confirm-local-delete'));await click(button('Delete local run'));
+    assert.deepEqual(calls,[['/runs/local-1',{method:'DELETE'}]]);assert.equal(refreshed,1);assert.ok(button('Delete local run').disabled);
+  }finally{await act(()=>root.unmount());}
 });

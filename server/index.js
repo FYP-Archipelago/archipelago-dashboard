@@ -6,7 +6,7 @@ import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { DATA_ROOT, FILES, listRuns, loadRun, safeRunPath } from './run.js';
 import { buildPayload, withClusters } from './payload.js';
-import { proxyBackend } from './backend-proxy.js';
+import { proxyBackend, backendIdentity } from './backend-proxy.js';
 
 const PORT = Number(process.env.PORT || process.env.ARCHIPELAGO_REWRITE_PORT || 4174);
 const HOST = process.env.HOST || '127.0.0.1';
@@ -120,6 +120,10 @@ export async function handler(req, res) {
     if (READ_ONLY && parts[1] === 'health') return json(res, { available: false });
     if (req.method === 'GET' && parts[1] === 'status') return json(res, { ok: true });
     if (req.method === 'GET' && parts[1] === 'config') return json(res, { clusteringUrl: API_URL });
+    if (req.method === 'GET' && parts[1] === 'backend-config') {
+      res.setHeader('cache-control','no-store');
+      return json(res, { backend_id: backendIdentity() });
+    }
     if (req.method === 'GET' && parts[1] === 'runs' && !parts[2]) return json(res, await listRuns());
     if (req.method === 'GET' && parts[1] === 'runs' && parts[2]) {
       const { run, payload } = await getRun(parts[2]);
