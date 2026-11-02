@@ -6,6 +6,7 @@ import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { DATA_ROOT, FILES, listRuns, loadRun, safeRunPath } from './run.js';
 import { buildPayload, withClusters } from './payload.js';
+import { proxyBackend } from './backend-proxy.js';
 
 const PORT = Number(process.env.PORT || process.env.ARCHIPELAGO_REWRITE_PORT || 4174);
 const HOST = process.env.HOST || '127.0.0.1';
@@ -112,6 +113,7 @@ async function clustering(id, stages, parameters, url) {
 export async function handler(req, res) {
   try {
     const url = new URL(req.url, `http://${req.headers.host}`);
+    if (url.pathname.startsWith('/backend/')) return proxyBackend(req, res);
     const parts = url.pathname.split('/').filter(Boolean);
     if (parts[0] !== 'api') return staticFile(req, res, url.pathname);
     if (READ_ONLY && req.method !== 'GET') return fail(res, 'This shared demo is read-only. Run the app locally to add or cluster runs.', 403);

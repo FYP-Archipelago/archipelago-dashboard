@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import path from 'node:path';
 import { csv, safeRunPath } from './run.js';
 import { decodeGenome, buildPayload, withClusters } from './payload.js';
 
@@ -12,7 +13,8 @@ test('CSV parser preserves quoted commas, newlines, and escaped quotes', () => {
 test('run ids stay inside the data root', () => {
   assert.throws(() => safeRunPath('../outside'));
   assert.throws(() => safeRunPath('/tmp/outside'));
-  assert.match(safeRunPath('run-1'), /data\/run-1$/);
+  assert.equal(path.basename(safeRunPath('run-1')), 'run-1');
+  assert.equal(path.basename(path.dirname(safeRunPath('run-1'))), 'data');
 });
 
 test('compact and full genomes decode to the same vector', () => {
