@@ -48,3 +48,27 @@
 @media(max-width:1400px){.current-run-id{display:none}.workspace-topbar{gap:18px}.workspace-topbar nav button{font-size:12px;padding:8px}}
 @media(max-width:850px){.workspace-shell{grid-template-columns:220px minmax(0,1fr)}.workspace-shell .workspace-main{padding:22px 20px}.workspace-purpose{font-size:11px}}
 @media(max-width:650px){.workspace-shell{grid-template-columns:minmax(0,1fr);grid-template-rows:auto auto 1fr;grid-template-areas:"top" "browser" "content"}.workspace-topbar{flex-wrap:wrap;gap:12px;padding:14px}.workspace-shell .run-browser{position:static;height:auto;max-height:280px;border-right:0;border-bottom:1px solid var(--line);padding:16px}.browser-backend{margin-top:16px}.workspace-shell .workspace-main{padding:22px 14px}.configuration-summary{grid-template-columns:1fr}.configuration-fields{grid-template-columns:1fr;gap:3px}.configuration-fields dd{margin-bottom:10px}}
+/* Keep the original top navigation and full-width Archipelago canvas. */
+.workspace-shell{display:block!important;min-height:100vh}
+.workspace-topbar{min-height:56px;position:sticky;top:0;z-index:20}
+.workspace-topbar nav{flex:1}
+.top-run-select{margin-left:auto;display:flex;flex-direction:row;align-items:center;gap:8px;color:var(--faint);font-size:12px;white-space:nowrap}
+.top-run-select select{width:220px;max-width:24vw;font-size:12px}
+.workspace-shell .workspace-main{padding:18px 20px;overflow:visible}
+.workspace-main .backend-run-workspace{max-width:none}
+.workspace-main .backend-run-workspace .page-head{display:flex;flex-wrap:wrap;align-items:baseline;gap:12px 18px;border-bottom:1px solid var(--line);margin-bottom:10px}
+.workspace-main .backend-run-workspace .page-head h1{font-size:20px}
+.run-facts-inline{display:flex;flex-wrap:wrap;gap:14px;margin-left:auto;color:var(--faint);font-size:12px;white-space:nowrap}
+.backend-run-workspace .page-head .reading{display:block;margin:0;border:0;background:none}
+.backend-run-workspace .page-head .reading .deck{position:absolute;z-index:10;right:20px;max-width:72ch;padding:14px;border:1px solid var(--line);border-radius:5px;background:var(--panel)}
+.backend-stn-host{--stage-h:calc(100vh - 230px);width:100%;min-height:420px;margin:0 0 20px}
+.backend-viz-wrap{position:relative}
+.backend-viz-wrap .views{left:16px;top:16px}
+.backend-stn-host .stage{min-height:420px}
+.runs-home{display:grid;grid-template-columns:minmax(0,1fr) 260px;gap:24px;align-items:start}
+.workspace-shell .runs-home .run-browser{position:static;grid-area:auto;height:auto;max-height:none;border:1px solid var(--line);border-radius:6px;padding:16px}
+.workspace-shell .runs-home .runs-page{max-width:900px}
+.study-page{width:100%}
+.study-host{--stage-h:min(74vh,780px)}
+@media(max-width:900px){.runs-home{grid-template-columns:1fr}.top-run-select select{max-width:30vw}.backend-stn-host{--stage-h:520px}}
+@media(max-width:650px){.workspace-topbar{position:static}.top-run-select{width:100%}.top-run-select select{max-width:none;flex:1}.workspace-shell .workspace-main{padding:15px}.workspace-main .backend-run-workspace .page-head{grid-template-columns:1fr}.backend-stn-host{--stage-h:440px}}

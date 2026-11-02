@@ -14,40 +14,29 @@ Open <http://127.0.0.1:5173>. Run `archipelago-backend` and its runner/Postgres/
 
 Vite serves the UI, uncached `/api/backend-config` metadata and the fixed-target `/backend/*` proxy directly. The old second development server is no longer needed. For local static serving, run `npm run build` then `npm start`; export `ARCHIPELAGO_BACKEND_URL` in the shell for that Node process, which does not automatically load `.env`. An optional `VITE_BACKEND_URL` bypasses the proxy and requires backend CORS to allow the dashboard origin.
 
-## Current workflow
+## Use the dashboard
 
-- The persistent **Run browser** sidebar remembers up to 30 IDs per actual backend target. It offers manual ID entry, selection, and Forget (browser storage only). This is not a global backend run list.
-- **New run** loads the backend's presets, defaults and override constraints. Choose runner overrides, supported clustering settings and either **Live updates** (`stream: true`) or **Final result only** (`stream: false`). Creation posts `{preset, overrides, stream, clustering}` to `/runs` and passes the accepted `run_id` to the shared workspace.
-- **Run configuration** shows the accepted request settings remembered in this browser, including after refresh. It does not infer run status or resolve automatic clustering values. A pasted ID with no remembered settings shows an explicit unavailable state.
-- Top tabs stay attached to the selected run: Archipelago, Migration, Convergence, Clustering, Run details, Run configuration. Analysis tabs remain explicit placeholders for Person 2; no fake charts, metrics or progress are displayed.
-- Form drafts survive run/tab navigation. Requests are never automatically retried after creation failures because a lost response may mean the search was accepted. Storage failures still preserve the run ID handoff and display a keep-the-ID warning.
+1. Start the backend, Postgres, Redis, clustering workers and runner using [the local integration guide](../local-integration/README.md). Start this dashboard with `npm run dev` and open <http://127.0.0.1:5173>.
+2. On **Runs**, choose a backend preset and adjust the runner and clustering settings. Choose **Live updates** to see graph updates while the runner works, or **Final result only** to view the graph after clustering finishes. Click **Start run**.
+3. The accepted `run_id` opens the **Archipelago** view. Status and connection text show queued, running, clustering, done or failed. The original WebGL viewer uses the backend's clustered nodes, lineage edges, migrations, positions and best flags. The view buttons **Overview**, **By island**, **Migration only**, **Shared ground** and **Best solution** control the original viewer. Its right rail contains island, path, height, migration, best marker and appearance controls. Drag to orbit, shift/right-drag to pan, scroll to zoom and click a node for backend details.
+4. Use the top tabs to inspect aggregate **Migration** routes, **Clustering** diagnostics and MMD island separation, **Run details**, or the accepted **Run configuration**. **Scale study** restores the original synthetic large-run viewer; it is labeled as generated data and does not represent the selected backend run. **About** explains the display. The backend does not currently provide a fitness-over-generation series or per-migration timing, so **Convergence** and detailed timing remain unavailable.
+5. Refresh to reopen a saved result. The **Run** selector and the **Runs** page remember up to 30 IDs in this browser for the selected backend. You can also paste a known ID into the run browser. This is not a server-wide run list.
 
-**Status/SSE, live graph deltas, completed backend graph rendering, diagnostics and analysis are still Person 2's work in [#8](https://github.com/FYP-Archipelago/archipelago-dashboard/issues/8).** The full live/batched visualization flow is not complete on this branch.
+Run creation is not automatically retried if its response is lost, because the backend may already have accepted the run. Save the returned `run_id` when testing.
 
 ## Removed legacy paths
 
-Scale and its synthetic dataset are removed. Local file imports, CSV decoding, PCA/projection, per-evaluation aggregation, local metrics and the retired clustering API are removed from the application and Node server. The unused archive, matrix and plotting dependencies are removed. Ignored local `data/` files are preserved on disk and no longer loaded, exposed or bundled.
+Local file imports, CSV decoding, PCA/projection, per-evaluation aggregation for backend runs, local metrics and the retired clustering API are removed from the backend-run workflow and Node server. The original synthetic Scale study remains available as a separate browser-generated demonstration. Ignored local `data/` files are preserved on disk and no longer loaded or exposed.
 
 There is no upload endpoint in backend main, so no unsupported upload form is shown. Upload is tracked separately in [dashboard #9](https://github.com/FYP-Archipelago/archipelago-dashboard/issues/9), blocked by [backend #2](https://github.com/FYP-Archipelago/archipelago-backend/issues/2). No multipart contract is guessed and no old clustering route is used as a fallback.
 
 The Node server only serves static files, `/api/status`, `/api/backend-config`, and the fixed-target backend HTTP/SSE proxy. Retired `/api/runs`, upload/import, local health/config and clustering routes return 404. It performs no run-data processing.
 
-## Person 2 handoff
+## Backend graph integration
 
-`src/backend/RunWorkspace.jsx` remains unchanged as the graph/status entry point, consuming `{runId, api, onBack, warning}`. `src/app/AnalysisPlaceholder.jsx` preserves the other tabs. Replace those boundaries as needed, keeping the current-run URL and sidebar. The shell and run form do not consume SSE or fetch results.
+`src/backend/useRunSession.js` consumes backend SSE status/update/final/error events and loads the saved result. `src/backend/graph-model.js` applies deltas by stable backend IDs. `src/viewer/backend-graph.js` maps that graph into the original `src/viewer/stn-viewer.js` WebGL renderer without invoking its legacy per-evaluation aggregation. The viewer preserves its camera, island and route filters, and selected backend node across live updates.
 
-The shared API client (`src/backend/api.js`) provides:
-
-```js
-api.url(`/runs/${encodeURIComponent(runId)}/events`); // EventSource URL
-api.result(runId, {signal});
-api.cancelRun(runId);
-await api.identity({signal}); // actual backend target for storage
-```
-
-There is no backend GET run-list or run-status route. Status comes from events, final graphs from `/runs/{id}/result`. Use the backend's node IDs, coordinates, percentiles, island assignments, best markers and links directly; do not rebuild clusters or recompute their metrics.
-
-The old WebGL source (`src/viewer/stn-viewer.js`) is retained as an **unbundled rendering reference**, not imported by the application. Its legacy evaluation-aggregation path must not be used by the backend adapter. A narrow display-only change hides migration edges connected to hidden islands or filtered paths by default; **Include migrations for hidden paths** explicitly opts in. Reuse `src/viewer/visibility.js` in the backend renderer to retain that preference. No status, delta or graph adapter was added here.
+There is no backend run-list or run-status route. Status comes from events, final graphs from `/runs/{id}/result`. The viewer uses backend node IDs, coordinates, percentiles, island assignments, best markers, links and migrations directly.
 
 | View | Backend contract / remaining data |
 |---|---|
@@ -67,6 +56,4 @@ npm test
 npm run build
 ```
 
-Node tests cover API/proxy behavior, retired endpoints, preset/cluster validation, sidebar/history/configuration, modes, navigation, storage failures and migration display filtering. jsdom/esbuild are development-only. Fixtures live under `test-support/` and are not imported into the application. Browser verification uses a controlled API fixture, not real EA execution.
-
-Working branch: `feat/backend-run-workflow`, intended for review against `feat/backend-integration`. **Do not merge into main.** See the [current design](docs/superpowers/specs/2026-11-02-backend-run-workflow-design.md) and [plan](docs/superpowers/plans/2026-11-02-backend-run-workflow.md). No Claude attribution is added to commits.
+Node tests cover API/proxy behavior, presets, navigation, SSE/result state, graph deltas and the backend-to-WebGL adapter. Browser verification should include both live and final-only runs from the local integration guide.
