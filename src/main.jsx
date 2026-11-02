@@ -3,6 +3,10 @@ import { createRoot } from 'react-dom/client';
 import Plotly from 'plotly.js-dist-min';
 import { mountViewer, mountStudy } from './viewer.js';
 import { STUDY_DATASETS } from './viewer/study-data.js';
+import RunsPage from './runs/RunsPage.jsx';
+import RunWorkspace from './backend/RunWorkspace.jsx';
+import { backendApi } from './backend/api.js';
+import { readRoute, runHash } from './runs/navigation.js';
 import './style.css';
 import './designs.css';
 import './viewer/stn-viewer.css';
@@ -111,44 +115,43 @@ function RunBrowser({ run }) {
     <Details title="Resolved configuration"><pre>{JSON.stringify(s.config||{},null,2)}</pre></Details></>;
 }
 
-function Runs({ runs, refresh, navigate }) {
-  const [tab,setTab]=useState('Zip archive'),[file,setFile]=useState(null),[loose,setLoose]=useState([]),[name,setName]=useState(''),[source,setSource]=useState(''),[message,setMessage]=useState(''),[busy,setBusy]=useState(false),[remove,setRemove]=useState(''),[confirm,setConfirm]=useState(false);
-  const [clusterRun,setClusterRun]=useState(''),[stages,setStages]=useState({lsh:true,birch:true,denstream:true}),[params,setParams]=useState({}),[apiUrl,setApiUrl]=useState(''),[health,setHealth]=useState(null),[result,setResult]=useState(null);
-  useEffect(()=>{ if(runs.length&&!clusterRun)setClusterRun(runs[0].id); if(runs.length&&!remove)setRemove(runs[0].id); },[runs]);
-  useEffect(()=>{ api('/config').then(config=>setApiUrl(config.clusteringUrl)).catch(()=>{}); },[]);
-  useEffect(()=>{ api(`/health?url=${encodeURIComponent(apiUrl)}`).then(setHealth).catch(()=>setHealth({available:false})); },[apiUrl]);
-  const action=async fn=>{setBusy(true);setMessage('');try{const value=await fn();setMessage(value?.id?`Added ${value.id}.`:'Done.');await refresh();}catch(e){setMessage(e.message);}finally{setBusy(false);}};
-  const upload=()=>action(async()=>{if(tab==='Zip archive') return post('/runs/upload',{name:name||file?.name?.replace(/\.zip$/,''),archive:await file64(file)});if(tab==='Loose files'){const files={};for(const f of loose)files[f.name]=await file64(f);return post('/runs/upload',{name:name||'uploaded-run',files});}return post('/runs/import',{path:source});});
-  const cluster=()=>action(async()=>{ const r=await post(`/cluster/${encodeURIComponent(clusterRun)}`,{stages,parameters:params,url:apiUrl});setResult(r);return {id:`clustered ${clusterRun}`}; });
-  const fields=[['lsh','lsh_hashes','Hashes',6,1,32,1],['birch','birch_threshold','CF-tree threshold',0,0,2,.01],['birch','birch_branching_factor','Branching factor',50,2,200,1],['denstream','denstream_epsilon','Epsilon',0,0,5,.01],['denstream','denstream_mu','mu',10,.1,50,.5],['denstream','denstream_half_life','Half-life (s)',0,0,600,1]];
-  return <><Header eyebrow="The library" title="Runs" question="Which runs are loaded, and which have been clustered?">Archipelago reads finished runs; it does not execute them. Bring a run in from the baseline harness, from Volpe, or from a colleague, and every page here works on it.</Header>
-    <div className="two wide-left"><div><h3>Add a run</h3><div className="tabs">{['Zip archive','Loose files','From a path'].map(t=><button className={tab===t?'active':''} onClick={()=>setTab(t)} key={t}>{t}</button>)}</div><div className="tab-body">
-      {tab==='Zip archive'&&<label>Run archive<input type="file" accept=".zip" onChange={e=>setFile(e.target.files?.[0])}/></label>}
-      {tab==='Loose files'&&<label>Run files<input type="file" multiple onChange={e=>setLoose([...e.target.files])}/></label>}
-      {tab==='From a path'&&<label>Directory on this machine<input value={source} onChange={e=>setSource(e.target.value)} placeholder="/path/to/run"/></label>}
-      {tab!=='From a path'&&<label>Name it<input value={name} onChange={e=>setName(e.target.value)} placeholder="run name"/></label>}
-      <button className="primary" disabled={busy||((tab==='Zip archive'&&!file)||(tab==='Loose files'&&!loose.length)||(tab==='From a path'&&!source))} onClick={upload}>{tab==='From a path'?'Copy into the library':'Add to library'}</button></div></div>
-      <div><h3>What a run looks like</h3><pre className="file-layout">{'<run id>/\n├── evaluations.csv          required — one row per evaluated individual\n├── run.jsonl                every other event\n├── evaluations.schema.json  the CSV’s column contract\n├── resolved_config.yaml     the configuration actually used\n└── summary.json             machine-readable outcome'}</pre><Caption>Only <code>evaluations.csv</code> is strictly required — the Archipelago view works from it alone. Each other file switches on a page.</Caption></div></div>
-    {message&&<Notice type={message.startsWith('Added')||message==='Done.'?'success':'error'}>{message}</Notice>}<hr/><h3>In the library</h3>
-    {runs.length?<><Table rows={runs.map(r=>({Run:r.id,Evaluations:r.summary.total_evaluations??'—',Islands:r.summary.islands_completed??'—',Migrations:r.summary.total_migration_events??'—','Best fitness':r.summary.global_best_fitness??'—',Outcome:r.summary.termination_reason??'—','Size (MB)':num(r.size/1e6)}))} columns={['Run','Evaluations','Islands','Migrations','Best fitness','Outcome','Size (MB)']}/><Caption>Figures come from each run’s <code>summary.json</code> without parsing the CSV.</Caption>
-      <Details title="Remove a run"><Caption>Deletes the directory from <code>data/</code>. The original is untouched.</Caption><select value={remove} onChange={e=>{setRemove(e.target.value);setConfirm(false);}}>{runs.map(r=><option key={r.id}>{r.id}</option>)}</select><label className="check"><input type="checkbox" checked={confirm} onChange={e=>setConfirm(e.target.checked)}/>Yes, delete {remove}</label><button disabled={!confirm||busy} onClick={()=>action(()=>api(`/runs/${encodeURIComponent(remove)}`,{method:'DELETE'}))}>Delete</button></Details>
-    </>:<Notice>Nothing loaded yet. Add a run above.</Notice>}
-    <hr/><h3>Run the clustering pipeline</h3><Caption>Choose which stages execute, then run them. The stages cascade in a fixed order and each refines the partition the previous one produced.</Caption>
-    <div className="service"><span className={`status-dot ${health?.available?'online':''}`}/>{health?.available?'Clustering service connected':'Clustering service unavailable'}<label>Clustering service<input value={apiUrl} onChange={e=>setApiUrl(e.target.value)}/></label></div>
-    {runs.length>0&&<><label>Run<select value={clusterRun} onChange={e=>setClusterRun(e.target.value)}>{runs.map(r=><option key={r.id}>{r.id}</option>)}</select></label><h4>Stages to execute</h4><div className="stage-row">{['lsh','birch','denstream'].map(stage=><label className="check" key={stage}><input type="checkbox" checked={stages[stage]} onChange={e=>setStages({...stages,[stage]:e.target.checked})}/>{stage==='lsh'?'LSH':stage==='birch'?'BIRCH':'DenStream'}</label>)}</div><Caption>Will execute: {Object.keys(stages).filter(s=>stages[s]).join(' → ')||'no stages'}</Caption>
-      <Details title="Tune the selected stages"><Caption>Values left at their defaults are not sent. Zero on a threshold leaves it on auto.</Caption><div className="param-grid">{fields.filter(([stage])=>stages[stage]).map(([_,key,label,defaultValue,min,max,step])=><label key={key}>{label}<input type="number" min={min} max={max} step={step} value={params[key]??defaultValue} onChange={e=>{const value=Number(e.target.value), next={...params};if(value===defaultValue)delete next[key];else next[key]=value;setParams(next);}}/></label>)}</div></Details>
-      <button className="primary" disabled={busy||!health?.available} onClick={cluster}>{busy?'Running…':'Run clustering'}</button>{result&&<><Notice type="success">Ran {result.stages.join(' → ')||'none (Level 0 baseline)'} on {result.run_id}.</Notice><Metrics values={[["Evaluations",fmt(result.response?.counts?.evaluations)],["Level 0 nodes",fmt(result.response?.counts?.level0_nodes)],["Clustered nodes",fmt(result.response?.counts?.nodes)],["Backend time",`${num(result.response?.elapsed_seconds)}s`]]}/>{(result.response?.warnings||[]).map((w,i)=><Notice key={i}>{w}</Notice>)}<Notice>Open Archipelago to see the result drawn. The result picker there lets you compare stored results.</Notice></>}</>}
-    <hr/><Details title="Where runs come from"><p>Archipelago is the analysis layer. Anything that emits the schema 2.0 layout is readable here, whether it came from a laptop or Volpe.</p></Details></>;
+function LocalRuns({ runs, refresh, onOpenLocal }) {
+  const [tab,setTab]=useState('Zip archive'),[file,setFile]=useState(null),[loose,setLoose]=useState([]),[source,setSource]=useState(''),[message,setMessage]=useState(''),[busy,setBusy]=useState(false);
+  const upload=async()=>{
+    if(busy)return;
+    setBusy(true);setMessage('');
+    try {
+      let added;
+      if(tab==='Zip archive') added=await post('/runs/upload',{name:file.name.replace(/\.zip$/,''),archive:await file64(file)});
+      else if(tab==='Loose files'){const files={};for(const f of loose)files[f.name]=await file64(f);added=await post('/runs/upload',{name:'uploaded-run',files});}
+      else added=await post('/runs/import',{path:source});
+      await refresh();setMessage(`Added ${added.id} to the local library.`);
+    }catch(error){setMessage(error.message);}finally{setBusy(false);}
+  };
+  return <>
+    <p className="body-copy">Open finished logs on this machine for local analysis. These files stay in the local library and are not submitted to the backend.</p>
+    <div className="tabs">{['Zip archive','Loose files','From a path'].map(value=><button type="button" disabled={busy} key={value} className={tab===value?'active':''} onClick={()=>setTab(value)}>{value}</button>)}</div>
+    <div className="tab-body">
+      {tab==='Zip archive'&&<label>Local run archive<input disabled={busy} type="file" accept=".zip" onChange={event=>setFile(event.target.files?.[0])}/></label>}
+      {tab==='Loose files'&&<label>Local run files<input disabled={busy} type="file" multiple onChange={event=>setLoose([...event.target.files])}/></label>}
+      {tab==='From a path'&&<label>Directory on the Node server's machine<input disabled={busy} value={source} onChange={event=>setSource(event.target.value)} placeholder="Path to run directory"/></label>}
+      <p className="caption">An evaluations.csv file is required. Add run.jsonl and summary.json for migration, convergence and provenance records.</p>
+      <button type="button" className="primary" disabled={busy||(tab==='Zip archive'&&!file)||(tab==='Loose files'&&!loose.length)||(tab==='From a path'&&!source)} onClick={upload}>{busy?'Adding…':'Add to local library'}</button>
+    </div>
+    {message&&<Notice>{message}</Notice>}
+    <h3>Files in this local library</h3>
+    {runs.length?<div className="local-runs-list">{runs.map(entry=><p key={entry.id}><button type="button" className="secondary" onClick={()=>onOpenLocal(entry.id)}>Open {entry.id}</button> <span className="caption">{entry.algorithm} / {entry.benchmark}</span></p>)}</div>:<Notice>No local runs loaded.</Notice>}
+  </>;
 }
 
 function Overview() {
-  const stages=[['Execution','islands evolve in parallel and swap individuals','produced elsewhere'],['Logs','every evaluation and migration, one schema','produced elsewhere'],['Clustering','LSH → BIRCH → DenStream compress the stream','produced elsewhere'],['Network','trajectories become a graph, with migration edges',''],['Analytics','MMD compares what each island explored','not yet built']];
+  const stages=[['Execution','backend starts islands in parallel and they exchange individuals',''],['Logs','every evaluation and migration, one schema','produced elsewhere'],['Clustering','LSH → BIRCH → DenStream compress the stream','produced elsewhere'],['Network','trajectories become a graph, with migration edges',''],['Analytics','backend results include island separation diagnostics','']];
   return <><Header eyebrow="Archipelago" title="About" question="Explaining what a distributed evolutionary algorithm actually did.">A distributed evolutionary algorithm runs several populations at once and lets them trade individuals. Standard tools flatten all of that into a single fitness curve. This one keeps the islands apart and draws where each of them actually searched.</Header>
-    <div className="flow">{stages.map(([name,detail,state])=><div key={name} className={state?'':'built'}><strong>{name}</strong><span>{detail}</span><small>{state}</small></div>)}</div><Caption>Archipelago occupies the middle of that strip. It reads finished runs and draws one node per location actually visited.</Caption><hr/>
+    <div className="flow">{stages.map(([name,detail,state])=><div key={name} className={state?'':'built'}><strong>{name}</strong><span>{detail}</span><small>{state}</small></div>)}</div><Caption>Archipelago occupies the middle of that strip. It starts backend runs and also reads finished local runs for analysis.</Caption><hr/>
     <div className="two prose"><div><h3>The vocabulary</h3><p><b>Island</b> — one independent subpopulation running its own copy of the algorithm. Islands are <i>asynchronous</i>: island 2 being on generation 9 says nothing about where island 3 is at the same moment.</p><p><b>Migration</b> — individuals periodically copied from one island to another, along a topology (a ring, or fully connected).</p><p><b>STN node</b> — one location in the search space. Two evaluations that land in the same place become the same node.</p><p><b>Migration edge</b> — a cross-island edge, drawn in cyan throughout this app.</p></div>
       <div><h3>Why a fitness curve isn't enough</h3><p>A convergence plot tells you the best score improved. It cannot tell you <i>why</i>, and in a distributed run the interesting answers are all structural:</p><ul><li>Were the islands exploring different regions?</li><li>Did a migration move the receiving island somewhere new?</li><li>Which island found the best solution, and did that discovery spread?</li><li>Did an island stall?</li></ul><p>Each of those is a question about <i>shape</i>, which is why this is a graph tool.</p></div></div><hr/>
     <div className="prose narrow"><h3>How the graph stays readable</h3><ul><li><b>Aggregate:</b> a node is a cluster of nearby evaluations, not one evaluation.</li><li><b>Filter:</b> paths seen only once are hidden first.</li><li><b>Separate:</b> pulling islands apart is a control, so the moment they split can be read.</li><li><b>Distinct channels:</b> migration is drawn as arcs, and contested clusters get a ring.</li><li><b>Render density:</b> crowded regions get brighter instead of turning into solid lines, and shared regions lose their single hue.</li><li><b>Inspect:</b> clicking a node brings the detail back.</li></ul><p>The <b>Scale study</b> page shows this working on 400,000 synthetic evaluations.</p></div><hr/>
-    <div className="prose narrow"><h3>Where this sits</h3><p>Archipelago is the analysis layer. It reads finished runs from the baseline harness or Volpe using the schema 2.0 layout. Bring a run in on the <b>Runs</b> page: upload a zip, drop in loose files, or point at a path this machine can see.</p></div><hr/>
+    <div className="prose narrow"><h3>Where this sits</h3><p>Archipelago is the analysis layer. It reads finished runs from the baseline harness or Volpe using the schema 2.0 layout. On the <b>Runs</b> page, start a search from a backend preset or reopen a remembered run ID. Finished files can also be opened in the separate local file library.</p></div><hr/>
     <div className="prose narrow"><h3>A note on the vertical axis</h3><p>Search spaces usually have many more than three dimensions. The Archipelago view spends two axes on position and gives the third to <b>fitness</b>. Good regions are low, and you can watch each island descend into its own basin. The view reports how much variance its projection kept.</p></div></>;
 }
 
@@ -156,22 +159,31 @@ const ICONS = { brand:'M3 17L8 6l5 9 5-12 3 14', archipelago:'M3 17L8 6l5 9 5-12
 function Icon({ id }) { return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={ICONS[id]}/></svg>; }
 
 function App() {
-  const [runs,setRuns]=useState([]),[run,setRun]=useState(null),[page,setPage]=useState(location.hash.slice(1)||'archipelago'),[level,setLevel]=useState('level0'),[results,setResults]=useState([]),[selectedResult,setSelectedResult]=useState(''),[error,setError]=useState('');
+  const [runs,setRuns]=useState([]),[run,setRun]=useState(null),[route,setRoute]=useState(()=>readRoute(location.hash)),[level,setLevel]=useState('level0'),[results,setResults]=useState([]),[selectedResult,setSelectedResult]=useState(''),[error,setError]=useState(''),[backendWarning,setBackendWarning]=useState('');
+  const {page,runId:backendRunId}=route;
   const refresh=async()=>{const list=await api('/runs');setRuns(list);return list;};
-  useEffect(()=>{refresh().then(list=>{if(!list.length)setPage('library');}).catch(e=>setError(e.message));},[]);
-  useEffect(()=>{if(!runs.length){setRun(null);return;} const id=run&&runs.some(r=>r.id===run.id)?run.id:runs[0].id; api(`/runs/${encodeURIComponent(id)}`).then(setRun).catch(e=>setError(e.message));},[runs]);
-  useEffect(()=>{if(!run)return; api(`/runs/${encodeURIComponent(run.id)}/results`).then(r=>{setResults(r);setSelectedResult(r[0]?.id||'');}).catch(()=>setResults([]));},[run?.id,page]);
-  const navigate=id=>{setPage(id);history.replaceState(null,'',`#${id}`);};
+  useEffect(()=>{refresh().catch(e=>setError(e.message));},[]);
+  useEffect(()=>{
+    const sync=()=>{setRoute(readRoute(location.hash));setBackendWarning('');};
+    window.addEventListener('hashchange',sync);window.addEventListener('popstate',sync);
+    return()=>{window.removeEventListener('hashchange',sync);window.removeEventListener('popstate',sync);};
+  },[]);
+  useEffect(()=>{let active=true;if(!runs.length){setRun(null);return;} const id=run&&runs.some(r=>r.id===run.id)?run.id:runs[0].id; api(`/runs/${encodeURIComponent(id)}`).then(value=>{if(active)setRun(value);}).catch(e=>{if(active)setError(e.message);});return()=>{active=false;};},[runs]);
+  useEffect(()=>{let active=true;if(!run)return; api(`/runs/${encodeURIComponent(run.id)}/results`).then(r=>{if(active){setResults(r);setSelectedResult(r[0]?.id||'');}}).catch(()=>{if(active)setResults([]);});return()=>{active=false;};},[run?.id,page]);
+  const goTo=hash=>{history.pushState(null,'',hash);setRoute(readRoute(hash));};
+  const navigate=id=>goTo(backendRunId&&id==='archipelago'?runHash(backendRunId):`#${id}`);
+  const openBackend=(id,{warning=''}={})=>{setBackendWarning(warning);goTo(runHash(id));};
+  const openLocal=async id=>{try{setRun(await api(`/runs/${encodeURIComponent(id)}`));setBackendWarning('');goTo('#archipelago');}catch(e){setError(e.message);}};
   const go=[['Analyse',[['archipelago','Archipelago','Where islands searched'],['migration','Migration','Who moved, and arrived'],['convergence','Convergence','Who improved, who stalled'],['study','Scale study','Synthetic data at 400,000 evaluations']]],['The run',[['run','Run browser','What ran, how it ended']]]];
   const pageButton=([id,label,hint])=><button key={id} className={page===id?'active':''} onClick={()=>navigate(id)}><Icon id={id}/>{label}<small>{hint}</small></button>;
-  document.documentElement.classList.toggle('on-archipelago',page==='study'||(page==='archipelago'&&!!run));
+  document.documentElement.classList.toggle('on-archipelago',page==='study'||(page==='archipelago'&&!!run&&!backendRunId));
   document.documentElement.classList.toggle('on-study',page==='study');
   const best=run?.end?.global_best_fitness;
   return <div className="app"><aside><div className="brand"><Icon id="brand"/><span>Archipelago</span><small>v0.4</small></div>
-      <nav>{runs.length>0&&go.map(([heading,items])=><React.Fragment key={heading}><div className="nav-heading">{heading}</div>{items.map(pageButton)}</React.Fragment>)}<div className="nav-heading">Library</div>{pageButton(['library','Runs','Add and cluster runs'])}{pageButton(['overview','About','What this tool is for'])}</nav>
-      {runs.length>0&&<div className="runctx"><label>Run<select value={run?.id||''} onChange={e=>api(`/runs/${encodeURIComponent(e.target.value)}`).then(setRun)}>{runs.map(r=><option key={r.id} value={r.id}>{r.algorithm} / {r.benchmark} · {r.islands} islands</option>)}</select></label><label>Level<select value={level} onChange={e=>setLevel(e.target.value)}><option value="level0">Level 0 · raw trajectory</option><option value="clustered">Clustered</option></select></label>
+      <nav>{backendRunId?pageButton(['archipelago','Archipelago','Selected backend run']):runs.length>0&&go.map(([heading,items])=><React.Fragment key={heading}><div className="nav-heading">{heading}</div>{items.map(pageButton)}</React.Fragment>)}<div className="nav-heading">Library</div>{pageButton(['library','Runs','Start or reopen a run'])}{pageButton(['overview','About','What this tool is for'])}</nav>
+      {!backendRunId&&runs.length>0&&['archipelago','migration','convergence','run'].includes(page)&&<div className="runctx"><label>Local run<select value={run?.id||''} onChange={e=>openLocal(e.target.value)}>{runs.map(r=><option key={r.id} value={r.id}>{r.algorithm} / {r.benchmark} · {r.islands} islands</option>)}</select></label><label>Level<select value={level} onChange={e=>setLevel(e.target.value)}><option value="level0">Level 0 · raw trajectory</option><option value="clustered">Clustered</option></select></label>
         {run&&<dl className="run-facts"><dt>Islands</dt><dd>{run.islands.length}</dd><dt>Evaluations</dt><dd>{fmt(run.evaluations.length)}</dd><dt>Goal</dt><dd>{run.maximising?'Maximise':'Minimise'}</dd><dt>Best</dt><dd>{best===undefined?'—':num(best,4)}</dd></dl>}</div>}</aside>
-    <main>{error&&<Notice type="error">{error}</Notice>}<div className="page">{page==='library'?<Runs runs={runs} refresh={refresh} navigate={navigate}/>:page==='overview'?<Overview/>:page==='study'?<Study/>:run? <>{page==='archipelago'?<Archipelago run={run} level={level} results={results} selectedResult={selectedResult} setSelectedResult={setSelectedResult}/>:page==='migration'?<Migration run={run}/>:page==='convergence'?<Convergence run={run}/>:<RunBrowser run={run}/>}</>:<Notice>Loading run…</Notice>}</div><footer>Archipelago v0.4 · Team 21, Amrita Vishwa Vidyapeetham · reads schema 2.0 run logs</footer></main></div>;
+    <main>{error&&<Notice type="error">{error}</Notice>}<div className="page">{page==='library'?<RunsPage api={backendApi} onOpenRun={openBackend} localLibrary={<LocalRuns runs={runs} refresh={refresh} onOpenLocal={openLocal}/>}/>:page==='overview'?<Overview/>:page==='study'?<Study/>:backendRunId?<RunWorkspace runId={backendRunId} api={backendApi} onBack={()=>navigate('library')} warning={backendWarning}/>:run?<>{page==='archipelago'?<Archipelago run={run} level={level} results={results} selectedResult={selectedResult} setSelectedResult={setSelectedResult}/>:page==='migration'?<Migration run={run}/>:page==='convergence'?<Convergence run={run}/>:<RunBrowser run={run}/>}</>:<Notice>No local run selected. Open Runs to start a backend run or add local files.</Notice>}</div><footer>Archipelago v0.4 · Team 21, Amrita Vishwa Vidyapeetham</footer></main></div>;
 }
 
 createRoot(document.getElementById('root')).render(<App/>);

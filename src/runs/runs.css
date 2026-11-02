@@ -1,0 +1,31 @@
+.runs-page{max-width:1200px;width:100%}
+.backend-connection{display:flex;align-items:center;gap:9px;padding:13px 0;color:var(--soft);font-size:13px}
+.backend-connection button{margin-left:auto}
+.runs-page button.secondary,.backend-connection button,.remove-run{border:1px solid var(--line);background:var(--raised);color:var(--ink);padding:7px 11px;border-radius:5px}
+.run-layout{display:grid;grid-template-columns:minmax(0,1.65fr) minmax(260px,1fr);gap:28px;align-items:start}
+.run-entry,.recent-runs{min-width:0;border:1px solid var(--line);background:var(--panel);border-radius:7px;padding:20px}
+.run-entry [role=tabpanel]{padding-top:16px}
+.run-entry [hidden]{display:none}
+.new-run-form fieldset{border:0;padding:0;margin:0;min-width:0}
+.new-run-form .param-grid{grid-template-columns:repeat(2,minmax(0,1fr));align-items:start;margin-top:15px}
+.runs-page label small{color:var(--faint);font-weight:400;line-height:1.5;font-size:11px}
+.preset-description{color:var(--soft);font-size:14px;line-height:1.6}
+.preset-tags{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:24px}
+.preset-tags span{background:var(--raised);color:var(--soft);font-size:11px;padding:5px 8px;border-radius:4px}
+.clustering-controls{margin-top:24px;padding-top:24px;border-top:1px solid var(--line)}
+.clustering-controls>.stage-row{gap:18px;flex-wrap:wrap}
+.clustering-controls details{margin-bottom:20px}
+.field-error{color:var(--best);font-size:12px;line-height:1.5;margin:6px 0}
+.runs-page [aria-invalid=true]{border-color:var(--best)}
+.recent-runs>form{margin-top:20px}
+.recent-runs .secondary{margin-top:9px}
+.recent-runs ul{padding:0;list-style:none;margin:20px 0 0}
+.recent-runs li{display:flex;align-items:center;gap:8px;padding:12px 0;border-top:1px solid var(--line)}
+.recent-open{display:flex;flex-direction:column;align-items:flex-start;gap:6px;min-width:0;flex:1;text-align:left;border:0;background:none;color:var(--ink);padding:0}
+.recent-open code{font-size:10px;max-width:100%;overflow-wrap:anywhere;white-space:normal}
+.recent-open small{color:var(--faint);font-size:11px}
+.remove-run{font-size:11px;flex:none}
+.backend-run-id{overflow-wrap:anywhere}
+.backend-run-workspace{padding:18px;max-width:900px}
+@media(max-width:1000px){.run-layout{grid-template-columns:1fr}.recent-runs{max-width:none}}
+@media(max-width:600px){.run-entry,.recent-runs{padding:14px}.new-run-form .param-grid{grid-template-columns:1fr}.run-entry .tabs{flex-direction:column}}
