@@ -70,3 +70,5 @@
 - Task 1: complete. API and proxy tests failed for absent implementations, then `npm test` passed 12/12. Loopback tests require sandbox escalation (a minimal HTTP probe confirmed `connect EACCES` under sandbox); no product fix was needed for that environment restriction.
 - Pre-flight: task 2's request model feeds task 1's `createRun(body)`; task 3 consumes the same client, model, route, and storage interfaces. No conflicting interfaces found.
 - Decision: retain existing local API/server routes for compatibility, while the new default Runs workflow stops calling the obsolete clustering service. Upload to the current backend remains unavailable rather than guessed.
+- Task 2: complete. New model/history/navigation tests first failed for missing implementations; full suite now passes 20/20.
+- Validation tooling: add jsdom as a development-only dependency to exercise React interactions; runtime dependencies stay unchanged.
