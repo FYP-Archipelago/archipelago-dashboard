@@ -33,9 +33,9 @@ Files: modify `src/runs/recent-runs.js`, `src/runs/navigation.js`; create shell/
 
 Interfaces: `useRunLibrary({api,storage})` supplies identity, entries, errors and remember/remove operations. `RunBrowserSidebar` receives this library and `onOpenRun`; `RunConfiguration` receives only remembered backend-accepted metadata. `runHash(id,page)` preserves ID across Archipelago/configuration routes.
 
-- [ ] Write failing tests for metadata preservation, target isolation, sidebar open/remove, manual IDs, missing configuration and refresh/current-run tabs.
-- [ ] Implement the history/configuration/sidebar modules with no status inference or backend data processing.
-- [ ] Run focused tests and record results.
+- [x] Write failing tests for metadata preservation, target isolation, sidebar open/remove, manual IDs, missing configuration and refresh/current-run tabs.
+- [x] Implement the history/configuration/sidebar modules with no status inference or backend data processing.
+- [x] Run focused tests and record results.
 
 ### Task 2: Backend-only form and shell
 
@@ -43,10 +43,10 @@ Files: modify `src/runs/RunsPage.jsx`, `src/main.jsx`, styles; create `src/app/D
 
 Interfaces: `RunsPage({api,onOpenRun})` submits the existing validated backend request and passes `{run}` accepted metadata to the shell. `DashboardApp({api,storage,Workspace})` uses the existing untouched Person 2 workspace boundary.
 
-- [ ] Add interaction tests for new-run creation, batch/live mode, preserved draft while navigating, sidebar synchronization and storage failures.
-- [ ] Remove Scale/upload/local-file navigation and stale copy. Keep only backend configuration and current-run navigation.
-- [ ] Preserve existing carbon visual style and responsive access to sidebar controls.
-- [ ] Run focused tests and build.
+- [x] Add interaction tests for new-run creation, batch/live mode, preserved draft while navigating, sidebar synchronization and storage failures.
+- [x] Remove Scale/upload/local-file navigation and stale copy. Keep only backend configuration and current-run navigation.
+- [x] Preserve existing carbon visual style and responsive access to sidebar controls.
+- [x] Run focused tests and build.
 
 ### Task 3: Retire obsolete compute and set migration visibility preference
 
@@ -54,18 +54,18 @@ Files: simplify `server/index.js`; remove `server/run.js`, `server/payload.js`, 
 
 Interfaces: server serves static assets, `/api/backend-config`, `/api/status`, and the fixed `/backend` proxy. `migrationVisible` consumes render visibility flags and a default-false hidden-path opt-in; no graph reconstruction.
 
-- [ ] Add tests proving retired API paths return 404 and hidden-path migrations default to hidden with an explicit opt-in.
-- [ ] Remove obsolete compute routes, code and dependencies; preserve ignored local data.
-- [ ] Implement only migration visibility preference in the retained renderer reference.
-- [ ] Run full tests/build; inspect browser flow with a controlled fixture.
+- [x] Add tests proving retired API paths return 404 and hidden-path migrations default to hidden with an explicit opt-in.
+- [x] Remove obsolete compute routes, code and dependencies; preserve ignored local data.
+- [x] Implement only migration visibility preference in the retained renderer reference.
+- [x] Run full tests/build; inspect browser flow with a controlled fixture.
 
 ### Task 4: Review and prepare integration PR
 
-- [ ] Document backend/Person 2 dependencies and scoped completion.
-- [ ] Independent whole-branch review, then regression-test material fixes.
-- [ ] Verify tests/build/whitespace and author attribution.
-- [ ] Push `feat/backend-run-workflow`; replace draft PR #6 with a descriptive PR into `feat/backend-integration`.
-- [ ] Leave main and integration unmerged; report exact remaining dependencies.
+- [x] Document backend/Person 2 dependencies and scoped completion.
+- [x] Independent whole-branch review, then regression-test material fixes.
+- [x] Verify tests/build/whitespace and author attribution.
+- [x] Push `feat/backend-run-workflow`; replace draft PR #6 with a descriptive PR into `feat/backend-integration`.
+- [x] Leave main and integration unmerged; report exact remaining dependencies.
 
 ## Progress
 
@@ -82,3 +82,8 @@ Interfaces: server serves static assets, `/api/backend-config`, `/api/status`, a
 - Independent review: one Important identity-loading race, no Critical/Minor findings. Fixed by gating creation until the run browser has identified the actual backend; delayed identity and retry tests failed before the fix, then passed. Unknown identity cannot expose cached configuration.
 - Final suite: 41/41 tests pass. Browser fixture verified accepted final-only creation, sidebar selection, configuration after refresh, retained Migration placeholder and current-run routing. Real runner execution and active backend graph rendering remain outside this scoped work.
 - Review exclusions accepted: Person 2's lifecycle/graph/analysis remains #8; real EA and WebGL appearance are unverified; no hosted-deployment claim is made. Remote delivery and issue closure are checked separately before completion.
+
+- Delivery verified: remote branch is `feat/backend-run-workflow`; obsolete remote `feat/person1-run-entry` no longer exists. Origin URL now uses the canonical `archipelago-dashboard` repository name.
+- Replacement draft PR #10 targets `feat/backend-integration` and GitHub reports CLEAN. PR #6 is closed. PR #5 into main remains OPEN with no merge timestamp; neither shared branch was merged.
+- Issue #7 closed with an explicit completion/scope-split comment. Dashboard #9 and backend #2 track missing upload; Person 2 issue #8 remains OPEN.
+- All new commits use S Sanjeev Srinivas's configured Git author identity with no co-author trailers or Claude attribution.
