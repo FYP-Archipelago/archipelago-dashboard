@@ -1,24 +1,43 @@
 import {useEffect,useState} from 'react';
 import {applyGraphDelta,emptyGraph,graphFromResult} from './graph-model.js';
 
-const initial = () => ({status:'loading',connection:'connecting',graph:emptyGraph(),result:null,layout:null,clustering:null,malformedRows:0,warnings:[],error:''});
+const initial = (runId) => ({runId,status:'loading',connection:'connecting',graph:emptyGraph(),result:null,layout:null,clustering:null,malformedRows:0,warnings:[],error:''});
 const message = error => error instanceof Error ? error.message : String(error);
 const nativeEventSource = target => new EventSource(target);
 
+function validateMetadata(value) {
+  if(value.warnings!==undefined&&(!Array.isArray(value.warnings)||!value.warnings.every(item=>typeof item==='string')))throw Error('Backend sent invalid warnings.');
+  if(value.clustering!=null){
+    const c=value.clustering;
+    if(typeof c!=='object'||Array.isArray(c)||(c.stages!==undefined&&(!Array.isArray(c.stages)||!c.stages.every(stage=>typeof stage==='string'))))throw Error('Backend sent invalid clustering metadata.');
+    for(const field of ['counts','resolved','diagnostics'])if(c[field]!=null&&(typeof c[field]!=='object'||Array.isArray(c[field])))throw Error('Backend sent invalid clustering metadata.');
+  }
+  if(value.separation!=null){
+    for(const [name,fields] of Object.entries({pairs:['a','b','mmd2','p'],windows:['from_generation','typical_distance'],window_pairs:['window','a','b','mmd2']})){
+      const table=value.separation[name];
+      if(!table||fields.some(field=>!Array.isArray(table[field])||table[field].length!==table[fields[0]].length))throw Error('Backend sent invalid separation metadata.');
+    }
+  }
+}
+
 export default function useRunSession({runId,api,eventSourceFactory=nativeEventSource}) {
-  const [state,setState] = useState(initial);
+  const [state,setState] = useState(()=>initial(runId));
   const [retry,setRetry] = useState(0);
   useEffect(()=>{
     let active=true,source=null,attempts=0,timer=null;
     const abort=new AbortController();
-    setState(initial());
+    setState(initial(runId));
+    let graphState=emptyGraph(),acceptingEvents=true,failedStatus=false;
     const patch=change=>{if(active)setState(current=>({...current,...change}));};
     const finish=result=>{
+      if(!active)return;
       try {
+        if(result?.run?.run_id && result.run.run_id!==runId)throw Error('Backend returned a result for another run.');
+        validateMetadata(result);
         const graph=graphFromResult(result);
         patch({status:'done',connection:'closed',graph,result,layout:result.layout,clustering:result.clustering,malformedRows:result.malformed_rows,warnings:result.warnings||[],error:''});
-        source?.close();
-      } catch(error) {patch({connection:'closed',error:message(error)});source?.close();}
+        acceptingEvents=false;source?.close();
+      } catch(error) {acceptingEvents=false;patch({connection:'closed',error:message(error)});source?.close();}
     };
     const loadResult=async ({terminal=false}={})=>{
       try {finish(await api.result(runId,{signal:abort.signal}));return true;}
@@ -38,35 +57,52 @@ export default function useRunSession({runId,api,eventSourceFactory=nativeEventS
       if (await loadResult() || !active) return;
       try {source=eventSourceFactory(api.url(`/runs/${encodeURIComponent(runId)}/events`));}
       catch(error){patch({connection:'closed',error:message(error)});return;}
-      source.onopen=()=>patch({connection:'connected',error:''});
+      source.onopen=()=>{if(active&&acceptingEvents)patch({connection:'connected',error:''});};
       source.addEventListener('status',event=>{
+        if(!active||!acceptingEvents)return;
         try {
           const {status}=parse(event,'status');
+          if(!['queued','running','clustering','done','failed','cancelled'].includes(status))throw Error('Backend sent an invalid status event.');
           patch({status,connection:'connected'});
-          if(status==='done') {source.close();patch({connection:'loading result'});loadResult({terminal:true});}
-          if(status==='cancelled') {source.close();patch({connection:'closed'});}
-        } catch(error){patch({error:message(error)});source.close();}
+          if(status==='done') {acceptingEvents=false;source.close();patch({connection:'loading result'});loadResult({terminal:true});}
+          if(status==='failed') {
+            acceptingEvents=false;failedStatus=true;
+            patch({error:'Run failed. Waiting for backend error details.'});
+            // The backend sends the failure phase/message after its status.
+            timer=setTimeout(()=>{if(active&&failedStatus){failedStatus=false;source.close();patch({connection:'closed',error:'Run failed. No additional error details were received.'});}},5000);
+          }
+          if(status==='cancelled') {acceptingEvents=false;source.close();patch({connection:'closed'});}
+        } catch(error){acceptingEvents=false;patch({error:message(error),connection:'closed'});source.close();}
       });
       source.addEventListener('update',event=>{
+        if(!active||!acceptingEvents)return;
         try {
           const update=parse(event,'update');
-          setState(current=>active?{
-            ...current,status:update.status,connection:'connected',graph:applyGraphDelta(current.graph,update.graph),
-            layout:update.layout||current.layout,clustering:update.clustering,malformedRows:update.malformed_rows,warnings:update.warnings||[],error:'',
-          }:current);
-        } catch(error){patch({error:message(error),connection:'closed'});source.close();}
+          if(!['warming_up','live'].includes(update.status))throw Error('Backend sent an invalid update status.');
+          validateMetadata(update);
+          // Validate/apply before scheduling React state: updater exceptions are
+          // otherwise raised later, outside this event handler's catch block.
+          const graph=applyGraphDelta(graphState,update.graph);
+          graphState=graph;
+          patch({status:update.status,connection:'connected',graph,
+            clustering:update.clustering,malformedRows:update.malformed_rows,warnings:update.warnings||[],error:''});
+          if(update.layout)patch({layout:update.layout});
+        } catch(error){acceptingEvents=false;patch({error:message(error),connection:'closed'});source.close();}
       });
-      source.addEventListener('final',event=>{try{finish(parse(event,'final'));}catch(error){patch({error:message(error),connection:'closed'});source.close();}});
+      source.addEventListener('final',event=>{if(!active||!acceptingEvents)return;try{finish(parse(event,'final'));}catch(error){acceptingEvents=false;patch({error:message(error),connection:'closed'});source.close();}});
       source.addEventListener('error',event=>{
+        if(!active||(!acceptingEvents&&!failedStatus))return;
+        if(failedStatus){clearTimeout(timer);failedStatus=false;acceptingEvents=false;if(!event.data){source.close();patch({connection:'closed',error:'Run failed. The event stream closed before error details arrived.'});return;}}
         if(event.data) {
           try {const failure=parse(event,'error');patch({status:'failed',connection:'closed',error:`${failure.phase ? failure.phase+': ' : ''}${failure.message||'Run failed.'}`});}
           catch(error){patch({error:message(error),connection:'closed'});}
-          source.close();
-        } else patch({connection:'reconnecting'}); // EventSource retries with Last-Event-ID.
+          acceptingEvents=false;source.close();
+        } else if(source.readyState===2){acceptingEvents=false;patch({connection:'closed',error:'Event stream closed. Retry the connection to reload this run.'});}
+        else patch({connection:'reconnecting'}); // EventSource retries with Last-Event-ID.
       });
     };
     start();
     return()=>{active=false;abort.abort();clearTimeout(timer);source?.close();};
   },[runId,api,eventSourceFactory,retry]);
-  return {...state,retry:()=>setRetry(value=>value+1)};
+  return {...(state.runId===runId?state:initial(runId)),retry:()=>setRetry(value=>value+1)};
 }

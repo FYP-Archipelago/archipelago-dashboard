@@ -24,7 +24,7 @@ export async function mount(Component,props={},prepare=()=>{}) {
   document.body.innerHTML='<div id="test-root"></div>';window.localStorage.clear();window.history.replaceState(null,'','#library');prepare();
   const root=createRoot(document.getElementById('test-root'));
   await act(async()=>root.render(React.createElement(Component,props)));
-  return {close:async()=>act(()=>root.unmount())};
+  return {close:async()=>act(()=>root.unmount()),rerender:async next=>act(async()=>root.render(React.createElement(Component,{...props,...next})))};
 }
 export const find=name=>document.querySelector(`[name="${name}"]`) || document.getElementById(name);
 export const button=text=>[...document.querySelectorAll('button')].find(el=>el.textContent.trim()===text);

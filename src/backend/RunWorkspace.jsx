@@ -8,7 +8,8 @@ const entries=value=>Object.entries(value||{});
 const MmdBar=({value,max})=><div className="mmd-bar" title={`MMD squared: ${show(value)}`}><span style={{width:`${Math.max(0,Math.min(100,100*value/(max||1)))}%`}}/><strong>{show(value)}</strong></div>;
 
 function Diagnostics({session}) {
-  const {clustering,separation}=session.result||{};
+  const clustering=session.clustering;
+  const separation=session.result?.separation;
   if(!clustering)return <p className="notice">Clustering diagnostics will appear when the backend sends an update or final result.</p>;
   const counts=clustering.counts||{};
   let maxMmd=0;
@@ -49,7 +50,7 @@ export default function RunWorkspace({runId,api,onBack,warning='',view='archipel
   const best=[...session.graph.nodes.values()].find(node=>node.overall_best)?.best_fitness;
   const run=session.result?.run;
   const islands=run?.islands?.length??new Set([...session.graph.nodes.values()].map(node=>node.island)).size;
-  const evaluations=session.result?.clustering?.counts?.evaluations;
+  const evaluations=session.clustering?.counts?.evaluations;
   return <section className="backend-run-workspace" aria-label="Selected backend run">
     <header className="page-head"><h1>{titles[view]||'Archipelago'}</h1><p className="question">{view==='archipelago'?'Where did each island search, and what did migration change?':<>Backend run <code>{runId}</code></>}</p>{view==='archipelago'&&<><div className="run-facts-inline"><span>Islands {islands||'—'}</span><span>Evaluations {show(evaluations)}</span><span>Goal {run?run.maximising?'Maximise':'Minimise':'—'}</span><span>Best {show(best)}</span></div><details className="reading"><summary>How to read this</summary><div className="deck">The graph shows backend clusters and lineage paths. Drag to rotate, scroll to zoom, and click a node for its backend details. Use the controls on the right to filter islands, migrations, paths, height and best markers. Live updates appear as the run progresses.</div></details></>}</header>
     {warning&&<div className="notice" role="status">{warning}</div>}
