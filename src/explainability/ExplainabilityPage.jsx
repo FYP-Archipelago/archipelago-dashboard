@@ -80,7 +80,7 @@ export default function ExplainabilityPage({runId,client=explanationClient,onSel
     client.run(runId,{signal:controller.signal}).then(data=>{if(active)setState({id:runId,data});}).catch(error=>{if(active)setState({id:runId,error:error.message});});
     return()=>{active=false;controller.abort();};
   },[runId,available,client,retry]);
-  const data=state?.id===runId?state.data:null,error=state?.id===runId?state.error:null;
+  const data=state&&state.id===runId?state.data:null,error=state&&state.id===runId?state.error:null;
   return <div className="page explainability-page">
     <header className="ex-heading"><div><h1>Explainability</h1><p className="question">Lineage-based Shapley attribution of fitness improvement.</p></div></header>
     <div className="ex-source"><div><strong>Recorded lineage</strong><p>Precomputed attribution from recorded evaluation lineage.</p></div><label>Analysis source <select name="explanation-run" value={available?runId:''} disabled={!index} onChange={e=>{if(e.target.value)onSelectRun(e.target.value);}}><option value="">Select a recorded run</option>{index?.runs.map(run=><option key={run.run_id} value={run.run_id}>{run.run_id} · {run.islands} islands · {run.benchmark}</option>)}</select></label></div>
