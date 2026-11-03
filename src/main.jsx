@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState, useRef } from 'react';
 import { createRoot } from 'react-dom/client';
-import Plotly from 'plotly.js-dist-min';
 import { mountViewer, mountStudy } from './viewer.js';
 import { STUDY_DATASETS } from './viewer/study-data.js';
 import { PALETTES, loadPalette, applyPalette } from './palette.js';
@@ -30,7 +29,20 @@ function Header({ eyebrow, title, question, children }) { return <header classNa
 function Caption({ children }) { return <p className="caption">{children}</p>; }
 function Metrics({ values }) { return <div className="metrics">{values.map(([label,value,detail])=><div className="metric" key={label}><div className="metric-label">{label}</div><div className="metric-value">{value}</div>{detail&&<div className="metric-detail">{detail}</div>}</div>)}</div>; }
 function Table({ rows, columns, height=340 }) { return <div className="table-wrap" style={{maxHeight:height}}><table><thead><tr>{columns.map(c=><th key={c}>{c}</th>)}</tr></thead><tbody>{rows.map((r,i)=><tr key={i}>{columns.map(c=><td key={c}>{r[c] === null || r[c] === undefined ? '—' : String(r[c])}</td>)}</tr>)}</tbody></table></div>; }
-function Chart({ data, layout, height=340 }) { const ref=useRef(); useEffect(()=>{ const el=ref.current; if(!el) return; Plotly.react(el,data,{...layout,paper_bgcolor:C.deep,plot_bgcolor:C.deep,font:{family:'Archivo, sans-serif',color:C.soft,size:12},title:{text:layout.title,font:{color:C.ink,size:14},x:0.02},xaxis:{gridcolor:C.rule,zeroline:false,linecolor:C.rule,tickfont:{color:C.faint},...layout.xaxis},yaxis:{gridcolor:C.rule,zeroline:false,linecolor:C.rule,tickfont:{color:C.faint},...layout.yaxis},margin:layout.margin||{l:56,r:16,t:56,b:44},height},{responsive:true,displaylogo:false}); return ()=>Plotly.purge(el); },[data,layout,height]); return <div className="chart" ref={ref}/>; }
+function Chart({ data, layout, height=340 }) {
+  const ref=useRef();
+  useEffect(()=>{
+    const el=ref.current;if(!el)return;
+    let active=true,plotly;
+    import('plotly.js-dist-min').then(module=>{
+      if(!active)return;
+      plotly=module.default;
+      plotly.react(el,data,{...layout,paper_bgcolor:C.deep,plot_bgcolor:C.deep,font:{family:'Archivo, sans-serif',color:C.soft,size:12},title:{text:layout.title,font:{color:C.ink,size:14},x:0.02},xaxis:{gridcolor:C.rule,zeroline:false,linecolor:C.rule,tickfont:{color:C.faint},...layout.xaxis},yaxis:{gridcolor:C.rule,zeroline:false,linecolor:C.rule,tickfont:{color:C.faint},...layout.yaxis},margin:layout.margin||{l:56,r:16,t:56,b:44},height},{responsive:true,displaylogo:false});
+    }).catch(()=>{if(active)el.textContent='Chart unavailable. Reload the page to retry.';});
+    return()=>{active=false;plotly?.purge(el);};
+  },[data,layout,height]);
+  return <div className="chart" ref={ref}/>;
+}
 function Notice({ children, type='info' }) { return <div className={`notice ${type}`}>{children}</div>; }
 function Details({ title, children }) { return <details><summary>{title}</summary><div className="details-body">{children}</div></details>; }
 const VIEWS = [['overview','Overview','Every island together, as the search happened'],['islands','By island','Each island on its own, without migration'],['migration','Migration only','Just the exchanges between islands'],['shared','Shared ground','Mark the clusters more than one island reached'],['best','Best solution','Move to the best solution and show its details']];
