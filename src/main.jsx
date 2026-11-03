@@ -3,13 +3,21 @@ import { createRoot } from 'react-dom/client';
 import Plotly from 'plotly.js-dist-min';
 import { mountViewer, mountStudy } from './viewer.js';
 import { STUDY_DATASETS } from './viewer/study-data.js';
+import { PALETTES, loadPalette, applyPalette } from './palette.js';
 import './style.css';
 import './designs.css';
 import './viewer/stn-viewer.css';
 
 
+applyPalette(loadPalette());
 const token = name => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
-const C = { deep:token('--panel'), rule:token('--line'), ink:token('--ink'), soft:token('--soft'), faint:token('--faint'), mig:token('--mig'), best:token('--best'), islands:['--i0','--i1','--i2','--i3','--i4'].map(token) };
+const C = {
+  get deep() { return token('--panel'); }, get rule() { return token('--line'); },
+  get ink() { return token('--ink'); }, get soft() { return token('--soft'); },
+  get faint() { return token('--faint'); }, get mig() { return token('--mig'); },
+  get best() { return token('--best'); },
+  islands:['--i0','--i1','--i2','--i3','--i4'].map(token),
+};
 const fmt = n => Number(n || 0).toLocaleString();
 const num = (n, digits=2) => Number.isFinite(Number(n)) ? Number(n).toFixed(digits) : '—';
 const median = values => { const a = values.filter(Number.isFinite).sort((x,y)=>x-y); return a.length ? (a[Math.floor((a.length-1)/2)] + a[Math.floor(a.length/2)])/2 : null; };
@@ -156,6 +164,7 @@ const ICONS = { brand:'M3 17L8 6l5 9 5-12 3 14', archipelago:'M3 17L8 6l5 9 5-12
 function Icon({ id }) { return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={ICONS[id]}/></svg>; }
 
 function App() {
+  const [palette, setPalette] = useState(loadPalette);
   const [runs,setRuns]=useState([]),[run,setRun]=useState(null),[page,setPage]=useState(location.hash.slice(1)||'archipelago'),[level,setLevel]=useState('level0'),[results,setResults]=useState([]),[selectedResult,setSelectedResult]=useState(''),[error,setError]=useState('');
   const refresh=async()=>{const list=await api('/runs');setRuns(list);return list;};
   useEffect(()=>{refresh().then(list=>{if(!list.length)setPage('library');}).catch(e=>setError(e.message));},[]);
@@ -167,11 +176,11 @@ function App() {
   document.documentElement.classList.toggle('on-archipelago',page==='study'||(page==='archipelago'&&!!run));
   document.documentElement.classList.toggle('on-study',page==='study');
   const best=run?.end?.global_best_fitness;
-  return <div className="app"><aside><div className="brand"><Icon id="brand"/><span>Archipelago</span><small>v0.4</small></div>
+  return <><div className="palette-bar" role="group" aria-label="Colour palette"><span className="palette-label">Colour palette <small>Testing</small></span><div className="palette-options">{PALETTES.map(p=><button key={p.id} type="button" aria-pressed={palette===p.id} title={p.description} onClick={()=>{applyPalette(p.id);setPalette(p.id);}}><i style={{background:p.colour}} aria-hidden="true"/>{p.name}</button>)}</div><span className="palette-note">Saved on this browser</span></div><div className="app"><aside><div className="brand"><Icon id="brand"/><span>Archipelago</span><small>v0.4</small></div>
       <nav>{runs.length>0&&go.map(([heading,items])=><React.Fragment key={heading}><div className="nav-heading">{heading}</div>{items.map(pageButton)}</React.Fragment>)}<div className="nav-heading">Library</div>{pageButton(['library','Runs','Add and cluster runs'])}{pageButton(['overview','About','What this tool is for'])}</nav>
       {runs.length>0&&<div className="runctx"><label>Run<select value={run?.id||''} onChange={e=>api(`/runs/${encodeURIComponent(e.target.value)}`).then(setRun)}>{runs.map(r=><option key={r.id} value={r.id}>{r.algorithm} / {r.benchmark} · {r.islands} islands</option>)}</select></label><label>Level<select value={level} onChange={e=>setLevel(e.target.value)}><option value="level0">Level 0 · raw trajectory</option><option value="clustered">Clustered</option></select></label>
         {run&&<dl className="run-facts"><dt>Islands</dt><dd>{run.islands.length}</dd><dt>Evaluations</dt><dd>{fmt(run.evaluations.length)}</dd><dt>Goal</dt><dd>{run.maximising?'Maximise':'Minimise'}</dd><dt>Best</dt><dd>{best===undefined?'—':num(best,4)}</dd></dl>}</div>}</aside>
-    <main>{error&&<Notice type="error">{error}</Notice>}<div className="page">{page==='library'?<Runs runs={runs} refresh={refresh} navigate={navigate}/>:page==='overview'?<Overview/>:page==='study'?<Study/>:run? <>{page==='archipelago'?<Archipelago run={run} level={level} results={results} selectedResult={selectedResult} setSelectedResult={setSelectedResult}/>:page==='migration'?<Migration run={run}/>:page==='convergence'?<Convergence run={run}/>:<RunBrowser run={run}/>}</>:<Notice>Loading run…</Notice>}</div><footer>Archipelago v0.4 · Team 21, Amrita Vishwa Vidyapeetham · reads schema 2.0 run logs</footer></main></div>;
+    <main>{error&&<Notice type="error">{error}</Notice>}<div className="page">{page==='library'?<Runs runs={runs} refresh={refresh} navigate={navigate}/>:page==='overview'?<Overview/>:page==='study'?<Study/>:run? <>{page==='archipelago'?<Archipelago run={run} level={level} results={results} selectedResult={selectedResult} setSelectedResult={setSelectedResult}/>:page==='migration'?<Migration run={run}/>:page==='convergence'?<Convergence run={run}/>:<RunBrowser run={run}/>}</>:<Notice>Loading run…</Notice>}</div><footer>Archipelago v0.4 · Team 21, Amrita Vishwa Vidyapeetham · reads schema 2.0 run logs</footer></main></div></>;
 }
 
 createRoot(document.getElementById('root')).render(<App/>);

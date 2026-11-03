@@ -44,6 +44,8 @@ For clustered views, set `ARCHIPELAGO_API_URL` to the separately deployed cluste
 
 Colour tokens and the workspace layout live in `src/designs.css`. Island hues, migration cyan and best-solution pink are data encodings and are never themed.
 
+The **Colour palette** bar at the top offers Tidal (deep teal), Graphite (charcoal and sage), Midnight (navy) and Fieldwork (forest green) for team testing. Graphite keeps the existing default. A selection applies across pages and charts, stays saved in that browser, and preserves the current viewer and camera. All palettes use the same graph background and data colours so comparisons reflect the interface palette alone.
+
 ## Check
 
 ```bash
