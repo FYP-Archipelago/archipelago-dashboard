@@ -1,5 +1,11 @@
 # Archipelago JavaScript rewrite
 
+## Public explainability demo
+
+The **Explainability** tab presents precomputed lineage-based Shapley attribution for the two bundled DE/Rastrigin recordings. It includes island and directed-route contributions, exact coalition values where tractable, and permutation-marginal analysis. Computation runs in Python before deployment; the browser only renders saved artifacts. These are observational ancestry scores, not causal estimates from optimiser ablations. The original sample viewer and palette controls remain available; Scale study is removed from navigation.
+
+Regenerate with `npm run explainability:prepare` when the raw sample directories are available in `data/`. The generated `public/sample-explanations/` JSON is versioned with this demo branch so redeployments preserve the sample page. Raw genomes are not included in those artifacts. Run `npm test`, `npm run test:explainability` and `npm run build` before deployment.
+
 JavaScript implementation of the Archipelago frontend. No Streamlit or Python code is used by this app.
 
 ## Run

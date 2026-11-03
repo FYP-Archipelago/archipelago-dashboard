@@ -9,7 +9,9 @@
     "preview": "vite preview",
     "server": "node server/index.js",
     "start": "node server/index.js",
-    "test": "node --test"
+    "test": "node --test",
+    "explainability:prepare": "python tools/explainability/export.py",
+    "test:explainability": "python -m unittest discover -s tools/explainability -p test_*.py"
   },
   "dependencies": {
     "jszip": "^3.10.1",

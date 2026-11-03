@@ -4,6 +4,7 @@ import Plotly from 'plotly.js-dist-min';
 import { mountViewer, mountStudy } from './viewer.js';
 import { STUDY_DATASETS } from './viewer/study-data.js';
 import { PALETTES, loadPalette, applyPalette } from './palette.js';
+import ExplainabilityPage from './explainability/ExplainabilityPage.jsx';
 import './style.css';
 import './designs.css';
 import './viewer/stn-viewer.css';
@@ -160,7 +161,7 @@ function Overview() {
     <div className="prose narrow"><h3>A note on the vertical axis</h3><p>Search spaces usually have many more than three dimensions. The Archipelago view spends two axes on position and gives the third to <b>fitness</b>. Good regions are low, and you can watch each island descend into its own basin. The view reports how much variance its projection kept.</p></div></>;
 }
 
-const ICONS = { brand:'M3 17L8 6l5 9 5-12 3 14', archipelago:'M3 17L8 6l5 9 5-12 3 14', study:'M4 20V10M10 20V4M16 20v-7M21 20H3', migration:'M3 7h15l-4-4m4 4-4 4M21 17H6l4 4m-4-4 4-4', convergence:'M3 4v16h18M6 7l4 6 4-2 6 6', run:'M5 3h14v18H5zM8 7h8M8 11h8M8 15h5', library:'M3 5h7l2 3h9v12H3z', overview:'M12 3a9 9 0 1 0 .01 0M12 10v7M12 7v1' };
+const ICONS = { brand:'M3 17L8 6l5 9 5-12 3 14', archipelago:'M3 17L8 6l5 9 5-12 3 14', explainability:'M4 20V10M10 20V4M16 20v-7M21 20H3', migration:'M3 7h15l-4-4m4 4-4 4M21 17H6l4 4m-4-4 4-4', convergence:'M3 4v16h18M6 7l4 6 4-2 6 6', run:'M5 3h14v18H5zM8 7h8M8 11h8M8 15h5', library:'M3 5h7l2 3h9v12H3z', overview:'M12 3a9 9 0 1 0 .01 0M12 10v7M12 7v1' };
 function Icon({ id }) { return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={ICONS[id]}/></svg>; }
 
 function App() {
@@ -171,7 +172,7 @@ function App() {
   useEffect(()=>{if(!runs.length){setRun(null);return;} const id=run&&runs.some(r=>r.id===run.id)?run.id:runs[0].id; api(`/runs/${encodeURIComponent(id)}`).then(setRun).catch(e=>setError(e.message));},[runs]);
   useEffect(()=>{if(!run)return; api(`/runs/${encodeURIComponent(run.id)}/results`).then(r=>{setResults(r);setSelectedResult(r[0]?.id||'');}).catch(()=>setResults([]));},[run?.id,page]);
   const navigate=id=>{setPage(id);history.replaceState(null,'',`#${id}`);};
-  const go=[['Analyse',[['archipelago','Archipelago','Where islands searched'],['migration','Migration','Who moved, and arrived'],['convergence','Convergence','Who improved, who stalled'],['study','Scale study','Synthetic data at 400,000 evaluations']]],['The run',[['run','Run browser','What ran, how it ended']]]];
+  const go=[['Analyse',[['archipelago','Archipelago','Search trajectory network'],['migration','Migration','Inter-island migration'],['convergence','Convergence','Fitness and diversity'],['explainability','Explainability','Lineage-based Shapley attribution']]],['The run',[['run','Run browser','Execution and provenance']]]];
   const pageButton=([id,label,hint])=><button key={id} className={page===id?'active':''} onClick={()=>navigate(id)}><Icon id={id}/>{label}<small>{hint}</small></button>;
   document.documentElement.classList.toggle('on-archipelago',page==='study'||(page==='archipelago'&&!!run));
   document.documentElement.classList.toggle('on-study',page==='study');
@@ -180,7 +181,7 @@ function App() {
       <nav>{runs.length>0&&go.map(([heading,items])=><React.Fragment key={heading}><div className="nav-heading">{heading}</div>{items.map(pageButton)}</React.Fragment>)}<div className="nav-heading">Library</div>{pageButton(['library','Runs','Add and cluster runs'])}{pageButton(['overview','About','What this tool is for'])}</nav>
       {runs.length>0&&<div className="runctx"><label>Run<select value={run?.id||''} onChange={e=>api(`/runs/${encodeURIComponent(e.target.value)}`).then(setRun)}>{runs.map(r=><option key={r.id} value={r.id}>{r.algorithm} / {r.benchmark} · {r.islands} islands</option>)}</select></label><label>Level<select value={level} onChange={e=>setLevel(e.target.value)}><option value="level0">Level 0 · raw trajectory</option><option value="clustered">Clustered</option></select></label>
         {run&&<dl className="run-facts"><dt>Islands</dt><dd>{run.islands.length}</dd><dt>Evaluations</dt><dd>{fmt(run.evaluations.length)}</dd><dt>Goal</dt><dd>{run.maximising?'Maximise':'Minimise'}</dd><dt>Best</dt><dd>{best===undefined?'—':num(best,4)}</dd></dl>}</div>}</aside>
-    <main>{error&&<Notice type="error">{error}</Notice>}<div className="page">{page==='library'?<Runs runs={runs} refresh={refresh} navigate={navigate}/>:page==='overview'?<Overview/>:page==='study'?<Study/>:run? <>{page==='archipelago'?<Archipelago run={run} level={level} results={results} selectedResult={selectedResult} setSelectedResult={setSelectedResult}/>:page==='migration'?<Migration run={run}/>:page==='convergence'?<Convergence run={run}/>:<RunBrowser run={run}/>}</>:<Notice>Loading run…</Notice>}</div><footer>Archipelago v0.4 · Team 21, Amrita Vishwa Vidyapeetham · reads schema 2.0 run logs</footer></main></div></>;
+    <main>{error&&<Notice type="error">{error}</Notice>}<div className="page">{page==='library'?<Runs runs={runs} refresh={refresh} navigate={navigate}/>:page==='overview'?<Overview/>:page==='explainability'?<ExplainabilityPage runId={run?.id} onSelectRun={id=>api(`/runs/${encodeURIComponent(id)}`).then(setRun).catch(e=>setError(e.message))}/>:run? <>{page==='archipelago'?<Archipelago run={run} level={level} results={results} selectedResult={selectedResult} setSelectedResult={setSelectedResult}/>:page==='migration'?<Migration run={run}/>:page==='convergence'?<Convergence run={run}/>:<RunBrowser run={run}/>}</>:<Notice>Loading run…</Notice>}</div><footer>Archipelago v0.4 · Team 21, Amrita Vishwa Vidyapeetham · reads schema 2.0 run logs</footer></main></div></>;
 }
 
 createRoot(document.getElementById('root')).render(<App/>);

@@ -12,7 +12,7 @@ test('CSV parser preserves quoted commas, newlines, and escaped quotes', () => {
 test('run ids stay inside the data root', () => {
   assert.throws(() => safeRunPath('../outside'));
   assert.throws(() => safeRunPath('/tmp/outside'));
-  assert.match(safeRunPath('run-1'), /data\/run-1$/);
+  assert.match(safeRunPath('run-1'), /data[\\/]run-1$/);
 });
 
 test('compact and full genomes decode to the same vector', () => {
