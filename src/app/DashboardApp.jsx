@@ -9,6 +9,7 @@ import RunBrowserSidebar from './RunBrowserSidebar.jsx';
 import RunConfiguration from './RunConfiguration.jsx';
 import AboutPage from './AboutPage.jsx';
 import ExplainabilityPage from '../explainability/ExplainabilityPage.jsx';
+import RecordedRunsPage from '../demo/RecordedRunsPage.jsx';
 import './workspace.css';
 
 export default function DashboardApp({api=backendApi,storage=browserStorage(),Workspace=RunWorkspace}) {
@@ -22,6 +23,10 @@ export default function DashboardApp({api=backendApi,storage=browserStorage(),Wo
     return()=>{window.removeEventListener('hashchange',sync);window.removeEventListener('popstate',sync);};
   },[]);
   const openRun=(id,{run}={})=>{
+    if(api.isDemo){
+      if(!library.entries.some(entry=>entry.run_id===id)){setWarning('This run is not included in this demonstration. Select a published recording.');return;}
+      setWarning('');navigate(runHash(id,RUN_VIEWS.some(([page])=>page===route.page)?route.page:'archipelago'));return;
+    }
     let notice='';const configuration=acceptedConfiguration(run);
     if(configuration)setAccepted({backendKey:library.backendKey,runId:id,configuration});
     try{library.remember({run_id:id,preset:run?.preset,source:run?'new':'manual',configuration});}
@@ -40,11 +45,12 @@ export default function DashboardApp({api=backendApi,storage=browserStorage(),Wo
       <label className="top-run-select">Run <select aria-label="Select run" value={selectedRunId||''} onChange={event=>event.target.value?openRun(event.target.value):newRun()}><option value="">Select a run</option>{selectedRunId&&!library.entries.some(entry=>entry.run_id===selectedRunId)&&<option value={selectedRunId}>{selectedRunId}</option>}{library.entries.map(entry=><option key={entry.run_id} value={entry.run_id}>{entry.run_id}</option>)}</select></label>
     </header>
     <main className="workspace-main">
+      {api.isDemo&&<div className="notice" role="status"><strong>Recorded-data demonstration.</strong> Saved search results and Python-computed analysis; no backend is connected.</div>}
       {warning&&<div className="notice" role="status">{warning}</div>}
-      <div hidden={route.page!=='library'} className="runs-home"><RunsPage api={api} onOpenRun={openRun} onBusyChange={setBusy} canStart={!!library.backendKey&&!library.loading}/><RunBrowserSidebar library={library} selectedId={route.runId} onOpenRun={openRun} onNewRun={newRun} busy={busy}/></div>
+      <div hidden={route.page!=='library'} className="runs-home">{api.isDemo?<RecordedRunsPage entries={library.entries} onOpenRun={openRun}/>:<RunsPage api={api} onOpenRun={openRun} onBusyChange={setBusy} canStart={!!library.backendKey&&!library.loading}/>}<RunBrowserSidebar library={library} selectedId={route.runId} onOpenRun={openRun} onNewRun={newRun} busy={busy} recorded={api.isDemo}/></div>
       {route.page==='about'&&<AboutPage/>}
       {route.page==='explainability'&&<ExplainabilityPage runId={route.runId} api={api} onSelectRun={id=>navigate(runHash(id,'explainability'))}/>}
-      {route.runId&&route.page==='configuration'&&<RunConfiguration configuration={configuration} runId={route.runId}/>}
+      {route.runId&&route.page==='configuration'&&<RunConfiguration configuration={configuration} runId={route.runId} recorded={api.isDemo}/>}
       {route.runId&&['archipelago','migration','convergence','diagnostics','run'].includes(route.page)&&<Workspace runId={route.runId} api={api} onBack={newRun} warning="" view={route.page}/>}
       <footer>Archipelago · Distributed evolutionary search</footer>
     </main>

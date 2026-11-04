@@ -16,6 +16,21 @@ Vite serves the UI, uncached `/api/backend-config` metadata and the fixed-target
 
 ## Use the dashboard
 
+### Hosted recorded demonstration
+
+The Vercel demonstration is built from `feat/backend-integration` with `VITE_RECORDED_DEMO=true`. It preloads two published recordings and exposes the original graph controls, aggregate migrations, clustering/separation diagnostics, recorded settings and Shapley analysis without a backend. It is labelled as a recorded-data demonstration. Run creation and live execution require normal backend mode; the demo never submits or simulates an execution request. Convergence histories and detailed migration timing remain explicitly unavailable.
+
+`public/recorded-runs` contains final Results computed offline by the current Python module; `public/sample-explanations` contains recorded-lineage attribution. Raw CSV, genomes, local host diagnostics and private logs are not served or uploaded. To regenerate graph artifacts, run `tools/demo/export.py` with the backend's Python environment and installed module from this dashboard directory, then run the exporter tests:
+
+```powershell
+../archipelago-shapley-backend/.venv/Scripts/python.exe tools/demo/export.py
+../archipelago-shapley-backend/.venv/Scripts/python.exe -m unittest discover -s tools/demo -p 'test_*.py'
+```
+
+For a local demo build, set `VITE_RECORDED_DEMO=true` before `npm run build`, then run `npm start`. Leave the flag unset for real backend integration. The hosted project currently uses explicit CLI production deployments from the integration branch; Vercel Git connection requires repository access in Vercel and is not configured. Production deployment does not change main.
+
+### Connected backend
+
 1. Start the backend, Postgres, Redis, clustering workers and runner using [the backend setup instructions](https://github.com/FYP-Archipelago/archipelago-backend#readme). Start this dashboard with `npm run dev` and open <http://127.0.0.1:5173>.
 2. On **Runs**, choose a backend preset and adjust the runner and clustering settings. Choose **Live updates** to see graph updates while the runner works, or **Final result only** to view the graph after clustering finishes. Click **Start run**.
 3. The accepted `run_id` opens the **Archipelago** view. Status and connection text show queued, running, clustering, done or failed. The original WebGL viewer uses the backend's clustered nodes, lineage edges, migrations, positions and best flags. The view buttons **Overview**, **By island**, **Migration only**, **Shared ground** and **Best solution** control the original viewer. Its right rail contains island, path, height, migration, best marker and appearance controls. Drag to orbit, shift/right-drag to pan, scroll to zoom and click a node for backend details.
