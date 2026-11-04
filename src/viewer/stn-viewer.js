@@ -1,3 +1,6 @@
+import {migrationVisible,MIGRATION_VISIBILITY_DEFAULTS} from './visibility.js';
+import {backendViewerGraph,remapBackendAnchor} from './backend-graph.js';
+
 /* Archipelago STN viewer — WebGL2, no libraries.
  *
  * Draws one run's search trajectory network: density rendering into an
@@ -248,11 +251,12 @@ const TEMPLATE = `
           <div class="grp layers">
             <button class="btn-wide" id="t-edges" aria-pressed="true">Trajectory edges</button>
             <button class="btn-wide" id="mig-all" aria-pressed="true">Migration routes</button>
+            <button class="btn-wide" id="include-hidden-migrations" aria-pressed="false">Include migrations for hidden paths</button>
             <button class="btn-wide" id="b-isl" aria-pressed="true">Island bests</button>
             <button class="btn-wide" id="b-run" aria-pressed="true">Run bests</button>
             <button class="btn-wide" id="contest" aria-pressed="false">Contested clusters</button>
             <button class="btn-wide" id="b-sel" aria-pressed="true">Selection marker</button>
-            <p class="hint">Turn trajectory edges off to leave only the clusters and the migration arcs &mdash; the exchange skeleton on its own.</p>
+            <p class="hint">Migration visibility follows island and path filters. Hidden-path migrations can be enabled independently.</p>
           </div>
           </div>
         </details>
@@ -277,7 +281,7 @@ const TEMPLATE = `
               <div class="grp-h" style="margin-top:10px"><span>Separate runs</span><b id="v-exr">0.00</b></div>
               <input type="range" id="s-exr" min="0" max="100" step="1" value="0" aria-label="Run separation">
             </div>
-            <p class="hint">A cluster that splits as you drag was contested; one that slides intact belonged to a single group.</p>
+            <p class="hint">Shared clusters separate by island membership; single-island clusters translate as a unit.</p>
           </div>
           </div>
         </details>
@@ -300,7 +304,7 @@ const TEMPLATE = `
             <div class="grp-h" style="margin-top:10px"><span>Height scale</span><b id="v-hs">1.00</b></div>
             <input type="range" id="s-hs" min="5" max="150" step="5" value="100" aria-label="Height scale">
             <div class="ends"><span>SHORT</span><span>TALL</span></div>
-            <p class="hint">What lifts a cluster. Fitness: better sits lower. Time: later sits higher. Evals, links and shared: more sits higher. Flat lays everything on the ground.</p>
+            <p class="hint">Fitness height decreases with solution quality. Time encodes evaluation progress. Evaluation count, connectivity and island sharing increase with height; flat mode uses a common plane.</p>
           </div>
           </div>
         </details>
@@ -309,7 +313,7 @@ const TEMPLATE = `
           <div class="sec-body">
           <div class="grp">
             <div class="chips grid" id="routes"></div>
-            <p class="hint">One chip per source&rarr;destination route. Shift-click solos a route to trace a single exchange.</p>
+            <p class="hint">Directed source&rarr;destination routes. Shift-click isolates a route.</p>
           </div>
           </div>
         </details>
@@ -318,7 +322,7 @@ const TEMPLATE = `
           <div class="sec-body">
           <div class="grp">
             <div class="chips" id="bests"></div>
-            <p class="hint">Flies the camera to that cluster and opens it in the inspector. Rings are island bests, diamonds run bests.</p>
+            <p class="hint">Select a best-fitness cluster to focus the camera and inspector. Rings mark island bests; diamonds mark run bests.</p>
           </div>
           </div>
         </details>
@@ -350,8 +354,8 @@ const TEMPLATE = `
       <div class="hover-tip" id="hover-tip" hidden></div>
       <div class="selmark" id="selmark" hidden><i></i><i></i><i></i><i></i></div>
       <div class="inspect" id="inspect">
-        <div class="ins-h"><b id="ins-title">Click a node to inspect it</b><button id="ins-x" aria-label="Clear selection" hidden>&times;</button></div>
-        <div class="ins-body" id="ins-body"><p class="ins-empty">Click any node to inspect the cluster behind it &mdash; genome, fitness, how many evaluations landed there, and which islands share it.</p></div>
+        <div class="ins-h"><b id="ins-title">Cluster inspection</b><button id="ins-x" aria-label="Clear selection" hidden>&times;</button></div>
+        <div class="ins-body" id="ins-body"><p class="ins-empty">Select a node to inspect fitness, evaluation counts, genome hash and island membership.</p></div>
       </div>
     </div>
 
@@ -370,7 +374,7 @@ const TEMPLATE = `
 </div>`;
 
 const CAP =
-  "It opens <b>merged</b> &mdash; every island where the search actually put it. Click any node to read the cluster behind it. Pull <b>Separation</b> right to pull the islands into their own funnels; the clusters that split apart were the contested ones. Height is fitness on one pooled percentile scale; position is a shared 2D projection of the genome space, fitted once over the whole run. Trajectory edges are parent&rarr;child lineage within an island.";
+  "Shared genome-space projection with pooled fitness percentiles. Island separation offsets reveal shared-cluster membership. Trajectory edges encode within-island parent&rarr;child relationships.";
 
 /**
  * Mount the viewer into ``root``.
@@ -383,15 +387,16 @@ export function mountStnViewer(root, cfg) {
   const $ = id => root.querySelector("#" + id);
   const canvas = $("gl"), note = $("note");
   const gl = canvas.getContext("webgl2", { antialias: false, alpha: false });
-  if (!gl) { note.textContent = "WEBGL2 UNAVAILABLE IN THIS BROWSER"; return { destroy() { }, loadDataset() { } }; }
+  if (!gl) { note.textContent = "WEBGL2 UNAVAILABLE IN THIS BROWSER"; return { destroy() { }, loadDataset() { }, setBackendGraph() {} }; }
 
   /* ── dataset-bound state ─────────────────────────────────────── */
-  const entries = cfg.datasets;
+  const entries = cfg.datasets || [];
   let DS = null;                       // the loaded dataset
   let NG = 0, RAW = 0;
   let rx = null, ry = null, rf = null, gOff = null, gLen = null, gRun = null, gIsl = null;
   let migEvents = [], fSorted = null;
   let G = null;
+  let visiblePathNodes = new Set();
   let alive = true;
   // The base alphas are tuned for ~250k edges. A real run is often a
   // few thousand, so each line would accumulate almost no light. Scale the
@@ -664,9 +669,9 @@ export function mountStnViewer(root, cfg) {
       v[o] = G.px[i]; v[o + 1] = G.py[i];
       v[o + 2] = offI[g][0]; v[o + 3] = offI[g][1];
       v[o + 4] = offR[g][0]; v[o + 5] = offR[g][1];
-      v[o + 6] = fitnessPct(G.pf[i]) * 1.8 - 0.9;               // fitness rank
-      v[o + 7] = (G.pg[i] / gLen[g]) * 1.8 - 0.9;               // elapsed time
-      v[o + 8] = (gIsl[g] - (DS.isl - 1) / 2) * PLANE_GAP;       // island plane
+      v[o + 6] = (DS.backend ? G.pct[i] : fitnessPct(G.pf[i])) * 1.8 - 0.9;
+      v[o + 7] = (DS.backend ? G.pg[i] : G.pg[i] / gLen[g]) * 1.8 - 0.9;
+      v[o + 8] = DS.backend ? G.pz[i] : (gIsl[g] - (DS.isl - 1) / 2) * PLANE_GAP;
       v[o + 9] = g;
       v[o + 10] = 1.0 + Math.log2(1 + G.pVis[i]) * 0.85;
       v[o + 11] = G.pShared[i];
@@ -690,15 +695,24 @@ export function mountStnViewer(root, cfg) {
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, bIdx);
     gl.bindVertexArray(null);
 
+  }
+
+  function buildMigrationGeometry() {
+    const v=nodeData;
+    const visibleMigrations=G.mig.filter(migration=>migrationVisible({
+      sourcePathVisible:state.edges&&visiblePathNodes.has(migration.a),
+      targetPathVisible:state.edges&&visiblePathNodes.has(migration.b),
+      includeHiddenPaths:state.includeHiddenPaths,
+    }));
     // migration ribbons: 10 segments, 6 verts each, 27 floats per vertex.
     // The stride must equal the floats actually written, or every following
     // vertex shifts and the ribbons shred into shards.
-    const SEG = 10, m = G.mig.length, ST = 27;
+    const SEG = 10, m = visibleMigrations.length, ST = 27;
     const arc = new Float32Array(m * SEG * 6 * ST);
     const quad = [[0, -1], [0, 1], [1, -1], [1, -1], [0, 1], [1, 1]];
     let p = 0;
     for (let i = 0; i < m; i++) {
-      const A = G.mig[i].a * NF, B = G.mig[i].b * NF, rid = G.mig[i].route;
+      const A = visibleMigrations[i].a * NF, B = visibleMigrations[i].b * NF, rid = visibleMigrations[i].route;
       for (let s = 0; s < SEG; s++) {
         for (let j = 0; j < 6; j++) {
           const t = (s + quad[j][0]) / SEG;
@@ -737,11 +751,16 @@ export function mountStnViewer(root, cfg) {
     const e = G.e, ew = G.ew, floor = state.wt;
     const idx = new Uint32Array(G.edgeCount * 2);
     let o = 0;
+    visiblePathNodes=new Set();
     for (let i = 0; i < G.edgeCount; i++)
-      if (ew[i] >= floor) { idx[o++] = e[i * 2]; idx[o++] = e[i * 2 + 1]; }
+      if (ew[i] >= floor) {
+        idx[o++] = e[i * 2]; idx[o++] = e[i * 2 + 1];
+        visiblePathNodes.add(e[i * 2]);visiblePathNodes.add(e[i * 2 + 1]);
+      }
     drawnEdges = o / 2;
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, bIdx);
     gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, idx.subarray(0, o), gl.DYNAMIC_DRAW);
+    buildMigrationGeometry();
   }
 
   /* ── state + camera ──────────────────────────────────────────── */
@@ -749,6 +768,7 @@ export function mountStnViewer(root, cfg) {
     ds: 0, res: 2, wt: 2, ns: 100, zMode: 0, op: 180, dom: 140, exI: 0, exR: 0,
     colourBy: "island", grpOn: [], routesOn: [],
     contest: false, edges: true, selMark: true, bestIsl: true, bestRun: true,
+    includeHiddenPaths: MIGRATION_VISIBILITY_DEFAULTS.includeHiddenPaths,
     group: false, exIBefore: 0, flat: false, hs: 100, hsBefore: 100
   };
   let selected = -1;
@@ -804,7 +824,7 @@ export function mountStnViewer(root, cfg) {
     const r = canvas.getBoundingClientRect(), x = ev.clientX - r.left, y = ev.clientY - r.top, i = pickAt(x, y);
     tip.hidden = i < 0;
     if (i < 0) return;
-    tip.textContent = "Island " + islLabel(gIsl[G.pGrp[i]]) + " · fitness " + ((DS.fitSign || 1) * G.pf[i]).toFixed(4) + " · " + G.pVis[i] + (G.pVis[i] === 1 ? " evaluation" : " evaluations");
+    tip.textContent = "Island " + islLabel(gIsl[G.pGrp[i]]) + " · fitness " + (DS.backend ? (Number.isFinite(G.pf[i]) ? G.pf[i].toFixed(4) : "unavailable") : ((DS.fitSign || 1) * G.pf[i]).toFixed(4)) + " · " + G.pVis[i] + (G.pVis[i] === 1 ? " visit" : " visits");
     tip.style.transform = "translate(" + Math.min(x + 14, r.width - 250) + "px," + (y + 14) + "px)";
   }
   canvas.addEventListener("pointerleave", () => { $("hover-tip").hidden = true; });
@@ -1143,10 +1163,24 @@ export function mountStnViewer(root, cfg) {
     const box = $("ins-body"), title = $("ins-title"), x = $("ins-x");
     if (i < 0 || !G || i >= G.nodeCount) {
       selected = -1;
-      title.textContent = "Click a node to inspect it";
+      title.textContent = "Cluster inspection";
       x.hidden = true;
-      box.innerHTML = '<p class="ins-empty">Click any node to inspect the cluster behind it ' +
-        '&mdash; genome, fitness, how many evaluations landed there, and who shares it.</p>';
+      box.innerHTML = '<p class="ins-empty">Select a node to inspect fitness, evaluation counts, genome hash and island membership.</p>';
+      return;
+    }
+    if (DS.backend) {
+      const node=G.nodes[i],g=G.pGrp[i];
+      title.innerHTML='<i style="background:' + hex(groupColour(g)) + '"></i>Island ' + esc(islLabel(gIsl[g])) + ' &middot; node ' + esc(node.id);
+      x.hidden=false;
+      const value=v=>v===null||v===undefined?'Unavailable':esc(v);
+      box.innerHTML=(node.overall_best?row('best','RUN BEST'):node.island_best?row('best','ISLAND BEST'):'')+
+        row('genome_hash',value(node.genome_hash))+row('mean fitness',value(node.mean_fitness))+
+        row('best fitness',value(node.best_fitness))+row('percentile',value(node.fitness_percentile))+
+        row('visits',value(node.visits))+row('members',value(node.members))+
+        row('eval index',value(node.first_eval)+' &rarr; '+value(node.last_eval))+
+        row('degree',value(node.in_degree)+' in / '+value(node.out_degree)+' out')+
+        row('islands here',value(node.islands_sharing)+' of '+DS.isl)+
+        row('migration',node.migration_endpoint?'endpoint of a migration':'not a migration endpoint');
       return;
     }
     const g = G.pGrp[i], isl = islLabel(gIsl[g]), run = gRun[g];
@@ -1235,7 +1269,8 @@ export function mountStnViewer(root, cfg) {
   });
   toggle("contest", "contest");
   toggle("b-sel", "selMark");
-  toggle("t-edges", "edges", () => updateStats());
+  toggle("t-edges", "edges", () => {buildMigrationGeometry();updateStats();});
+  toggle("include-hidden-migrations", "includeHiddenPaths", () => buildMigrationGeometry());
   toggle("b-isl", "bestIsl");
   toggle("b-run", "bestRun");
   // Group by island: islands pulled fully apart into their own patches, laid
@@ -1296,7 +1331,7 @@ export function mountStnViewer(root, cfg) {
     const pct = G.edgeCount && state.edges ? (drawnEdges / G.edgeCount * 100) : 0;
     $("k-pct").innerHTML = pct.toFixed(0) + '<small> %</small>';
     $("k-share").innerHTML = G.overlap.toFixed(2) + '<small> of ' + NG + '</small>';
-    $("k-mig").textContent = fmt(G.mig.length);
+    $("k-mig").textContent = fmt(DS.backend ? G.mig.reduce((sum,m)=>sum+m.count,0) : G.mig.length);
     $("meta-run").textContent = DS.title || "";
     const lv = $("meta-level");
     lv.textContent = DS.levelNote || "";
@@ -1343,6 +1378,41 @@ export function mountStnViewer(root, cfg) {
       note.style.display = "none";
       startLoop();
     }, 30);
+  }
+
+  // Backend runs arrive as finished graphs or a sequence of SSE deltas. Rebuild
+  // GPU buffers in place; retain camera, filters and selection across updates.
+  function setBackendGraph(graph, runId='') {
+    if (!alive || !graph?.nodes?.size) return;
+    const oldGroups=DS?.backend ? new Map(DS.islandIds.map((id,i)=>[id,state.grpOn[i]])) : new Map();
+    const oldRoutes=DS?.backend ? new Map(G.routes.map((route,i)=>[
+      `${DS.islandIds[route.sg]}:${DS.islandIds[route.dg]}`,state.routesOn[i]])) : new Map();
+    const selectedId=DS?.backend&&selected>=0 ? G.nodes[selected]?.id : null;
+    const previousNodes=DS?.backend?G.nodes:[];
+    const previousFly=flyNode,previousZoom=zoomNode;
+    const first=!DS?.backend;
+    const adapted=backendViewerGraph(graph,runId);
+    if(previousFly>=0){flyNode=remapBackendAnchor(previousNodes,adapted.idIndex,previousFly);if(flyNode<0)flyFrames=0;}
+    if(previousZoom>=0){zoomNode=remapBackendAnchor(previousNodes,adapted.idIndex,previousZoom);if(zoomNode<0)zoomTarget=0;}
+    DS=adapted.DS;G=adapted.G;NG=DS.isl;gRun=DS.gRun;gIsl=DS.gIsl;
+    state.grpOn=DS.islandIds.map(id=>oldGroups.get(id)??true);
+    state.routesOn=G.routes.map(route=>oldRoutes.get(`${DS.islandIds[route.sg]}:${DS.islandIds[route.dg]}`)??true);
+    edgeGain=G.edgeCount>=200000?1:Math.min(12,Math.sqrt(250000/Math.max(G.edgeCount,1)));
+    nodeGain=Math.min(4,edgeGain);
+    $("grp-agg").hidden=true;
+    $("z-isle").textContent="GENOME";
+    HEIGHT_NAMES[2]="genome depth";
+    $("s-wt").max=Math.max(4,Math.min(24,Math.round(G.maxW*.25)));
+    if(first){
+      state.wt=1;$("s-wt").value=1;$("s-wt").defaultValue=1;
+      $("v-wt").textContent=GE+" 1 visit";
+      $("cap").textContent="Backend-derived evaluation clusters, trajectory edges, migration routes and genome-space positions.";
+      $("ins-body").innerHTML='<p class="ins-empty">Select a cluster to inspect fitness, visits, members and genome hash.</p>';
+    }
+    computeOffsets();buildGeometry();buildIndex();buildSelectors();syncSelectors();buildMarks();syncHeight();updateStats();
+    select(selectedId===null?-1:(adapted.idIndex.get(selectedId)??-1));
+    note.style.display="none";
+    startLoop();
   }
 
   /* ── frame ───────────────────────────────────────────────────── */
@@ -1410,7 +1480,7 @@ export function mountStnViewer(root, cfg) {
     }
     for (let k = 0; k < G.routes.length && k < MAXG * 2; k++) {
       const rt = G.routes[k];
-      routeArr[k] = (state.routesOn[k] && grpVisible(rt.sg) && grpVisible(rt.dg)) ? 1 : 0;
+      routeArr[k] = migrationVisible({routeEnabled:state.routesOn[k],sourceVisible:!!grpVisible(rt.sg),targetVisible:!!grpVisible(rt.dg),includeHiddenPaths:state.includeHiddenPaths}) ? 1 : 0;
       const cs = groupColour(rt.sg), cd = groupColour(rt.dg);
       routeSrc[k * 3] = cs[0]; routeSrc[k * 3 + 1] = cs[1]; routeSrc[k * 3 + 2] = cs[2];
       routeDst[k * 3] = cd[0]; routeDst[k * 3 + 1] = cd[1]; routeDst[k * 3 + 2] = cd[2];
@@ -1544,10 +1614,11 @@ export function mountStnViewer(root, cfg) {
   }
 
   window.addEventListener("resize", resize);
-  setTimeout(() => loadDataset(cfg.start || 0), 40);
+  if (!cfg.backend) setTimeout(() => loadDataset(cfg.start || 0), 40);
 
   return {
     loadDataset,
+    setBackendGraph,
     destroy() {
       alive = false;
       cancelAnimationFrame(raf);
