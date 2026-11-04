@@ -1,7 +1,7 @@
 import React from 'react';
 
 export default function AboutPage(){
-  return <section className="about-page"><header className="page-head"><h1>About</h1><p className="question">Explaining what a distributed evolutionary algorithm actually did.</p></header>
-    <div className="prose narrow"><p>Archipelago shows how islands searched and what changed when individuals migrated between them. The backend runs the algorithm, clusters evaluations and supplies graph nodes, paths, migrations and island separation data.</p><p>Open <b>Runs</b> to start a backend run. Open <b>Archipelago</b> to explore its search trajectory network. <b>Scale study</b> uses generated data to exercise the same viewer at a larger scale.</p><p>In the graph, drag to rotate, scroll to zoom and click a node to inspect its backend values. Use the right-side controls to separate islands, filter paths, inspect migration routes and jump to best clusters.</p></div>
+  return <section className="about-page"><header className="page-head"><h1>About</h1><p className="question">Visual analysis of distributed evolutionary search.</p></header>
+    <div className="prose narrow"><p>Archipelago represents island-model evolutionary search as a clustered search trajectory network. Backend analysis provides evaluation clusters, trajectory edges, migration routes, fitness statistics and inter-island separation.</p><p><b>Runs</b> configures execution and clustering. <b>Archipelago</b> presents the resulting network; migration and clustering views report run-specific statistics. <b>Explainability</b> attributes recorded fitness improvement to islands and directed migration routes using lineage-based Shapley values.</p><p>Graph controls support island and path filtering, migration visibility, metric-based height encoding and cluster inspection. Camera controls: drag to rotate, scroll to zoom and select a node to inspect its attributes.</p></div>
   </section>;
 }

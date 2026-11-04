@@ -1,6 +1,6 @@
 import { isRunId } from './recent-runs.js';
-export const RUN_VIEWS=[['archipelago','Archipelago'],['migration','Migration'],['convergence','Convergence'],['diagnostics','Clustering'],['run','Run details'],['configuration','Run configuration']];
-const pages = new Set(['library','study','about',...RUN_VIEWS.map(([page])=>page)]);
+export const RUN_VIEWS=[['archipelago','Archipelago'],['migration','Migration'],['convergence','Convergence'],['diagnostics','Clustering'],['explainability','Explainability'],['run','Run details'],['configuration','Run configuration']];
+const pages = new Set(['library','about',...RUN_VIEWS.map(([page])=>page)]);
 export function readRoute(hash) {
   const [raw,query] = String(hash || '').replace(/^#/, '').split('?');
   const page = pages.has(raw) ? raw : 'library';

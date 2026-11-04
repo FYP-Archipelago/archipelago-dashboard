@@ -10,7 +10,7 @@ const HOST=process.env.HOST||'127.0.0.1';
 const DIST_ROOT=path.resolve(import.meta.dirname,'../dist');
 const json=(res,value,status=200)=>{res.writeHead(status,{'content-type':'application/json; charset=utf-8'});res.end(JSON.stringify(value));};
 const fail=(res,error,status=400)=>json(res,{error:String(error.message||error)},status);
-const MIME={'.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.svg':'image/svg+xml','.png':'image/png','.jpg':'image/jpeg','.jpeg':'image/jpeg','.ico':'image/x-icon','.woff2':'font/woff2'};
+const MIME={'.html':'text/html; charset=utf-8','.json':'application/json; charset=utf-8','.js':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.svg':'image/svg+xml','.png':'image/png','.jpg':'image/jpeg','.jpeg':'image/jpeg','.ico':'image/x-icon','.woff2':'font/woff2'};
 
 async function staticFile(req, res, pathname) {
   if (req.method !== 'GET' && req.method !== 'HEAD') return fail(res, 'Not found', 404);

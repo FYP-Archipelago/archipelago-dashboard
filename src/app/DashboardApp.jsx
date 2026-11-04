@@ -7,8 +7,8 @@ import { readRoute, runHash, RUN_VIEWS } from '../runs/navigation.js';
 import useRunLibrary, { browserStorage } from './useRunLibrary.js';
 import RunBrowserSidebar from './RunBrowserSidebar.jsx';
 import RunConfiguration from './RunConfiguration.jsx';
-import StudyPage from './StudyPage.jsx';
 import AboutPage from './AboutPage.jsx';
+import ExplainabilityPage from '../explainability/ExplainabilityPage.jsx';
 import './workspace.css';
 
 export default function DashboardApp({api=backendApi,storage=browserStorage(),Workspace=RunWorkspace}) {
@@ -36,14 +36,14 @@ export default function DashboardApp({api=backendApi,storage=browserStorage(),Wo
   return <div className="app workspace-shell">
     <header className="workspace-topbar">
       <div className="brand"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true"><path d="M3 17L8 6l5 9 5-12 3 14"/></svg><span>Archipelago</span></div>
-      <nav aria-label="Dashboard views">{RUN_VIEWS.map(([page,label])=><button type="button" key={page} disabled={busy||!selectedRunId} title={!selectedRunId?'Start or select a run to open this view':undefined} className={route.runId&&route.page===page?'active':''} aria-current={route.runId&&route.page===page?'page':undefined} onClick={()=>navigate(runHash(selectedRunId,page))}>{label}</button>)}<button type="button" className={route.page==='study'?'active':''} onClick={()=>navigate('#study')}>Scale study</button><button type="button" className={route.page==='library'?'active':''} onClick={newRun}>Runs</button><button type="button" className={route.page==='about'?'active':''} onClick={()=>navigate('#about')}>About</button></nav>
+      <nav aria-label="Dashboard views">{RUN_VIEWS.map(([page,label])=><button type="button" key={page} disabled={busy||(!selectedRunId&&page!=='explainability')} title={!selectedRunId&&page!=='explainability'?'Start or select a run to open this view':undefined} className={route.page===page?'active':''} aria-current={route.page===page?'page':undefined} onClick={()=>navigate(selectedRunId?runHash(selectedRunId,page):`#${page}`)}>{label}</button>)}<button type="button" className={route.page==='library'?'active':''} onClick={newRun}>Runs</button><button type="button" className={route.page==='about'?'active':''} onClick={()=>navigate('#about')}>About</button></nav>
       <label className="top-run-select">Run <select aria-label="Select run" value={selectedRunId||''} onChange={event=>event.target.value?openRun(event.target.value):newRun()}><option value="">Select a run</option>{selectedRunId&&!library.entries.some(entry=>entry.run_id===selectedRunId)&&<option value={selectedRunId}>{selectedRunId}</option>}{library.entries.map(entry=><option key={entry.run_id} value={entry.run_id}>{entry.run_id}</option>)}</select></label>
     </header>
     <main className="workspace-main">
       {warning&&<div className="notice" role="status">{warning}</div>}
       <div hidden={route.page!=='library'} className="runs-home"><RunsPage api={api} onOpenRun={openRun} onBusyChange={setBusy} canStart={!!library.backendKey&&!library.loading}/><RunBrowserSidebar library={library} selectedId={route.runId} onOpenRun={openRun} onNewRun={newRun} busy={busy}/></div>
-      {route.page==='study'&&<StudyPage/>}
       {route.page==='about'&&<AboutPage/>}
+      {route.page==='explainability'&&<ExplainabilityPage runId={route.runId} onSelectRun={id=>navigate(runHash(id,'explainability'))}/>}
       {route.runId&&route.page==='configuration'&&<RunConfiguration configuration={configuration} runId={route.runId}/>}
       {route.runId&&['archipelago','migration','convergence','diagnostics','run'].includes(route.page)&&<Workspace runId={route.runId} api={api} onBack={newRun} warning="" view={route.page}/>}
       <footer>Archipelago · Distributed evolutionary search</footer>

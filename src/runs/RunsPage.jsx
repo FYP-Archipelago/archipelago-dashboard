@@ -58,7 +58,7 @@ export default function RunsPage({api=backendApi,onOpenRun,onBusyChange,canStart
     finally{submitting.current=false;if(mounted.current)setBusy(false);}
   };
   return <div className="runs-page">
-    <header className="page-head"><h1>Start a new run</h1><p className="question">Choose the search settings. The backend executes and clusters the run.</p></header>
+    <header className="page-head"><h1>Start a new run</h1><p className="question">Evolutionary search configuration and clustering parameters.</p></header>
     <div className="backend-connection" role="status" aria-live="polite"><span className={`status-dot ${health.state==='connected'?'online':''}`}/><strong>{health.state==='connected'?'Backend connected':health.state==='checking'?'Checking backend…':'Backend unavailable'}</strong><button type="button" onClick={()=>setRetry(value=>value+1)} disabled={busy}>Retry connection</button></div>
     {health.message&&<div className="notice error" role="alert">{health.message}</div>}
     {loading&&<p role="status">Loading presets…</p>}
@@ -70,13 +70,13 @@ export default function RunsPage({api=backendApi,onOpenRun,onBusyChange,canStart
         <div className="preset-tags"><span>{selected.algorithm.toUpperCase()}</span><span>{selected.benchmark.replaceAll('_',' ')}</span><span>Defaults supplied by runner</span></div>
         <h3>Runner settings</h3>
         <div className="param-grid">{Object.entries(catalog.overrides).map(([key,rule])=><OverrideField key={`${preset}:${key}`} name={key} rule={rule} value={Object.hasOwn(values,key)?values[key]:selected.defaults[key]} onChange={value=>changeValue(key,value)} error={errors[key]}/>)}</div>
-        <p className="caption">Blank runner seed uses automatic seeding. Asynchronous migration can still change the outcome of a seeded run.</p>
+        <p className="caption">An unspecified seed enables automatic seeding. Asynchronous migration prevents deterministic replay from the seed alone.</p>
         <ClusteringControls value={clustering} onChange={setClustering} errors={errors}/>
         <section className="run-display-mode" aria-labelledby="display-mode-title"><h3 id="display-mode-title">Display mode</h3>
           <label className="check"><input id="live-updates" name="stream-mode" type="radio" checked={stream} onChange={()=>setStream(true)}/>Live updates</label>
-          <p className="caption">Request clustered graph updates while the search progresses.</p>
+          <p className="caption">Incremental clustered graph updates during execution.</p>
           <label className="check"><input id="final-only" name="stream-mode" type="radio" checked={!stream} onChange={()=>setStream(false)}/>Final result only</label>
-          <p className="caption">Cluster after the search finishes. The backend saves the completed result in either mode.</p>
+          <p className="caption">Batch clustering after execution. Final results are persisted in both modes.</p>
         </section>
         {submitError&&<div className="notice error" role="alert">{submitError}</div>}
         {!canStart&&<p className="caption" role="status">Waiting for the run browser to identify this backend. Use “Retry run browser” if it is unavailable.</p>}

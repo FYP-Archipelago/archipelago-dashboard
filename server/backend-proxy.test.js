@@ -4,10 +4,24 @@ import http from 'node:http';
 import { once } from 'node:events';
 import { proxyBackend, backendIdentity } from './backend-proxy.js';
 import { handler } from './index.js';
+import {mkdir,writeFile,rm} from 'node:fs/promises';
 
 async function listen(handler) {const server=http.createServer(handler);server.listen(0,'127.0.0.1');await once(server,'listening');return server;}
 const url=server=>`http://127.0.0.1:${server.address().port}`;
 const close=server=>{server.closeAllConnections();return new Promise(resolve=>server.close(resolve));};
+
+test('built explanation artifacts are served as JSON for the explanation client',async()=>{
+  const folder=new URL('../dist/',import.meta.url),name=`explanation-mime-test-${process.pid}.json`;
+  const file=new URL(name,folder);
+  await mkdir(folder,{recursive:true});await writeFile(file,'{"schema_version":1}');
+  const dashboard=await listen(handler);
+  try{
+    const response=await fetch(url(dashboard)+'/'+name);
+    assert.equal(response.status,200);
+    assert.match(response.headers.get('content-type'),/^application\/json/);
+    assert.deepEqual(await response.json(),{schema_version:1});
+  }finally{await close(dashboard);await rm(file,{force:true});}
+});
 
 test('backend identity follows the actual upstream without credentials or URL ambiguity',()=>{
   assert.equal(backendIdentity('http://localhost:8000/'),'http://localhost:8000');

@@ -256,7 +256,7 @@ const TEMPLATE = `
             <button class="btn-wide" id="b-run" aria-pressed="true">Run bests</button>
             <button class="btn-wide" id="contest" aria-pressed="false">Contested clusters</button>
             <button class="btn-wide" id="b-sel" aria-pressed="true">Selection marker</button>
-            <p class="hint">Migrations follow visible islands and paths by default. Enable hidden-path migrations to inspect exchanges beyond the current filters, including a migration-only view.</p>
+            <p class="hint">Migration visibility follows island and path filters. Hidden-path migrations can be enabled independently.</p>
           </div>
           </div>
         </details>
@@ -281,7 +281,7 @@ const TEMPLATE = `
               <div class="grp-h" style="margin-top:10px"><span>Separate runs</span><b id="v-exr">0.00</b></div>
               <input type="range" id="s-exr" min="0" max="100" step="1" value="0" aria-label="Run separation">
             </div>
-            <p class="hint">A cluster that splits as you drag was contested; one that slides intact belonged to a single group.</p>
+            <p class="hint">Shared clusters separate by island membership; single-island clusters translate as a unit.</p>
           </div>
           </div>
         </details>
@@ -304,7 +304,7 @@ const TEMPLATE = `
             <div class="grp-h" style="margin-top:10px"><span>Height scale</span><b id="v-hs">1.00</b></div>
             <input type="range" id="s-hs" min="5" max="150" step="5" value="100" aria-label="Height scale">
             <div class="ends"><span>SHORT</span><span>TALL</span></div>
-            <p class="hint">What lifts a cluster. Fitness: better sits lower. Time: later sits higher. Evals, links and shared: more sits higher. Flat lays everything on the ground.</p>
+            <p class="hint">Fitness height decreases with solution quality. Time encodes evaluation progress. Evaluation count, connectivity and island sharing increase with height; flat mode uses a common plane.</p>
           </div>
           </div>
         </details>
@@ -313,7 +313,7 @@ const TEMPLATE = `
           <div class="sec-body">
           <div class="grp">
             <div class="chips grid" id="routes"></div>
-            <p class="hint">One chip per source&rarr;destination route. Shift-click solos a route to trace a single exchange.</p>
+            <p class="hint">Directed source&rarr;destination routes. Shift-click isolates a route.</p>
           </div>
           </div>
         </details>
@@ -322,7 +322,7 @@ const TEMPLATE = `
           <div class="sec-body">
           <div class="grp">
             <div class="chips" id="bests"></div>
-            <p class="hint">Flies the camera to that cluster and opens it in the inspector. Rings are island bests, diamonds run bests.</p>
+            <p class="hint">Select a best-fitness cluster to focus the camera and inspector. Rings mark island bests; diamonds mark run bests.</p>
           </div>
           </div>
         </details>
@@ -354,8 +354,8 @@ const TEMPLATE = `
       <div class="hover-tip" id="hover-tip" hidden></div>
       <div class="selmark" id="selmark" hidden><i></i><i></i><i></i><i></i></div>
       <div class="inspect" id="inspect">
-        <div class="ins-h"><b id="ins-title">Click a node to inspect it</b><button id="ins-x" aria-label="Clear selection" hidden>&times;</button></div>
-        <div class="ins-body" id="ins-body"><p class="ins-empty">Click any node to inspect the cluster behind it &mdash; genome, fitness, how many evaluations landed there, and which islands share it.</p></div>
+        <div class="ins-h"><b id="ins-title">Cluster inspection</b><button id="ins-x" aria-label="Clear selection" hidden>&times;</button></div>
+        <div class="ins-body" id="ins-body"><p class="ins-empty">Select a node to inspect fitness, evaluation counts, genome hash and island membership.</p></div>
       </div>
     </div>
 
@@ -374,7 +374,7 @@ const TEMPLATE = `
 </div>`;
 
 const CAP =
-  "It opens <b>merged</b> &mdash; every island where the search actually put it. Click any node to read the cluster behind it. Pull <b>Separation</b> right to pull the islands into their own funnels; the clusters that split apart were the contested ones. Height is fitness on one pooled percentile scale; position is a shared 2D projection of the genome space, fitted once over the whole run. Trajectory edges are parent&rarr;child lineage within an island.";
+  "Shared genome-space projection with pooled fitness percentiles. Island separation offsets reveal shared-cluster membership. Trajectory edges encode within-island parent&rarr;child relationships.";
 
 /**
  * Mount the viewer into ``root``.
@@ -1163,10 +1163,9 @@ export function mountStnViewer(root, cfg) {
     const box = $("ins-body"), title = $("ins-title"), x = $("ins-x");
     if (i < 0 || !G || i >= G.nodeCount) {
       selected = -1;
-      title.textContent = "Click a node to inspect it";
+      title.textContent = "Cluster inspection";
       x.hidden = true;
-      box.innerHTML = '<p class="ins-empty">Click any node to inspect the cluster behind it ' +
-        '&mdash; genome, fitness, how many evaluations landed there, and who shares it.</p>';
+      box.innerHTML = '<p class="ins-empty">Select a node to inspect fitness, evaluation counts, genome hash and island membership.</p>';
       return;
     }
     if (DS.backend) {
@@ -1403,8 +1402,8 @@ export function mountStnViewer(root, cfg) {
     if(first){
       state.wt=1;$("s-wt").value=1;$("s-wt").defaultValue=1;
       $("v-wt").textContent=GE+" 1 visit";
-      $("cap").textContent="The backend supplies clustered nodes, lineage edges, migrations and genome positions.";
-      $("ins-body").innerHTML='<p class="ins-empty">Click a backend cluster to inspect its fitness, visits, members and genome hash.</p>';
+      $("cap").textContent="Backend-derived evaluation clusters, trajectory edges, migration routes and genome-space positions.";
+      $("ins-body").innerHTML='<p class="ins-empty">Select a cluster to inspect fitness, visits, members and genome hash.</p>';
     }
     computeOffsets();buildGeometry();buildIndex();buildSelectors();syncSelectors();buildMarks();syncHeight();updateStats();
     select(selectedId===null?-1:(adapted.idIndex.get(selectedId)??-1));

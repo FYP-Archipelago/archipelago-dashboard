@@ -5,12 +5,12 @@ import { rememberRun,readRecentRuns } from '../runs/recent-runs.js';
 const Dashboard=await compile('src/app/DashboardApp.jsx');
 const Workspace=({runId})=>React.createElement('p',null,`Selected ${runId}`);
 
-test('dashboard retains run browser and original study/about navigation without unsupported upload controls',async()=>{
+test('dashboard retains run browser and About without retired Scale study or upload controls',async()=>{
   const view=await mount(Dashboard,{api:makeApi(),Workspace});
   try{
     assert.ok(document.querySelector('aside[aria-label="Run browser"]'));
     assert.match(document.body.textContent,/Start a new run/);
-    assert.ok(button('Scale study'));
+    assert.equal(button('Scale study'),undefined);
     assert.ok(button('About'));
     assert.doesNotMatch(document.body.textContent,/Upload an existing run|Local file library/);
     for(const label of ['Migration','Convergence','Clustering','Run details'])assert.ok(button(label).disabled);

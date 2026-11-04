@@ -11,8 +11,13 @@ test('backend IDs survive refresh and current-run tabs',()=>{
   assert.throws(()=>runHash('bad/id'),/run ID/);
   assert.throws(()=>runHash(id,'study'),/view/);
 });
-test('Scale and About remain standalone while backend analysis retains the current run',()=>{
-  assert.deepEqual(readRoute('#study'),{page:'study',runId:null});
+test('retired Scale route falls back to Runs while About remains standalone',()=>{
+  assert.deepEqual(readRoute('#study'),{page:'library',runId:null});
   assert.deepEqual(readRoute('#about'),{page:'about',runId:null});
   for(const page of ['migration','convergence','diagnostics','run'])assert.deepEqual(readRoute(runHash(id,page)),{page,runId:id});
+});
+
+test('Explainability opens without a backend selection and preserves an explicit run ID',()=>{
+  assert.deepEqual(readRoute('#explainability'),{page:'explainability',runId:null});
+  assert.deepEqual(readRoute(runHash(id,'explainability')),{page:'explainability',runId:id});
 });
