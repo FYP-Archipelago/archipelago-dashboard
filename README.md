@@ -16,13 +16,15 @@ Vite serves the UI, uncached `/api/backend-config` metadata and the fixed-target
 
 ## Use the dashboard
 
-1. Start the backend, Postgres, Redis, clustering workers and runner using [the local integration guide](../local-integration/README.md). Start this dashboard with `npm run dev` and open <http://127.0.0.1:5173>.
+1. Start the backend, Postgres, Redis, clustering workers and runner using [the backend setup instructions](https://github.com/FYP-Archipelago/archipelago-backend#readme). Start this dashboard with `npm run dev` and open <http://127.0.0.1:5173>.
 2. On **Runs**, choose a backend preset and adjust the runner and clustering settings. Choose **Live updates** to see graph updates while the runner works, or **Final result only** to view the graph after clustering finishes. Click **Start run**.
 3. The accepted `run_id` opens the **Archipelago** view. Status and connection text show queued, running, clustering, done or failed. The original WebGL viewer uses the backend's clustered nodes, lineage edges, migrations, positions and best flags. The view buttons **Overview**, **By island**, **Migration only**, **Shared ground** and **Best solution** control the original viewer. Its right rail contains island, path, height, migration, best marker and appearance controls. Drag to orbit, shift/right-drag to pan, scroll to zoom and click a node for backend details.
 4. The top tabs provide aggregate **Migration** routes, **Clustering** diagnostics and MMD island separation, **Run details**, and accepted **Run configuration**. **Explainability** presents lineage-based Shapley attribution for available local recordings; see [the analysis guide](docs/local-explainability.md) for its data requirements and current backend boundary. **About** describes the analysis views. The backend does not currently provide a fitness-over-generation series or per-migration timing, so **Convergence** and detailed timing remain unavailable.
 5. Refresh to reopen a saved result. The **Run** selector and the **Runs** page remember up to 30 IDs in this browser for the selected backend. You can also paste a known ID into the run browser. This is not a server-wide run list.
 
 Run creation is not automatically retried if its response is lost, because the backend may already have accepted the run. Save the returned `run_id` when testing.
+
+Active runs expose **Cancel run**. Cancellation uses the backend's acknowledged status, including completion races, and remains available if the event stream disconnects. **Run details** includes live/final layout method and retained-variance diagnostics. See [the integration status report](docs/integration-status-2026-11-04.md) for verified scope, real-stack acceptance checks and remaining backend capabilities.
 
 ## Removed legacy paths
 

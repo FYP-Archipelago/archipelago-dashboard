@@ -1,5 +1,10 @@
 // Adapt the backend's already clustered graph to the original WebGL viewer.
 // IDs stay in `nodes` so a live rebuild can restore the selected node.
+export function remapBackendAnchor(previousNodes,nextIndex,offset) {
+  const id=previousNodes?.[offset]?.id;
+  return id===undefined?-1:(nextIndex.get(id)??-1);
+}
+
 export function backendViewerGraph(graph, runId='') {
   const nodes=[...graph.nodes.values()].sort((a,b)=>a.id-b.id);
   const islandIds=[...new Set(nodes.map(node=>node.island))].sort((a,b)=>a-b);

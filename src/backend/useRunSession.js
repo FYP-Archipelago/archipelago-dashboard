@@ -1,11 +1,14 @@
-import {useEffect,useState} from 'react';
+import {useEffect,useRef,useState} from 'react';
 import {applyGraphDelta,emptyGraph,graphFromResult} from './graph-model.js';
 
-const initial = (runId) => ({runId,status:'loading',connection:'connecting',graph:emptyGraph(),result:null,layout:null,clustering:null,malformedRows:0,warnings:[],error:''});
+const initial = (runId) => ({runId,status:'loading',connection:'connecting',graph:emptyGraph(),result:null,layout:null,clustering:null,malformedRows:0,warnings:[],error:'',cancelPending:false,cancelError:'',cancelNotice:''});
 const message = error => error instanceof Error ? error.message : String(error);
 const nativeEventSource = target => new EventSource(target);
 
 function validateMetadata(value) {
+  const finite=number=>typeof number==='number'&&Number.isFinite(number);
+  const integer=number=>Number.isSafeInteger(number)&&number>=0;
+  if(value.layout!=null&&(!['pca','mds','none'].includes(value.layout.method)||!['variance_kept_2d','variance_kept_3d'].every(key=>finite(value.layout[key]))))throw Error('Backend sent invalid layout metadata.');
   if(value.warnings!==undefined&&(!Array.isArray(value.warnings)||!value.warnings.every(item=>typeof item==='string')))throw Error('Backend sent invalid warnings.');
   if(value.clustering!=null){
     const c=value.clustering;
@@ -16,18 +19,21 @@ function validateMetadata(value) {
     for(const [name,fields] of Object.entries({pairs:['a','b','mmd2','p'],windows:['from_generation','typical_distance'],window_pairs:['window','a','b','mmd2']})){
       const table=value.separation[name];
       if(!table||fields.some(field=>!Array.isArray(table[field])||table[field].length!==table[fields[0]].length))throw Error('Backend sent invalid separation metadata.');
+      for(const field of fields)if(!table[field].every(item=>['a','b','window','from_generation'].includes(field)?integer(item):finite(item)))throw Error('Backend sent invalid separation metadata.');
     }
+    if(value.separation.pairs.p.some(p=>p<0||p>1)||value.separation.window_pairs.window.some(index=>index>=value.separation.windows.from_generation.length))throw Error('Backend sent invalid separation metadata.');
   }
 }
 
 export default function useRunSession({runId,api,eventSourceFactory=nativeEventSource}) {
   const [state,setState] = useState(()=>initial(runId));
   const [retry,setRetry] = useState(0);
+  const cancelAction=useRef(null);
   useEffect(()=>{
-    let active=true,source=null,attempts=0,timer=null;
+    let active=true,source=null,attempts=0,timer=null,cancelling=false;
     const abort=new AbortController();
     setState(initial(runId));
-    let graphState=emptyGraph(),acceptingEvents=true,failedStatus=false;
+    let graphState=emptyGraph(),acceptingEvents=true,failedStatus=false,terminal=false;
     const patch=change=>{if(active)setState(current=>({...current,...change}));};
     const finish=result=>{
       if(!active)return;
@@ -36,7 +42,7 @@ export default function useRunSession({runId,api,eventSourceFactory=nativeEventS
         validateMetadata(result);
         const graph=graphFromResult(result);
         patch({status:'done',connection:'closed',graph,result,layout:result.layout,clustering:result.clustering,malformedRows:result.malformed_rows,warnings:result.warnings||[],error:''});
-        acceptingEvents=false;source?.close();
+        acceptingEvents=false;terminal=true;source?.close();
       } catch(error) {acceptingEvents=false;patch({connection:'closed',error:message(error)});source?.close();}
     };
     const loadResult=async ({terminal=false}={})=>{
@@ -52,6 +58,26 @@ export default function useRunSession({runId,api,eventSourceFactory=nativeEventS
         patch({connection:'closed',error:message(error)});source?.close();return true;
       }
     };
+    const cancel=async()=>{
+      if(!active||cancelling||terminal)return;
+      cancelling=true;patch({cancelPending:true,cancelError:'',cancelNotice:''});
+      try{
+        const response=await api.cancelRun(runId,{signal:abort.signal});
+        if(!active)return;
+        if(terminal){patch({cancelPending:false});return;}
+        if(response?.run_id!==runId||!['queued','running','clustering','done','failed','cancelled'].includes(response.status))throw Error('Backend returned an invalid cancellation response.');
+        patch({cancelPending:false});
+        if(response.status==='done'){
+          acceptingEvents=false;terminal=true;source?.close();patch({status:'done',connection:'loading result',error:''});await loadResult({terminal:true});
+        }else if(response.status==='cancelled'||response.status==='failed'){
+          acceptingEvents=false;terminal=true;failedStatus=false;clearTimeout(timer);source?.close();
+          const failure=response.error;
+          patch({status:response.status,connection:'closed',error:response.status==='failed'?`${failure?.phase?failure.phase+': ':''}${failure?.message||'Run failed.'}`:''});
+        }else patch({cancelNotice:`Cancellation was not confirmed. Backend status: ${response.status}.`});
+      }catch(error){if(active)patch({cancelPending:false,cancelError:terminal?'':message(error)});}
+      finally{cancelling=false;}
+    };
+    cancelAction.current=cancel;
     const parse=(event,label)=>{try{return JSON.parse(event.data);}catch{throw Error(`Backend sent an invalid ${label} event.`);}};
     const start=async()=>{
       if (await loadResult() || !active) return;
@@ -64,6 +90,7 @@ export default function useRunSession({runId,api,eventSourceFactory=nativeEventS
           const {status}=parse(event,'status');
           if(!['queued','running','clustering','done','failed','cancelled'].includes(status))throw Error('Backend sent an invalid status event.');
           patch({status,connection:'connected'});
+          if(['done','failed','cancelled'].includes(status))terminal=true;
           if(status==='done') {acceptingEvents=false;source.close();patch({connection:'loading result'});loadResult({terminal:true});}
           if(status==='failed') {
             acceptingEvents=false;failedStatus=true;
@@ -94,7 +121,11 @@ export default function useRunSession({runId,api,eventSourceFactory=nativeEventS
         if(!active||(!acceptingEvents&&!failedStatus))return;
         if(failedStatus){clearTimeout(timer);failedStatus=false;acceptingEvents=false;if(!event.data){source.close();patch({connection:'closed',error:'Run failed. The event stream closed before error details arrived.'});return;}}
         if(event.data) {
-          try {const failure=parse(event,'error');patch({status:'failed',connection:'closed',error:`${failure.phase ? failure.phase+': ' : ''}${failure.message||'Run failed.'}`});}
+          try {
+            const failure=parse(event,'error');
+            if(!failure||typeof failure.message!=='string'||(failure.phase!==undefined&&typeof failure.phase!=='string'))throw Error('Backend sent an invalid error event.');
+            terminal=true;patch({status:'failed',connection:'closed',error:`${failure.phase ? failure.phase+': ' : ''}${failure.message||'Run failed.'}`});
+          }
           catch(error){patch({error:message(error),connection:'closed'});}
           acceptingEvents=false;source.close();
         } else if(source.readyState===2){acceptingEvents=false;patch({connection:'closed',error:'Event stream closed. Retry the connection to reload this run.'});}
@@ -102,7 +133,7 @@ export default function useRunSession({runId,api,eventSourceFactory=nativeEventS
       });
     };
     start();
-    return()=>{active=false;abort.abort();clearTimeout(timer);source?.close();};
+    return()=>{active=false;abort.abort();clearTimeout(timer);source?.close();if(cancelAction.current===cancel)cancelAction.current=null;};
   },[runId,api,eventSourceFactory,retry]);
-  return {...(state.runId===runId?state:initial(runId)),retry:()=>setRetry(value=>value+1)};
+  return {...(state.runId===runId?state:initial(runId)),retry:()=>setRetry(value=>value+1),cancelRun:()=>cancelAction.current?.()};
 }

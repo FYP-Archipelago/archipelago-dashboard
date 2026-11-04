@@ -4,10 +4,12 @@ Goal: publish the reviewed Shapley and frontend work to `feat/backend-run-workfl
 
 Constraints: preserve the original graph renderer and professional copy, remove Scale navigation, keep scientific calculations in Python, preserve dirty sibling backend edits, run no Docker tests, and do not fabricate APIs or unavailable analytics.
 
-- [ ] Verify remote refs and API contracts; record actual new commits rather than assuming another merge is needed.
-- [ ] Bring the published demo's undefined-run startup fix into Shapley, include the two public attribution artifacts for review without raw log files, and run existing Python/JS checks before committing and pushing own branch.
-- [ ] Review merged streaming, batch-result fallback, run transitions, malformed payload handling, inspection and diagnostics against current backend contracts. Add regression cases for confirmed failures and implement fixes.
-- [ ] Run non-Docker verification, review the final diff, update integration PR/status documentation and push only own branch. Leave shared integration and main refs unchanged.
+- [x] Verify remote refs and API contracts; record actual new commits rather than assuming another merge is needed.
+- [x] Bring the published demo's undefined-run startup fix into Shapley, include the two public attribution artifacts for review without raw log files, and run existing Python/JS checks before committing and pushing own branch.
+- [x] Review merged streaming, batch-result fallback, run transitions, malformed payload handling, inspection and diagnostics against current backend contracts. Add regression cases for confirmed failures and implement fixes.
+- [x] Run non-Docker verification, review the final diff, update integration PR/status documentation and push only own branch. Leave shared integration and main refs unchanged.
+
+Outcome: see `docs/integration-status-2026-11-04.md` for exact implemented scope, verification evidence and remaining backend/real-stack work.
 
 Remote audit: frontend Person 2 branch remains `95a20d7`, merged in PR #11 (`f596cd0`) and included in current HEAD `ecf62ad`. Backend remains `91d41a8`. Integration target has no commits absent from the working branch (0 behind / 15 ahead before this pass).
 

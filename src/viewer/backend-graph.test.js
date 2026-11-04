@@ -1,6 +1,15 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {backendViewerGraph} from './backend-graph.js';
+import {backendViewerGraph,remapBackendAnchor} from './backend-graph.js';
+
+test('camera anchors retain stable backend IDs when preceding nodes disappear',()=>{
+  const old=[{id:10},{id:20},{id:30}];
+  const next=new Map([[20,0],[30,1]]);
+  assert.equal(remapBackendAnchor(old,next,2),1);
+  assert.equal(remapBackendAnchor(old,next,1),0);
+  assert.equal(remapBackendAnchor(old,next,0),-1);
+  assert.equal(remapBackendAnchor(old,next,-1),-1);
+});
 
 test('backend graph keeps stable IDs, island labels, best markers and migration counts',()=>{
   const nodes=new Map([

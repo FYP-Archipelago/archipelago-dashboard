@@ -1,5 +1,5 @@
 import {migrationVisible,MIGRATION_VISIBILITY_DEFAULTS} from './visibility.js';
-import {backendViewerGraph} from './backend-graph.js';
+import {backendViewerGraph,remapBackendAnchor} from './backend-graph.js';
 
 /* Archipelago STN viewer — WebGL2, no libraries.
  *
@@ -1388,8 +1388,12 @@ export function mountStnViewer(root, cfg) {
     const oldRoutes=DS?.backend ? new Map(G.routes.map((route,i)=>[
       `${DS.islandIds[route.sg]}:${DS.islandIds[route.dg]}`,state.routesOn[i]])) : new Map();
     const selectedId=DS?.backend&&selected>=0 ? G.nodes[selected]?.id : null;
+    const previousNodes=DS?.backend?G.nodes:[];
+    const previousFly=flyNode,previousZoom=zoomNode;
     const first=!DS?.backend;
     const adapted=backendViewerGraph(graph,runId);
+    if(previousFly>=0){flyNode=remapBackendAnchor(previousNodes,adapted.idIndex,previousFly);if(flyNode<0)flyFrames=0;}
+    if(previousZoom>=0){zoomNode=remapBackendAnchor(previousNodes,adapted.idIndex,previousZoom);if(zoomNode<0)zoomTarget=0;}
     DS=adapted.DS;G=adapted.G;NG=DS.isl;gRun=DS.gRun;gIsl=DS.gIsl;
     state.grpOn=DS.islandIds.map(id=>oldGroups.get(id)??true);
     state.routesOn=G.routes.map(route=>oldRoutes.get(`${DS.islandIds[route.sg]}:${DS.islandIds[route.dg]}`)??true);

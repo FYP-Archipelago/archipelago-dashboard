@@ -1,12 +1,10 @@
+import {nodeTable,links,result,delta} from '../../test-support/backend-fixture.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {compile,mount,act,dom,runId,click,button} from '../../test-support/dom.js';
 
 const Workspace=await compile('src/backend/RunWorkspace.jsx');
 dom.window.HTMLCanvasElement.prototype.getContext=()=>null;
-const nodeTable=ids=>({id:ids,island:ids.map((_,i)=>i),x:ids.map((_,i)=>i),y:ids.map(()=>0),z:ids.map(()=>0),visits:ids.map(()=>1),members:ids.map(()=>2),mean_fitness:ids.map(()=>3),best_fitness:ids.map(()=>4),fitness_percentile:ids.map(()=>50),progress:ids.map(()=>0.5),first_eval:ids.map(()=>0),last_eval:ids.map(()=>1),in_degree:ids.map(()=>0),out_degree:ids.map(()=>0),islands_sharing:ids.map(()=>1),island_best:ids.map(()=>false),overall_best:ids.map(()=>false),migration_endpoint:ids.map(()=>false),genome_hash:ids.map(id=>`hash-${id}`),weight:null});
-const links=(ids,source,target,field)=>({id:ids,source,target,[field]:ids.map(()=>2)});
-const result={run:{run_id:runId,algorithm:'DE',benchmark:'rastrigin',migration_topology:'ring',islands:[0,1],maximising:false},layout:{method:'pca',variance_kept_2d:.8,variance_kept_3d:.9},graph:{nodes:nodeTable([10,20]),edges:links([1],[10],[20],'weight'),migrations:links([2],[10],[20],'count'),overlap:1.1},clustering:{stages:['lsh','birch'],counts:{evaluations:200,rows_clustered:200,nodes:2,faded_nodes:null},resolved:{birch_threshold:.3,denstream_epsilon:null},diagnostics:{birch:{clusters:2}},elapsed_seconds:1.2},separation:{method:'mmd-random-fourier-features',typical_distance:.7,pairs:{a:[0],b:[1],mmd2:[.4],p:[.01]},windows:{from_generation:[0],typical_distance:[.6]},window_pairs:{window:[0],a:[0],b:[1],mmd2:[.3]}},malformed_rows:1,warnings:['one malformed row']};
 
 class FakeSource {
   constructor(url){this.url=url;this.listeners=new Map();this.closed=false;}
@@ -14,8 +12,101 @@ class FakeSource {
   emit(name,data){this.listeners.get(name)?.({data:JSON.stringify(data)});}
   close(){this.closed=true;}
 }
-const delta=()=>({new_nodes:nodeTable([]),updated_nodes:{id:[]},percentiles:{id:[]},weights:null,positions:null,removed_nodes:[],new_edges:links([],[],[],'weight'),edge_updates:{id:[]},new_migrations:links([],[],[],'count'),migration_updates:{id:[]},island_best:[],overall_best:null,overlap:0});
 const pendingApi=()=>({url:path=>path,result:async()=>{throw Object.assign(Error('no result: run is running'),{status:404});}});
+
+test('run details display final and live backend layout diagnostics',async()=>{
+  const final=await mount(Workspace,{runId,api:{url:p=>p,result:async()=>result},view:'run'});
+  try{assert.match(document.body.textContent,/Layout/);assert.match(document.body.textContent,/PCA/);assert.match(document.body.textContent,/80%/);}finally{await final.close();}
+  let source;const live=await mount(Workspace,{runId,api:pendingApi(),view:'run',eventSourceFactory:()=>source=new FakeSource('')});
+  try{
+    await act(async()=>source.emit('update',{status:'live',graph:delta(),layout:{method:'mds',variance_kept_2d:.7,variance_kept_3d:.85}}));
+    assert.match(document.body.textContent,/MDS/);assert.match(document.body.textContent,/85%/);
+  }finally{await live.close();}
+});
+
+test('done status does not claim a final result before persisted data is validated',async()=>{
+  let source,resolve,calls=0;const waiting=new Promise(r=>{resolve=r;});
+  const api={url:p=>p,result:()=>calls++?waiting:Promise.reject(Object.assign(Error('no result'),{status:404}))};
+  const view=await mount(Workspace,{runId,api,view:'run',eventSourceFactory:()=>source=new FakeSource('')});
+  try{
+    await act(async()=>source.emit('status',{status:'done'}));
+    assert.doesNotMatch(document.body.textContent,/Final result loaded/);assert.match(document.body.textContent,/Loading final result/);
+    await act(async()=>resolve({graph:null}));
+    assert.doesNotMatch(document.body.textContent,/Final result loaded/);assert.ok(button('Retry connection'));
+  }finally{await view.close();}
+});
+
+test('cancellation submits once, retains graph and ignores late successful events',async()=>{
+  let source,resolve,calls=0;const response=new Promise(r=>{resolve=r;});
+  const api={...pendingApi(),cancelRun:()=>{calls++;return response;}};
+  const view=await mount(Workspace,{runId,api,view:'run',eventSourceFactory:()=>source=new FakeSource('')});
+  try{
+    await act(async()=>source.emit('status',{status:'running'}));await click(button('Cancel run'));
+    assert.equal(calls,1);assert.ok(button('Cancelling…').disabled);
+    await act(async()=>resolve({run_id:runId,status:'cancelled'}));
+    assert.match(document.body.textContent,/Status: cancelled/);assert.ok(source.closed);
+    await act(async()=>source.emit('final',result));assert.doesNotMatch(document.body.textContent,/Final result loaded/);
+  }finally{await view.close();}
+});
+
+test('cancellation failure is retryable and a completion race loads the actual result',async()=>{
+  let source,cancels=0,reads=0;
+  const api={url:p=>p,result:async()=>{if(!reads++)throw Object.assign(Error('no result'),{status:404});return result;},cancelRun:async()=>{if(!cancels++)throw Error('runner offline');return {run_id:runId,status:'done'};}};
+  const view=await mount(Workspace,{runId,api,view:'run',eventSourceFactory:()=>source=new FakeSource('')});
+  try{
+    await act(async()=>source.emit('status',{status:'running'}));await click(button('Cancel run'));
+    assert.match(document.body.textContent,/runner offline/);assert.ok(!button('Cancel run').disabled);
+    await click(button('Cancel run'));assert.match(document.body.textContent,/Final result loaded/);assert.match(document.body.textContent,/Status: done/);
+  }finally{await view.close();}
+});
+
+test('cancellation response from a previous run cannot modify the new run',async()=>{
+  let source,resolve;const response=new Promise(r=>{resolve=r;});
+  const api={...pendingApi(),cancelRun:()=>response};
+  const view=await mount(Workspace,{runId,api,view:'run',eventSourceFactory:()=>source=new FakeSource('')});
+  try{
+    await act(async()=>source.emit('status',{status:'running'}));await click(button('Cancel run'));
+    await view.rerender({runId:'run-20261104T120000Z-11223344'});
+    await act(async()=>source.emit('status',{status:'running'}));await act(async()=>resolve({run_id:runId,status:'cancelled'}));
+    assert.match(document.body.textContent,/Status: running/);assert.doesNotMatch(document.body.textContent,/Status: cancelled/);
+  }finally{await view.close();}
+});
+
+test('REST cancellation remains available after the event stream closes',async()=>{
+  let source,calls=0;
+  const view=await mount(Workspace,{runId,api:{...pendingApi(),cancelRun:async()=>{calls++;return {run_id:runId,status:'cancelled'};}},view:'run',eventSourceFactory:()=>source=new FakeSource('')});
+  try{
+    await act(async()=>source.emit('status',{status:'running'}));source.readyState=2;await act(async()=>source.listeners.get('error')({}));
+    await click(button('Cancel run'));assert.equal(calls,1);assert.match(document.body.textContent,/Status: cancelled/);
+  }finally{await view.close();}
+});
+
+test('a stream error cannot discard an acknowledged in-flight cancellation',async()=>{
+  let source,resolve;const response=new Promise(r=>{resolve=r;});
+  const view=await mount(Workspace,{runId,api:{...pendingApi(),cancelRun:()=>response},view:'run',eventSourceFactory:()=>source=new FakeSource('')});
+  try{
+    await act(async()=>source.emit('status',{status:'running'}));await click(button('Cancel run'));
+    await act(async()=>source.emit('update',{status:'live',graph:{bad:true}}));
+    await act(async()=>resolve({run_id:runId,status:'cancelled'}));assert.match(document.body.textContent,/Status: cancelled/);
+  }finally{await view.close();}
+});
+
+test('malformed backend error data does not disable REST cancellation',async()=>{
+  let source,calls=0;
+  const view=await mount(Workspace,{runId,api:{...pendingApi(),cancelRun:async()=>{calls++;return {run_id:runId,status:'cancelled'};}},view:'run',eventSourceFactory:()=>source=new FakeSource('')});
+  try{
+    await act(async()=>source.emit('status',{status:'running'}));await act(async()=>source.emit('error',null));
+    await click(button('Cancel run'));assert.equal(calls,1);assert.match(document.body.textContent,/Status: cancelled/);
+  }finally{await view.close();}
+});
+
+test('malformed separation row values are rejected before React diagnostics rendering',async()=>{
+  let source;const view=await mount(Workspace,{runId,api:pendingApi(),view:'diagnostics',eventSourceFactory:()=>source=new FakeSource('')});
+  try{
+    await act(async()=>source.emit('final',{...result,separation:{...result.separation,pairs:{...result.separation.pairs,a:[{}]}}}));
+    assert.match(document.body.textContent,/invalid separation/);assert.ok(button('Retry connection'));
+  }finally{await view.close();}
+});
 
 test('malformed updates and statuses produce recoverable errors instead of unmounting the workspace',async()=>{
   let source;const view=await mount(Workspace,{runId,api:pendingApi(),onBack(){},view:'run',eventSourceFactory:()=>source=new FakeSource('')});

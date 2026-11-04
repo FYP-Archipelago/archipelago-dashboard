@@ -5,6 +5,17 @@ import { createBackendClient, BackendError } from './api.js';
 const run = {run_id:'run-20261102T120000Z-aabbccdd',status:'queued',stream:true,preset:'de_rastrigin',overrides:{},clustering:{birch:true},error:null};
 const reply = (value, status=200) => new Response(JSON.stringify(value), {status,headers:{'content-type':'application/json'}});
 
+test('cancel validates run identity and preserves terminal completion races',async()=>{
+  for(const value of [{...run,status:'cancelled'},{...run,status:'done'}]){
+    let options;
+    const api=createBackendClient({fetchImpl:async(_,request)=>{options=request;return reply(value,202);}});
+    assert.deepEqual(await api.cancelRun(run.run_id),value);assert.equal(options.method,'POST');
+  }
+  for(const value of [{...run,run_id:'other'},{...run,status:'finished'}]){
+    await assert.rejects(createBackendClient({fetchImpl:async()=>reply(value)}).cancelRun(run.run_id),/invalid cancellation response/);
+  }
+});
+
 test('current backend uses its own namespace and preserves the real create response', async () => {
   const calls=[];
   const api=createBackendClient({baseUrl:'/backend/',fetchImpl:async (url,options)=>{calls.push([url,options]);return reply(run,202);}});

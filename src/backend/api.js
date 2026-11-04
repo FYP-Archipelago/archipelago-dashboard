@@ -63,7 +63,11 @@ export function createBackendClient({baseUrl='/backend', identityUrl, fetchImpl=
     health: options => request('/health', options),
     presets: options => request('/presets', options),
     result: (runId, options) => request(`/runs/${encodeURIComponent(runId)}/result`, options),
-    cancelRun: runId => request(`/runs/${encodeURIComponent(runId)}/cancel`, {method:'POST'}),
+    async cancelRun(runId, options={}) {
+      const value=await request(`/runs/${encodeURIComponent(runId)}/cancel`, {...options,method:'POST'});
+      if(value?.run_id!==runId||!STATUSES.has(value.status))throw new BackendError('Backend returned an invalid cancellation response.');
+      return value;
+    },
     async createRun(body) {
       const value = await request('/runs', {method:'POST', body});
       if (!value || typeof value.run_id !== 'string' || !/^run-\d{8}T\d{6}Z-[a-f0-9]{8}$/.test(value.run_id) || !STATUSES.has(value.status)) {
