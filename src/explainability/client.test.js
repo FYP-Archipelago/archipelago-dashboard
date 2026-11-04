@@ -21,6 +21,13 @@ test('artifact validation rejects mismatched run IDs and corrupt games',async()=
   }
 });
 
+test('nested malformed artifacts produce a validation error rather than a renderer crash',async()=>{
+  for(const mutate of [a=>{a.games.islands={...game,coalitions:[null]};},a=>{a.games.routes={...game,examples:[null]};},a=>{a.games.routes={...game,examples:[{id:'x',steps:[null]}]};},a=>{a.source=[];},a=>{a.coverage=[];}]){
+    const value=artifact();mutate(value);
+    await assert.rejects(createExplanationClient({fetchImpl:async()=>response(value)}).run(id),/malformed|another run/);
+  }
+});
+
 test('malformed index metadata cannot reach run selector rendering',async()=>{
   for(const value of [{schema_version:1,runs:[{run_id:id,benchmark:{bad:true}}],errors:[]},{schema_version:1,runs:[],errors:[{run_id:id,detail:{bad:true}}]}]){
     await assert.rejects(createExplanationClient({fetchImpl:async()=>response(value)}).index(),/Unsupported explanation index/);

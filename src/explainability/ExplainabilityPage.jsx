@@ -1,5 +1,5 @@
 import React,{useEffect,useState} from 'react';
-import {explanationClient} from './client.js';
+import {explanationClient,SAMPLE_EXPLANATION_IDS,validateExplanation,validateExplanationResponse} from './client.js';
 import './explainability.css';
 
 const number=new Intl.NumberFormat('en',{maximumFractionDigits:4});
@@ -64,7 +64,7 @@ function Attribution({data}) {
   </div>;
 }
 
-export default function ExplainabilityPage({runId,client=explanationClient,onSelectRun=()=>{}}) {
+export default function ExplainabilityPage({runId,api,client=explanationClient,onSelectRun=()=>{}}) {
   const [index,setIndex]=useState(null),[state,setState]=useState(null),[indexError,setIndexError]=useState(''),[retry,setRetry]=useState(0);
   useEffect(()=>{
     const controller=new AbortController();let active=true;
@@ -72,20 +72,43 @@ export default function ExplainabilityPage({runId,client=explanationClient,onSel
     client.index({signal:controller.signal}).then(value=>{if(active)setIndex(value);}).catch(error=>{if(active)setIndexError(error.message);});
     return()=>{active=false;controller.abort();};
   },[client,retry]);
-  const available=index?.runs.some(run=>run.run_id===runId);
+  const sampleSelected=SAMPLE_EXPLANATION_IDS.has(runId);
+  const useBackend=!!api&&!!runId&&!sampleSelected;
+  const available=!!index?.runs.some(run=>run.run_id===runId);
+  const loadSample=!!runId&&(sampleSelected||(!api&&available));
   useEffect(()=>{
     setState(null);
-    if(!available)return;
-    const controller=new AbortController();let active=true;
-    client.run(runId,{signal:controller.signal}).then(data=>{if(active)setState({id:runId,data});}).catch(error=>{if(active)setState({id:runId,error:error.message});});
-    return()=>{active=false;controller.abort();};
-  },[runId,available,client,retry]);
-  const data=state&&state.id===runId?state.data:null,error=state&&state.id===runId?state.error:null;
+    if(!useBackend&&!loadSample)return;
+    const controller=new AbortController();let active=true,timer;
+    const update=value=>{if(active)setState({id:runId,api,client,retry,...value});};
+    async function load() {
+      try{
+        if(useBackend){
+          const response=await api.explanation(runId,{signal:controller.signal});
+          if(!active)return;
+          validateExplanationResponse(response,runId);
+          update({status:response.status,detail:response.detail,data:response.status==='ready'?response.explanation:undefined});
+          if(response.status==='pending')timer=setTimeout(load,2000);
+        }else{
+          const data=await client.run(runId,{signal:controller.signal});
+          if(!active)return;
+          update({status:'ready',data:validateExplanation(data,runId)});
+        }
+      }catch(error){update({error:error.message||'Could not load the explanation. Retry to request it again.'});}
+    }
+    load();
+    return()=>{active=false;clearTimeout(timer);controller.abort();};
+  },[runId,useBackend,loadSample,api,client,retry]);
+  const current=state&&state.id===runId&&state.api===api&&state.client===client&&state.retry===retry?state:null;
+  const data=current?.data,error=current?.error;
+  const samples=index?.runs.filter(run=>!api||SAMPLE_EXPLANATION_IDS.has(run.run_id))||[];
+  const selectedSource=samples.some(run=>run.run_id===runId)?runId:'';
   return <div className="page explainability-page">
     <header className="ex-heading"><div><h1>Explainability</h1><p className="question">Lineage-based Shapley attribution of fitness improvement.</p></div></header>
-    <div className="ex-source"><div><strong>Recorded lineage</strong><p>Local evaluation records with individual parent references.</p></div><label>Analysis source <select name="explanation-run" value={available?runId:''} disabled={!index} onChange={e=>{if(e.target.value)onSelectRun(e.target.value);}}><option value="">Select a recorded run</option>{index?.runs.map(run=><option key={run.run_id} value={run.run_id}>{run.run_id} · {run.islands} islands · {run.benchmark}</option>)}</select></label></div>
-    {indexError?<div className="notice" role="alert">{indexError} <button className="secondary" onClick={()=>setRetry(x=>x+1)}>Retry</button><p>Prepare local attribution artifacts with <code>npm run explainability:prepare</code>.</p></div>:!index?<p role="status">Loading attribution index…</p>:!available?<div className="ex-card ex-unavailable"><h2>{runId?'Individual ancestry unavailable':'No attribution dataset selected'}</h2><p>{runId&&<><code>{runId}</code><br/></>}No persisted individual-lineage attribution is available for the selected run. Available local recordings are listed above.</p><p>Cluster-level links are insufficient to reconstruct complete individual ancestry. Automatic run attribution requires a persisted analysis of raw evaluation records.</p>{index.errors.length>0&&<details><summary>{index.errors.length} local recordings unavailable</summary>{index.errors.map(entry=><p key={entry.run_id}><code>{entry.run_id}</code> {entry.detail}</p>)}</details>}</div>:error?<div className="notice" role="alert">{error} <button className="secondary" onClick={()=>setRetry(x=>x+1)}>Retry</button></div>:!data?<p role="status">Loading recorded attribution…</p>:<>
-      <p className="ex-run-meta"><code>{data.run_id}</code><span>{data.source?.algorithm} · {data.source?.benchmark} · {data.source?.topology}</span></p>
+    <div className="ex-source"><div><strong>{useBackend?'Backend lineage':sampleSelected||api?'Sample recording':'Recorded lineage'}</strong><p>{useBackend?<>Persisted individual lineage from the selected backend{api.baseUrl?<> · <code>{api.baseUrl}</code></>:null}.</>:sampleSelected||api?'Versioned sample recordings with individual parent references.':'Local evaluation records with individual parent references.'}</p></div><label>Sample recordings <select name="explanation-run" value={selectedSource} disabled={!samples.length} onChange={e=>{if(e.target.value)onSelectRun(e.target.value);}}><option value="">{useBackend?'Viewing the selected backend run':'Select a recorded run'}</option>{samples.map(run=><option key={run.run_id} value={run.run_id}>Sample recording · {run.run_id} · {run.islands} islands · {run.benchmark}</option>)}</select></label></div>
+    {api&&indexError&&<p className="ex-description">Sample recordings unavailable: {indexError} <button className="secondary" onClick={()=>setRetry(x=>x+1)}>Retry samples</button></p>}
+    {!api&&indexError?<div className="notice" role="alert">{indexError} <button className="secondary" onClick={()=>setRetry(x=>x+1)}>Retry</button><p>Prepare sample attribution artifacts with <code>npm run explainability:prepare</code>.</p></div>:!api&&!index?<p role="status">Loading attribution index…</p>:!runId||(!useBackend&&!loadSample)?<div className="ex-card ex-unavailable"><h2>{runId?'Individual ancestry unavailable':'No attribution dataset selected'}</h2><p>{runId&&<><code>{runId}</code><br/></>}No persisted individual-lineage attribution is available for the selected run. Available sample recordings are listed above.</p><p>Cluster-level links are insufficient to reconstruct complete individual ancestry.</p>{!!index?.errors.length&&<details><summary>{index.errors.length} local recordings unavailable</summary>{index.errors.map(entry=><p key={entry.run_id}><code>{entry.run_id}</code> {entry.detail}</p>)}</details>}</div>:error?<div className="notice" role="alert">{error} <button className="secondary" onClick={()=>setRetry(x=>x+1)}>Retry</button></div>:current?.status==='unavailable'?<div className="ex-card ex-unavailable"><h2>Individual ancestry unavailable</h2><p><code>{runId}</code></p><p>{current.detail}</p></div>:!data?<p role="status">{current?.status==='pending'?current.detail:'Loading recorded attribution…'}</p>:<>
+      <p className="ex-run-meta"><code>{data.run_id}</code><span>{useBackend?'Backend analysis':'Sample recording'} · {data.source?.algorithm} · {data.source?.benchmark} · {data.source?.topology}</span></p>
       {data.warnings.map(message=><div className="notice" role="status" key={message}>{message}</div>)}
       <Attribution key={data.run_id} data={data}/>
     </>}

@@ -5,6 +5,8 @@ const percent=value=>finite(value)&&value>=0&&value<=100.000001;
 const positive=value=>finite(value)&&value>=0;
 const count=value=>Number.isSafeInteger(value)&&value>=0;
 const optionalText=value=>value==null||typeof value==='string';
+const record=value=>value!==null&&typeof value==='object'&&!Array.isArray(value);
+export const SAMPLE_EXPLANATION_IDS=new Set(['run-20260903T230838Z-4891f68f','run-20260903T230942Z-c7f38cc1']);
 const validPlayer=p=>p&&typeof p.id==='string'&&typeof p.label==='string'&&positive(p.value)&&positive(p.standard_error)&&percent(p.share_percent)&&percent(p.bar_percent);
 function validGame(game) {
   if(!game||!['exact','permutation-sampling'].includes(game.method)||!Array.isArray(game.players)||game.players.length>64||!game.players.every(validPlayer))return false;
@@ -12,8 +14,23 @@ function validGame(game) {
     (game.method==='permutation-sampling'&&(!count(game.permutations)||game.permutations<2)))return false;
   const ids=new Set(game.players.map(p=>p.id));
   return ids.size===game.players.length&&['empty_value','full_value','allocated_gain','evaluated_coalitions'].every(key=>positive(game[key]))&&finite(game.efficiency_error)&&
-    Array.isArray(game.coalitions)&&game.coalitions.length<=1024&&game.coalitions.every(c=>typeof c.id==='string'&&Array.isArray(c.players)&&c.players.every(id=>ids.has(id))&&positive(c.value)&&percent(c.value_percent))&&
-    Array.isArray(game.examples)&&game.examples.every(example=>typeof example.id==='string'&&Array.isArray(example.steps)&&example.steps.every(s=>ids.has(s.player_id)&&typeof s.label==='string'&&['before','after','marginal'].every(key=>positive(s[key]))&&percent(s.bar_percent)));
+    Array.isArray(game.coalitions)&&game.coalitions.length<=1024&&game.coalitions.every(c=>record(c)&&typeof c.id==='string'&&Array.isArray(c.players)&&c.players.every(id=>ids.has(id))&&positive(c.value)&&percent(c.value_percent))&&
+    Array.isArray(game.examples)&&game.examples.every(example=>record(example)&&typeof example.id==='string'&&Array.isArray(example.steps)&&example.steps.every(s=>record(s)&&ids.has(s.player_id)&&typeof s.label==='string'&&['before','after','marginal'].every(key=>positive(s[key]))&&percent(s.bar_percent)));
+}
+
+export function validateExplanation(value,id) {
+  if(!isRunId(id)||value?.schema_version!==1||value.run_id!==id||typeof value.maximising!=='boolean'||!['baseline_fitness','observed_best_fitness','supported_best_fitness'].every(key=>finite(value[key]))||
+    !record(value.coverage)||!['total','supported','excluded'].every(key=>count(value.coverage[key]))||!percent(value.coverage.percent)||!Array.isArray(value.warnings)||!value.warnings.every(x=>typeof x==='string')||
+    (value.source!=null&&(!record(value.source)||!optionalText(value.source.kind)||!optionalText(value.source.algorithm)||!optionalText(value.source.benchmark)||!optionalText(value.source.topology)))||
+    !validGame(value.games?.islands)||!validGame(value.games?.routes))throw new Error('The explanation artifact is malformed or belongs to another run.');
+  return value;
+}
+
+export function validateExplanationResponse(value,id) {
+  if(!isRunId(id)||value?.schema_version!==1||value.run_id!==id||!['ready','pending','unavailable'].includes(value.status)||
+    (value.status!=='ready'&&typeof value.detail!=='string'))throw new Error('The backend explanation response is malformed or belongs to another run.');
+  if(value.status==='ready')validateExplanation(value.explanation,id);
+  return value;
 }
 
 export function createExplanationClient({baseUrl='/sample-explanations',fetchImpl=globalThis.fetch}={}) {
@@ -43,11 +60,7 @@ export function createExplanationClient({baseUrl='/sample-explanations',fetchImp
     async run(id,options) {
       if(!isRunId(id))throw new Error('Invalid run ID.');
       const value=await read(`${encodeURIComponent(id)}.json`,options);
-      if(value?.schema_version!==1||value.run_id!==id||typeof value.maximising!=='boolean'||!['baseline_fitness','observed_best_fitness','supported_best_fitness'].every(key=>finite(value[key]))||
-        !value.coverage||!['total','supported','excluded'].every(key=>count(value.coverage[key]))||!percent(value.coverage.percent)||!Array.isArray(value.warnings)||!value.warnings.every(x=>typeof x==='string')||
-        (value.source!=null&&(!optionalText(value.source.algorithm)||!optionalText(value.source.benchmark)||!optionalText(value.source.topology)))||
-        !validGame(value.games?.islands)||!validGame(value.games?.routes))throw new Error('The explanation artifact is malformed or belongs to another run. Regenerate it before opening this run.');
-      return value;
+      return validateExplanation(value,id);
     },
   };
 }

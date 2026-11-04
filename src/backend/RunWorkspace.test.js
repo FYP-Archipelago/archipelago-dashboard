@@ -112,7 +112,7 @@ test('malformed updates and statuses produce recoverable errors instead of unmou
   let source;const view=await mount(Workspace,{runId,api:pendingApi(),onBack(){},view:'run',eventSourceFactory:()=>source=new FakeSource('')});
   try{
     await act(async()=>source.emit('update',{status:'live',graph:{...delta(),new_nodes:{id:[1]}},warnings:[]}));
-    assert.match(document.body.textContent,/missing island/);assert.ok(source.closed);
+    assert.match(document.body.textContent,/missing.*island/);assert.ok(source.closed);
     await click(button('Retry connection'));
     await act(async()=>source.emit('status',{}));
     assert.match(document.body.textContent,/invalid status/);assert.ok(button('Retry connection'));
@@ -194,7 +194,7 @@ test('live status, graph delta, network retry state and final event render in th
     assert.equal(source.url,`/backend/runs/${runId}/events`);
     await act(async()=>source.emit('status',{status:'running'}));
     assert.match(document.body.textContent,/Status: running/);
-    await act(async()=>source.emit('update',{status:'live',layout:result.layout,clustering:result.clustering,malformed_rows:1,warnings:result.warnings,graph:{new_nodes:nodeTable([10,20]),updated_nodes:{id:[]},percentiles:{id:[]},weights:null,positions:null,removed_nodes:[],new_edges:links([1],[10],[20],'weight'),edge_updates:{id:[]},new_migrations:links([2],[10],[20],'count'),migration_updates:{id:[]},island_best:[10],overall_best:20,overlap:1.1}}));
+    await act(async()=>source.emit('update',{status:'live',layout:result.layout,clustering:result.clustering,malformed_rows:1,warnings:result.warnings,graph:{...delta(),new_nodes:nodeTable([10,20]),new_edges:links([1],[10],[20],'weight'),new_migrations:links([2],[10],[20],'count'),island_best:[10],overall_best:20,overlap:1.1}}));
     assert.ok(document.querySelector('[aria-label="Archipelago backend graph"] #gl'));
     assert.match(document.body.textContent,/WEBGL2 UNAVAILABLE/);
     await act(async()=>source.listeners.get('error')({}));
@@ -227,4 +227,76 @@ test('backend failure phase is shown and a pending event stream closes on unmoun
     assert.match(document.body.textContent,/Status: failed/);
     assert.equal(source.closed,true);
   }finally{await view.close();}
+});
+
+test('invalid nested clustering metadata is rejected before diagnostics rendering',async t=>{
+  const cases=[
+    ['counts',{counts:{evaluations:{bad:1}}}],
+    ['resolved settings',{resolved:{birch_threshold:[]}}],
+    ['stage diagnostics',{diagnostics:{birch:{radius:{bad:1}}}}],
+    ['checkpoint arrays',{diagnostics:{denstream:{epsilon_checkpoints:[.1,{}]}}}],
+    ['stage records',{diagnostics:{birch:[]}}],
+    ['elapsed time',{elapsed_seconds:'soon'}],
+  ];
+  for(const [name,change] of cases)await t.test(name,async()=>{
+    let source;const view=await mount(Workspace,{runId,api:pendingApi(),view:'diagnostics',eventSourceFactory:()=>source=new FakeSource('')});
+    try{
+      await act(async()=>source.emit('update',{status:'live',graph:delta(),clustering:{...result.clustering,...change}}));
+      assert.match(document.body.textContent,/invalid clustering metadata/);assert.ok(button('Retry connection'));
+      assert.ok(source.closed);
+    }finally{await view.close();}
+  });
+});
+
+test('run metadata is checked before accepting a saved result',async t=>{
+  for(const [name,run] of [
+    ['nested benchmark',{...result.run,benchmark:{bad:1}}],
+    ['island shape',{...result.run,islands:{length:2}}],
+    ['island values',{...result.run,islands:[{}]}],
+    ['optimisation direction',{...result.run,maximising:'false'}],
+    ['missing identity',{...result.run,run_id:''}],
+  ])await t.test(name,async()=>{
+    const view=await mount(Workspace,{runId,api:{url:p=>p,result:async()=>({...result,run})},view:'run'});
+    try{assert.match(document.body.textContent,/invalid run metadata/);assert.doesNotMatch(document.body.textContent,/Final result loaded/);assert.ok(button('Retry connection'));}finally{await view.close();}
+  });
+});
+
+test('metadata validation preserves nullable values and backend diagnostic value types',async()=>{
+  const data={...result,run:{...result.run,migration_topology:null},clustering:{...result.clustering,diagnostics:{denstream:{epsilon:.2,input_points:2,family:'p_stable',summarised:false,prune_period:null,epsilon_checkpoints:[.1,.2]}}},separation:{...result.separation,typical_distance:null}};
+  const view=await mount(Workspace,{runId,api:{url:p=>p,result:async()=>data},view:'diagnostics'});
+  try{assert.match(document.body.textContent,/Final result loaded/);assert.match(document.body.textContent,/p_stable/);assert.match(document.body.textContent,/0.1, 0.2/);assert.match(document.body.textContent,/Unavailable/);}finally{await view.close();}
+});
+
+test('final results require complete metadata before declaring success',async t=>{
+  for(const field of ['run','layout','clustering','separation','malformed_rows','warnings']){
+    for(const missing of [true,false])await t.test(`${field} ${missing?'missing':'null'}`,async()=>{
+      const data=structuredClone(result);
+      if(missing)delete data[field];else data[field]=null;
+      const view=await mount(Workspace,{runId,api:{url:p=>p,result:async()=>data},view:'run'});
+      try{assert.doesNotMatch(document.body.textContent,/Final result loaded/);assert.ok(button('Retry connection'));}finally{await view.close();}
+    });
+  }
+});
+
+test('final clustering metadata requires its declared fields',async t=>{
+  const paths=[['stages'],['counts'],['resolved'],['diagnostics'],['elapsed_seconds'],
+    ...['evaluations','rows_clustered','nodes','faded_nodes'].map(key=>['counts',key]),
+    ...['birch_threshold','denstream_epsilon','denstream_half_life','lsh_bucket_width'].map(key=>['resolved',key])];
+  for(const path of paths)await t.test(path.join('.'),async()=>{
+    const data=structuredClone(result);let parent=data.clustering;
+    for(const key of path.slice(0,-1))parent=parent[key];delete parent[path.at(-1)];
+    const view=await mount(Workspace,{runId,api:{url:p=>p,result:async()=>data},view:'run'});
+    try{assert.doesNotMatch(document.body.textContent,/Final result loaded/);assert.ok(button('Retry connection'));}finally{await view.close();}
+  });
+});
+
+test('invalid scalar result metadata is recoverable',async t=>{
+  for(const [name,change,label] of [
+    ['malformed row count',{malformed_rows:{}},'malformed row count'],
+    ['separation distance',{separation:{...result.separation,typical_distance:{}}},'separation metadata'],
+    ['separation method',{separation:{...result.separation,method:[]}},'separation metadata'],
+  ])await t.test(name,async()=>{
+    const view=await mount(Workspace,{runId,api:{url:p=>p,result:async()=>({...result,...change})},view:'run'});
+    try{assert.match(document.body.textContent,new RegExp('invalid '+label));assert.doesNotMatch(document.body.textContent,/Final result loaded/);assert.ok(button('Retry connection'));}finally{await view.close();}
+  });
 });

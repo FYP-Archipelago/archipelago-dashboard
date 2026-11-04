@@ -1,3 +1,5 @@
+import { validateExplanationResponse } from '../explainability/client.js';
+
 const STATUSES = new Set(['queued', 'running', 'clustering', 'done', 'failed', 'cancelled']);
 const UNCERTAIN = ' The run may have been accepted. Check the backend before starting it again.';
 
@@ -63,6 +65,9 @@ export function createBackendClient({baseUrl='/backend', identityUrl, fetchImpl=
     health: options => request('/health', options),
     presets: options => request('/presets', options),
     result: (runId, options) => request(`/runs/${encodeURIComponent(runId)}/result`, options),
+    async explanation(runId, options) {
+      return validateExplanationResponse(await request(`/runs/${encodeURIComponent(runId)}/explanation`, options),runId);
+    },
     async cancelRun(runId, options={}) {
       const value=await request(`/runs/${encodeURIComponent(runId)}/cancel`, {...options,method:'POST'});
       if(value?.run_id!==runId||!STATUSES.has(value.status))throw new BackendError('Backend returned an invalid cancellation response.');

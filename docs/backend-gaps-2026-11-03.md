@@ -1,5 +1,7 @@
 # Backend contract gaps — 3 November 2026
 
+Historical audit. The user's 4 November scope explicitly excludes uploads; dashboard #9 was closed as not planned. Shapley analysis and its API are now implemented in backend PR #3 for teammate review. Scale navigation has been removed. See [the current integration status](integration-status-2026-11-04.md) for delivery and acceptance boundaries.
+
 Audited backend `origin/main` at `91d41a8890e47bd0b09e085590786569dedbc802`, particularly `app/routes.py`, `app/models.py`, and the clustering module's Result/Update contracts. This is a contract audit, not a claim that backend container tests or real runner execution were performed. Docker checks were explicitly excluded.
 
 ## Implemented already
@@ -10,7 +12,7 @@ Presets and allowed overrides, run creation with streaming/batch configuration, 
 
 | Priority / purpose | Missing backend capability | Dashboard consequence |
 |---|---|---|
-| Required for upload workflow | Existing-run upload endpoint, documented file/config format, validation and persisted compatible run ID | Upload cannot be completed. Tracked in [backend #2](https://github.com/FYP-Archipelago/archipelago-backend/issues/2), with [dashboard #9](https://github.com/FYP-Archipelago/archipelago-dashboard/issues/9). It must cluster logs without restarting the evolutionary runner. |
+| Excluded from current scope | Existing-run upload | No upload tab or workflow is offered. |
 | Needed for full Convergence page | Per-island generation/wall-time fitness and diversity series | Current result has aggregate node fitness and progress, not a generation history. The UI correctly reports unavailable; backend/module must supply a series if this chart is required. |
 | Needed for detailed Migration analysis | Individual send/arrival events, delivery outcomes, timestamps, latency and generation drift | Current graph supplies aggregated route endpoints/counts only. Aggregate route tables work; detailed latency or event timelines cannot be reconstructed in the frontend. |
 | Needed for server-wide browsing | Run-list/history endpoint | Browser history only contains IDs remembered by that browser. It is not a server run library. |
@@ -30,4 +32,4 @@ Run one real streaming search and one final-only search through runner → Redis
 
 Empty graphs and run switches clear old rendered content; same-run nonempty updates retain the viewer. Incoming graph deltas and metadata are validated before React state updates. Malformed data shows a retryable error; failed/cancelled runs reject late successful updates; failed statuses allow a bounded wait for backend failure details. Live counts/diagnostics use SSE metadata. Persisted-result fallback, closed-stream recovery and unmount cleanup have regression coverage.
 
-Scale/synthetic study content restored by the teammate is intentionally untouched in this pass to preserve the requested layout. Its removal remains a product-requirement decision, not a backend capability gap.
+Scale navigation and its route were subsequently removed at the user's request; this is not a backend capability gap.

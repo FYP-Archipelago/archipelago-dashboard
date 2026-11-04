@@ -88,3 +88,17 @@ test('SSE is flushed immediately, forwards Last-Event-ID, and closes upstream on
     abort.abort();await ended;
   }finally{await close(proxy);await close(upstream);}
 });
+
+test('explanation proxy preserves pending status and allows only read access',async()=>{
+  let path;
+  const upstream=await listen((req,res)=>{path=req.url;res.writeHead(202,{'content-type':'application/json'});res.end('{"schema_version":1,"status":"pending"}');});
+  const proxy=await listen((req,res)=>proxyBackend(req,res,{baseUrl:url(upstream)+'/v1'}));
+  const endpoint='/backend/runs/run-20261102T120000Z-aabbccdd/explanation';
+  try{
+    const response=await fetch(url(proxy)+endpoint);
+    assert.equal(response.status,202);assert.equal((await response.json()).status,'pending');
+    assert.equal(path,'/v1/runs/run-20261102T120000Z-aabbccdd/explanation');
+    assert.equal((await fetch(url(proxy)+endpoint,{method:'POST'})).status,404);
+    assert.equal((await fetch(url(proxy)+endpoint+'/extra')).status,404);
+  }finally{await close(proxy);await close(upstream);}
+});

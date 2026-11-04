@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import {readFile} from 'node:fs/promises';
 import { createBackendClient, BackendError } from './api.js';
 
 const run = {run_id:'run-20261102T120000Z-aabbccdd',status:'queued',stream:true,preset:'de_rastrigin',overrides:{},clustering:{birch:true},error:null};
@@ -13,6 +14,31 @@ test('cancel validates run identity and preserves terminal completion races',asy
   }
   for(const value of [{...run,run_id:'other'},{...run,status:'finished'}]){
     await assert.rejects(createBackendClient({fetchImpl:async()=>reply(value)}).cancelRun(run.run_id),/invalid cancellation response/);
+  }
+});
+
+test('explanation requests use the current backend and validate readiness and run identity',async()=>{
+  const id=run.run_id,calls=[],controller=new AbortController();
+  for(const status of ['pending','unavailable']){
+    const value={schema_version:1,run_id:id,status,detail:'Recorded lineage is being processed.'};
+    const api=createBackendClient({baseUrl:'http://localhost:8000/service',fetchImpl:async(url,options)=>{calls.push([url,options]);return reply(value,status==='pending'?202:200);}});
+    assert.deepEqual(await api.explanation(id,{signal:controller.signal}),value);
+    assert.equal(calls.at(-1)[0],`http://localhost:8000/service/runs/${id}/explanation`);
+    assert.equal(calls.at(-1)[1].signal.aborted,false);
+  }
+  for(const value of [{schema_version:1,run_id:'wrong',status:'pending',detail:'Wait'}, {schema_version:1,run_id:id,status:'ready'}, {schema_version:1,run_id:id,status:'pending'}, {schema_version:1,run_id:id,status:'finished',detail:'Done'}]){
+    await assert.rejects(createBackendClient({fetchImpl:async()=>reply(value)}).explanation(id),/explanation|another run/i);
+  }
+  await assert.rejects(createBackendClient({fetchImpl:async()=>reply({detail:'Run not found'},404)}).explanation(id),error=>error.status===404&&/Run not found/.test(error.message));
+});
+
+test('ready backend explanations validate the complete versioned artifact before reaching the page',async()=>{
+  const artifact=JSON.parse(await readFile(new URL('../../public/sample-explanations/run-20260903T230838Z-4891f68f.json',import.meta.url),'utf8'));
+  const value={schema_version:1,run_id:artifact.run_id,status:'ready',explanation:artifact};
+  assert.deepEqual(await createBackendClient({fetchImpl:async()=>reply(value)}).explanation(artifact.run_id),value);
+  for(const mutate of [a=>{a.explanation.run_id=run.run_id;},a=>{a.explanation.games.islands.coalitions=[null];},a=>{a.explanation.games.routes.examples=[{id:'x',steps:[null]}];}]){
+    const invalid=structuredClone(value);mutate(invalid);
+    await assert.rejects(createBackendClient({fetchImpl:async()=>reply(invalid)}).explanation(artifact.run_id),/malformed|another run/);
   }
 });
 

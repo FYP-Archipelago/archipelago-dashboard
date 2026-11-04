@@ -1,6 +1,8 @@
-# Local Shapley explainability
+# Shapley explainability
 
-Open the dashboard's **Explainability** tab and select a recorded run under **Analysis source**. Current local recordings include the four-island ring run and five-island fully connected run. These are real evaluation logs, not synthetic dashboard data. The existing clustered graph viewer is unchanged.
+Open **Explainability** for the selected backend run. The dashboard requests `GET /runs/{run_id}/explanation` and polls every two seconds while analysis is pending. Analysis becomes available after Python worker finalization and persistence. Errors expose retry; unsupported or legacy runs display the backend's unavailable reason. Navigating to another run cancels pending requests and polling.
+
+The **Analysis source** selector also offers two explicitly labelled sample recordings: a four-island ring and a five-island fully connected run. These artifacts were computed from real evaluation logs and remain available independently of backend analysis. A backend run never falls back silently to a sample. The existing clustered graph viewer is unchanged.
 
 Prepare or refresh the artifacts from the dashboard directory before starting the server. On Windows, stop the dev server before refreshing: an actively served JSON file can remain locked against atomic replacement.
 
@@ -28,11 +30,13 @@ The fixed baseline is the best recorded initial individual. Only evaluations who
 
 These are observational support scores. They do not predict the behaviour of an optimiser rerun with an island disabled. Recorded dependency does not imply numerical necessity or causal effect. Complete resolution of recorded IDs does not prove all parents or evaluations were logged.
 
-## Current backend boundary
+## Backend analysis and persistence
 
-The current backend's persisted Result keeps aggregated cluster links and node statistics. It lacks individual ancestry, so a newly created backend run cannot automatically populate this prototype. The tab shows an unavailable state for such IDs instead of substituting a local recording.
+The Shapley backend extension ([backend PR #3](https://github.com/FYP-Archipelago/archipelago-backend/pull/3)) collects compact individual lineage during both streaming and final-only processing, including recovery replay. It computes the observational games in Python before raw logs expire, then persists the explanation and graph in the same final-result transaction. Cluster links are not used to reconstruct individual ancestry. The public clustering `Result` schema is unchanged.
 
-The portable implementation is `tools/explainability/lineage.py`, with no web/React dependencies. To enable automatic support, call this logic from the Python clustering worker before raw lineage is discarded, persist its versioned artifact beside the final result, and expose a run-scoped endpoint. Define readiness/error state, source schema version and retention before wiring that endpoint to the UI. The existing `src/explainability/client.js` is the artifact transport adapter; replace that adapter when the backend endpoint exists. No scientific calculation belongs in the browser or the Node proxy.
+The versioned response is `{schema_version: 1, run_id, status, ...}`. Active runs return HTTP 202 with `status: "pending"`; completed analysis returns HTTP 200 with `status: "ready"` and `explanation`; cancelled, failed, legacy or unsupported runs return `status: "unavailable"` and `detail`. Unknown runs return 404. Install the Shapley backend review branch and restart API and workers to enable this endpoint; starting the API applies the additive explanations-table schema. Existing runs are not retroactively analysed.
+
+Backend analysis retains at most 100,000 evaluation records and 64 islands, and caps sampled coalition evaluation work at 50 million record-coalition comparisons. Resource limits produce an unavailable explanation without invalidating the clustered graph. Exact games use at most ten players; larger games use 1,024 deterministic sampled orders. The portable local exporter remains in `tools/explainability/lineage.py`. No scientific calculation belongs in the browser or Node proxy.
 
 The v1 artifact contains `run_id`, fitness direction/baselines, `coverage`, `warnings`, source metadata and two `games`. Each game carries players with value/share/bar percentage/standard error; method, seed and sample count; empty/full/allocated values and efficiency residual; precomputed exact coalitions; and illustrative permutation steps. `index.json` lists supported local run IDs and rejected source directories.
 

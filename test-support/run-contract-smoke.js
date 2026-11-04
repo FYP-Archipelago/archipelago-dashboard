@@ -26,6 +26,7 @@ async function follow(id,consume){
 }
 for(const stream of [true,false]){
   const run=await api.createRun(body(stream));let graph=emptyGraph(),updates=0;
+  assert.equal((await api.explanation(run.run_id)).status,'pending');
   await follow(run.run_id,(type,data)=>{
     if(type==='update'){graph=applyGraphDelta(graph,data.graph);updates++;}
     return type==='final'||(type==='status'&&data.status==='done');
@@ -34,10 +35,14 @@ for(const stream of [true,false]){
   assert.equal(final.run.run_id,run.run_id);assert.equal(saved.nodes.size,2);
   if(stream){assert.ok(updates>0);assert.equal(graph.nodes.size,saved.nodes.size);}else assert.equal(updates,0);
   assert.deepEqual(graphFromResult(await api.result(run.run_id)),saved,'Persisted reopen retains graph identity.');
-  console.log(`${stream?'streaming':'batch'}: POST → HTTP/SSE → persisted GET → reopen passed`);
+  const analysis=await api.explanation(run.run_id);
+  assert.equal(analysis.status,'ready');assert.equal(analysis.explanation.run_id,run.run_id);
+  assert.deepEqual(await api.explanation(run.run_id),analysis,'Persisted explanation reopens with the same run identity.');
+  console.log(`${stream?'streaming':'batch'}: POST → HTTP/SSE → persisted GET → reopen + pending/ready explanation passed`);
 }
 const cancelled=await api.createRun(body(true));
 const ack=await api.cancelRun(cancelled.run_id);assert.equal(ack.status,'cancelled');
 await follow(cancelled.run_id,(type,data)=>type==='status'&&data.status==='cancelled');
 await assert.rejects(api.result(cancelled.run_id),error=>error.status===404&&/cancelled/.test(error.message));
+assert.equal((await api.explanation(cancelled.run_id)).status,'unavailable');
 console.log('cancellation: POST → cancelled SSE → no final result passed');
