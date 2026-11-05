@@ -1,6 +1,7 @@
 import React from 'react';
 import useRunSession from './useRunSession.js';
 import GraphViewer from './GraphViewer.jsx';
+import RecordedConvergence from '../demo/RecordedConvergence.jsx';
 import './run-workspace.css';
 
 const show=value=>value===null||value===undefined?'Unavailable':typeof value==='number'?value.toLocaleString():String(value);
@@ -64,7 +65,7 @@ export default function RunWorkspace({runId,api,onBack,warning='',view='archipel
     {session.error&&<div className="notice run-error" role="alert">{session.error} <button className="secondary" type="button" onClick={session.retry}>Retry connection</button></div>}
     {view==='archipelago'&&<GraphViewer graph={session.graph} runId={runId} canReplay={session.status==='done'}/>}
     {view==='migration'&&<Migration session={session}/>}
-    {view==='convergence'&&<p className="notice">The backend does not provide a fitness-over-generation time series. Inspect the graph's current best fitness and node details instead.</p>}
+    {view==='convergence'&&(api.isDemo?<RecordedConvergence runId={runId} api={api}/>:<p className="notice">The backend does not provide a fitness-over-generation time series. Inspect the graph's current best fitness and node details instead.</p>)}
     {view==='diagnostics'&&<Diagnostics session={session}/>}
     {view==='run'&&<RunDetails session={session} runId={runId}/>}
   </section>;

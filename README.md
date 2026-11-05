@@ -18,16 +18,19 @@ Vite serves the UI, uncached `/api/backend-config` metadata and the fixed-target
 
 ### Hosted recorded demonstration
 
-The Vercel demonstration is built from `feat/backend-integration` with `VITE_RECORDED_DEMO=true`. It preloads two published recordings and exposes the original graph controls, aggregate migrations, clustering/separation diagnostics, recorded settings and Shapley analysis without a backend. It is labelled as a recorded-data demonstration. Run creation and live execution require normal backend mode; the demo never submits or simulates an execution request. Convergence histories and detailed migration timing remain explicitly unavailable.
+The Vercel demonstration is built from `feat/backend-integration` with `VITE_RECORDED_DEMO=true`. It preloads two published recordings and exposes the original graph controls, aggregate migrations, clustering/separation diagnostics, recorded settings, convergence histories and Shapley analysis without a backend. It is labelled as a recorded-data demonstration. Run creation and live execution require normal backend mode; the demo never submits or simulates an execution request. Detailed migration timing remains explicitly unavailable.
 
-`public/recorded-runs` contains final Results computed offline by the current Python module; `public/sample-explanations` contains recorded-lineage attribution. Raw CSV, genomes, local host diagnostics and private logs are not served or uploaded. To regenerate graph artifacts, run `tools/demo/export.py` with the backend's Python environment and installed module from this dashboard directory, then run the exporter tests:
+`public/recorded-runs` contains final Results computed offline by the current Python module; `public/sample-explanations` contains recorded-lineage attribution; `public/recorded-analytics` contains genuine saved generation summaries and Python-prepared chart geometry. Raw CSV, genomes, local host diagnostics and private logs are not served or uploaded. To regenerate graph/history artifacts, use the backend's Python environment from this dashboard directory:
 
 ```powershell
 ../archipelago-shapley-backend/.venv/Scripts/python.exe tools/demo/export.py
+../archipelago-shapley-backend/.venv/Scripts/python.exe tools/demo/analytics.py
 ../archipelago-shapley-backend/.venv/Scripts/python.exe -m unittest discover -s tools/demo -p 'test_*.py'
 ```
 
 For a local demo build, set `VITE_RECORDED_DEMO=true` before `npm run build`, then run `npm start`. Leave the flag unset for real backend integration. The hosted project currently uses explicit CLI production deployments from the integration branch; Vercel Git connection requires repository access in Vercel and is not configured. Production deployment does not change main.
+
+See [the faculty demo guide](docs/faculty-demo-guide.md) for the walkthrough and validity/completeness review points.
 
 ### Connected backend
 

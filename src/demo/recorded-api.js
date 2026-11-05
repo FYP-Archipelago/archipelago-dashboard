@@ -2,6 +2,23 @@ import {acceptedConfiguration,HISTORY_KEY,isRunId} from '../runs/recent-runs.js'
 import {createExplanationClient} from '../explainability/client.js';
 
 const IDENTITY='recorded-demo:v1';
+export function validateRecordedAnalytics(value,id) {
+  const finite=number=>typeof number==='number'&&Number.isFinite(number);
+  const count=number=>Number.isSafeInteger(number)&&number>=0;
+  const metrics=['best_so_far_fitness','mean_fitness','fitness_std','diversity','evaluations'];
+  const valid=value?.schema_version===1&&value.run_id===id&&value.source==='recorded-generation-summaries'&&typeof value.maximising==='boolean'&&
+    Array.isArray(value.islands)&&value.islands.length>0&&value.islands.every(island=>count(island.island_id)&&Array.isArray(island.series)&&island.series.length>0&&island.series.every((row,index)=>
+      count(row.generation)&&finite(row.best_fitness)&&(!index||row.generation>island.series[index-1].generation)&&metrics.every(key=>row[key]===undefined||(key==='evaluations'?count(row[key]):finite(row[key])))))&&
+    new Set(value.islands.map(island=>island.island_id)).size===value.islands.length;
+  const chart=value?.chart;
+  if(!valid||!chart||!finite(chart.width)||chart.width<=0||!finite(chart.height)||chart.height<=0||!['best_so_far_fitness','best_fitness'].includes(chart.metric)||
+    !Array.isArray(chart.x_ticks)||!chart.x_ticks.length||!chart.x_ticks.every(t=>finite(t.x)&&t.x>=0&&t.x<=chart.width&&typeof t.label==='string')||
+    !Array.isArray(chart.y_ticks)||!chart.y_ticks.length||!chart.y_ticks.every(t=>finite(t.y)&&t.y>=0&&t.y<=chart.height&&typeof t.label==='string')||
+    !Array.isArray(chart.lines)||chart.lines.length!==value.islands.length||new Set(chart.lines.map(line=>line.island_id)).size!==chart.lines.length||
+    !chart.lines.every(line=>{const island=value.islands.find(item=>item.island_id===line.island_id);return island&&Array.isArray(line.points)&&line.points.length===island.series.length&&line.points.every(point=>finite(point.x)&&point.x>=0&&point.x<=chart.width&&finite(point.y)&&point.y>=0&&point.y<=chart.height);})||
+    (chart.metric==='best_so_far_fitness'&&value.islands.some(island=>island.series.some(row=>!finite(row.best_so_far_fitness)))))throw Error('Published recorded history is malformed or belongs to another run.');
+  return value;
+}
 export function recordingStorage(recordings,backend=IDENTITY) {
   const values=new Map([[HISTORY_KEY,JSON.stringify({version:1,runs:recordings.map(entry=>({backend,run_id:entry.run_id,preset:entry.label,at:entry.recorded_at,source:'manual',configuration:entry.configuration}))})]]);
   return {getItem:key=>values.get(key)??null,setItem:(key,value)=>values.set(key,String(value))};
@@ -10,10 +27,10 @@ export function recordingStorage(recordings,backend=IDENTITY) {
 export function createRecordedApi({fetchImpl=globalThis.fetch,baseUrl='/recorded-runs'}={}) {
   const samples=createExplanationClient({fetchImpl});
   let catalog;
-  async function read(file,{signal}={}) {
+  async function read(file,{signal}={},root=baseUrl) {
     signal?.throwIfAborted();
     const timeout=AbortSignal.timeout(15000);
-    const response=await fetchImpl(`${baseUrl}/${file}`,{signal:signal?AbortSignal.any([signal,timeout]):timeout,cache:'no-store'});
+    const response=await fetchImpl(`${root}/${file}`,{signal:signal?AbortSignal.any([signal,timeout]):timeout,cache:'no-store'});
     if(!response.ok||!response.headers.get('content-type')?.includes('application/json'))throw Error('Published recording data is unavailable. Retry loading the demonstration.');
     return response.json();
   }
@@ -40,6 +57,7 @@ export function createRecordedApi({fetchImpl=globalThis.fetch,baseUrl='/recorded
       return value;
     },
     async explanation(id,options) {await requireRun(id,options);return {schema_version:1,run_id:id,status:'ready',explanation:await samples.run(id,options)};},
+    async analytics(id,options) {await requireRun(id,options);return validateRecordedAnalytics(await read(`${id}.json`,options,'/recorded-analytics'),id);},
     createRun:blocked,cancelRun:blocked,
     url:()=>{throw Error('Saved recordings have no live event stream.');},
   };

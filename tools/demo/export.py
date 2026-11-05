@@ -100,7 +100,7 @@ def export(data_root, output, *, analyzer=None, analysis_version=None):
     config = Config(lsh=True, birch=True, detail=1)
     analyzer = analyzer or cluster_run
     index = dict(schema_version=1, runs=[], analysis_module_version=analysis_version or version('archipelago'),
-                 note='Final Results prepared offline with the current Python archipelago module; clustering configuration describes this export. Original convergence and migration timing histories are not included.')
+                 note='Final Results prepared offline with the current Python archipelago module; clustering configuration describes this export. Recorded convergence summaries are published separately in recorded-analytics; detailed migration timing is not included.')
     artifacts = []
     for directory in sorted(data_root.iterdir()):
         if not directory.is_dir() or directory.is_symlink() or not RUN_ID.fullmatch(directory.name):

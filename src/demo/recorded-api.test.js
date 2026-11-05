@@ -3,6 +3,8 @@ import assert from 'node:assert/strict';
 import {createRecordedApi,recordingStorage} from './recorded-api.js';
 import {readRecentRuns} from '../runs/recent-runs.js';
 import {result} from '../../test-support/backend-fixture.js';
+import {readFileSync} from 'node:fs';
+import {validateRecordedAnalytics} from './recorded-api.js';
 
 const runId=result.run.run_id;
 const entry={run_id:runId,label:'DE · Rastrigin · ring',recorded_at:'2026-09-03T23:08:38Z',configuration:{preset:'Saved ring run',overrides:{num_islands:4},stream:false,clustering:{lsh:true,birch:true}}};
@@ -39,4 +41,13 @@ test('static transport errors are retryable and cancelled requests stay cancelle
   assert.equal((await api.recordings()).length,1);
   const abort=new AbortController();abort.abort();
   await assert.rejects(api.recordings({signal:abort.signal}),error=>error.name==='AbortError');
+});
+
+test('recorded generation summaries reject invalid metrics, coordinates and identity',()=>{
+  const id='run-20260903T230838Z-4891f68f';
+  const data=JSON.parse(readFileSync(new URL(`../../public/recorded-analytics/${id}.json`,import.meta.url)));
+  assert.equal(validateRecordedAnalytics(data,id),data);
+  for(const alter of [value=>value.run_id='other',value=>value.islands[0].series[0].best_fitness={},value=>value.chart.lines[0].points[0].x=-1,value=>value.chart.lines[0].points.pop(),value=>value.islands.push(value.islands[0])]){
+    const value=structuredClone(data);alter(value);assert.throws(()=>validateRecordedAnalytics(value,id),/recorded history/);
+  }
 });

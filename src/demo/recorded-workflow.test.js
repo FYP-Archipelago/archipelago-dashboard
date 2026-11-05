@@ -7,7 +7,7 @@ import {createRecordedApi} from './recorded-api.js';
 const originalFetch=globalThis.fetch,requests=[];
 const fileFetch=async target=>{
   const path=new URL(target,'http://localhost').pathname;requests.push(path);
-  assert.match(path,/^\/(recorded-runs|sample-explanations)\/[a-zA-Z0-9.-]+\.json$/,'Demo must use only published recording files.');
+  assert.match(path,/^\/(recorded-runs|recorded-analytics|sample-explanations)\/[a-zA-Z0-9.-]+\.json$/,'Demo must use only published recording files.');
   return new Response(await readFile(new URL('../../public'+path,import.meta.url)),{headers:{'content-type':'application/json'}});
 };
 globalThis.fetch=fileFetch;
@@ -37,7 +37,7 @@ test('both published recordings load through actual workspace and analysis tabs 
       await click(button('Clustering'));await ready(()=>/Resolved settings/.test(document.body.textContent));assert.match(document.body.textContent,/MMD/);
       await click(button('Run details'));await ready(()=>/No warnings reported/.test(document.body.textContent));assert.match(document.body.textContent,/rastrigin/);
       await click(button('Run configuration'));assert.match(document.body.textContent,/Recorded runner settings/);assert.match(document.body.textContent,/Offline clustering/);
-      await click(button('Convergence'));assert.match(document.body.textContent,/does not provide a fitness-over-generation/);
+      await click(button('Convergence'));await ready(()=>document.querySelectorAll('polyline').length>0);assert.match(document.body.textContent,/Recorded fitness history/);
       await click(button('Explainability'));await ready(()=>document.querySelector('[data-attribution]'));
       await click(button('Migration routes'));assert.match(document.body.textContent,/Migration-route contributions/);
     }
