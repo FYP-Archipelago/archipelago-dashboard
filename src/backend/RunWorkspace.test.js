@@ -217,6 +217,16 @@ test('saved result drives diagnostics and separation without an SSE connection',
   }finally{await view.close();}
 });
 
+test('Back to Runs is visible above the run heading and returns to Runs',async()=>{
+  let returned=0;
+  const view=await mount(Workspace,{runId,api:{result:async()=>result,url:()=>'/backend/events'},onBack(){returned++;},view:'archipelago'});
+  try{
+    assert.equal(document.querySelector('.backend-run-workspace').firstElementChild.className,'run-back');
+    await click(button('← Back to Runs'));
+    assert.equal(returned,1);
+  }finally{await view.close();}
+});
+
 test('backend failure phase is shown and a pending event stream closes on unmount',async()=>{
   let source;
   const api={url:path=>'/backend'+path,result:async()=>{throw Object.assign(Error('no result: run is running'),{status:404});}};

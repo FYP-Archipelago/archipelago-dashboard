@@ -55,17 +55,17 @@ export default function RunWorkspace({runId,api,onBack,warning='',view='archipel
   const islands=run?.islands?.length??new Set([...session.graph.nodes.values()].map(node=>node.island)).size;
   const evaluations=session.clustering?.counts?.evaluations;
   return <section className="backend-run-workspace" aria-label="Selected backend run">
+    <button className="run-back" type="button" onClick={onBack}>← Back to Runs</button>
     <header className="page-head"><h1>{titles[view]||'Archipelago'}</h1><p className="question">{view==='archipelago'?'Clustered search trajectories and inter-island migration.':<>{api.isDemo?'Recorded run':'Backend run'} <code>{runId}</code></>}</p>{view==='archipelago'&&<><div className="run-facts-inline"><span>Islands {islands||'—'}</span><span>Evaluations {show(evaluations)}</span><span>Goal {run?run.maximising?'Maximise':'Minimise':'—'}</span><span>Best {show(best)}</span></div><details className="reading"><summary>Graph representation and controls</summary><div className="deck">Nodes represent evaluation clusters; edges encode aggregated trajectories and migration. Controls filter islands and paths, select height metrics and identify best-fitness clusters. Select a node for cluster attributes. Camera: drag to rotate, scroll to zoom.</div></details></>}</header>
     {warning&&<div className="notice" role="status">{warning}</div>}
     <div className="run-status" role="status"><strong>Status: {session.status.replaceAll('_',' ')}</strong><span>{api.isDemo?'Source: saved result':`Events: ${session.connection}`}</span>{session.result&&<span>{api.isDemo?'Recorded result loaded':'Final result loaded'}</span>}{session.status==='done'&&!session.result&&session.connection==='loading result'&&<span>Loading final result…</span>}{['queued','running','clustering','warming_up','live'].includes(session.status)&&<button className="secondary" type="button" disabled={session.cancelPending} onClick={session.cancelRun}>{session.cancelPending?'Cancelling…':'Cancel run'}</button>}</div>
     {session.cancelError&&<div className="notice run-error" role="alert">Cancellation request failed: {session.cancelError}</div>}
     {session.cancelNotice&&<div className="notice" role="status">{session.cancelNotice}</div>}
     {session.error&&<div className="notice run-error" role="alert">{session.error} <button className="secondary" type="button" onClick={session.retry}>Retry connection</button></div>}
-    {view==='archipelago'&&<GraphViewer graph={session.graph} runId={runId}/>}
+    {view==='archipelago'&&<GraphViewer graph={session.graph} runId={runId} canReplay={session.status==='done'}/>}
     {view==='migration'&&<Migration session={session}/>}
     {view==='convergence'&&<p className="notice">The backend does not provide a fitness-over-generation time series. Inspect the graph's current best fitness and node details instead.</p>}
     {view==='diagnostics'&&<Diagnostics session={session}/>}
     {view==='run'&&<RunDetails session={session} runId={runId}/>}
-    <button className="secondary" type="button" onClick={onBack}>Back to Runs</button>
   </section>;
 }

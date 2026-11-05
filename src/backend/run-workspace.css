@@ -1,4 +1,14 @@
 .backend-run-workspace{max-width:1200px;color:var(--ink)}
+.run-back{display:inline-flex;align-items:center;margin:0 0 12px;padding:4px 0;border:0;background:none;color:var(--soft);font-size:13px;cursor:pointer}
+.run-back:hover{color:var(--ink)}
+.run-replay{display:flex;align-items:center;flex-wrap:wrap;gap:8px 12px;margin:10px 0;padding:9px 12px;border:1px solid var(--line);border-radius:6px;background:var(--panel);font-size:12px}
+.backend-viz-stage{position:relative}
+.run-replay label{display:inline-flex;align-items:center;gap:7px;color:var(--soft)}
+.run-replay .replay-position{flex:1;min-width:180px}
+.run-replay input[type=range]{flex:1;min-width:100px;accent-color:var(--accent)}
+.run-replay select{padding:5px;border:1px solid var(--line);border-radius:4px;background:var(--raised);color:var(--ink)}
+.run-replay output{min-width:35px;text-align:right;color:var(--ink)}
+.replay-note{color:var(--faint)}
 .backend-run-workspace h2{font-size:16px;margin:24px 0 12px}
 .backend-run-workspace p{line-height:1.5}
 .run-status{display:flex;flex-wrap:wrap;gap:10px 22px;align-items:center;padding:12px 16px;border:1px solid var(--line);border-radius:6px;background:var(--panel);font-size:13px}
