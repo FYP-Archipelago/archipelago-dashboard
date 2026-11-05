@@ -30,6 +30,9 @@ test('both published recordings load through actual workspace and analysis tabs 
       await ready(()=>/Recorded result loaded/.test(document.body.textContent));
       assert.match(document.body.textContent,/Recorded result loaded/);
       assert.ok(document.querySelector('.view-tabs button:not(:disabled)'));
+      await click(button('Replay run'));
+      assert.ok(button('Play'));
+      await click(button('Show full graph'));
       await click(button('Migration'));await ready(()=>document.querySelectorAll('tbody tr').length>0);
       await click(button('Clustering'));await ready(()=>/Resolved settings/.test(document.body.textContent));assert.match(document.body.textContent,/MMD/);
       await click(button('Run details'));await ready(()=>/No warnings reported/.test(document.body.textContent));assert.match(document.body.textContent,/rastrigin/);
