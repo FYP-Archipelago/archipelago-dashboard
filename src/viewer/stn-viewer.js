@@ -384,6 +384,31 @@ const CAP =
  */
 export function mountStnViewer(root, cfg) {
   root.innerHTML = TEMPLATE;
+  if (cfg.backend) {
+    const right = root.querySelector('#rail');
+    const left = document.createElement('div');
+    left.id = 'rail-left';
+    left.className = 'rail';
+    left.innerHTML = '<div class="rail-h"><span>View controls</span></div>';
+    const leftSections = document.createElement('div');
+    const rightSections = document.createElement('div');
+    leftSections.className = rightSections.className = 'rail-sections';
+    const sections = [...right.querySelectorAll(':scope > .sec')];
+    sections.forEach((section, index) => {
+      section.removeAttribute('name');
+      section.open = true;
+      (index < 4 ? leftSections : rightSections).append(section);
+    });
+    left.append(leftSections);
+    right.insertBefore(rightSections, right.querySelector('.rail-foot'));
+    right.querySelector('.rail-h span').textContent = 'Routes and appearance';
+    right.before(left);
+    const reset = right.querySelector('#reset');
+    reset.textContent = 'Reset view';
+    reset.classList.remove('btn-wide');
+    reset.classList.add('reset-view');
+    root.querySelector('.stage').append(reset);
+  }
   const $ = id => root.querySelector("#" + id);
   const canvas = $("gl"), note = $("note");
   const gl = canvas.getContext("webgl2", { antialias: false, alpha: false });
@@ -825,7 +850,7 @@ export function mountStnViewer(root, cfg) {
     tip.hidden = i < 0;
     if (i < 0) return;
     tip.textContent = "Island " + islLabel(gIsl[G.pGrp[i]]) + " · fitness " + (DS.backend ? (Number.isFinite(G.pf[i]) ? G.pf[i].toFixed(4) : "unavailable") : ((DS.fitSign || 1) * G.pf[i]).toFixed(4)) + " · " + G.pVis[i] + (G.pVis[i] === 1 ? " visit" : " visits");
-    tip.style.transform = "translate(" + Math.min(x + 14, r.width - 250) + "px," + (y + 14) + "px)";
+    tip.style.transform = "translate(" + (canvas.offsetLeft + Math.max(0, Math.min(x + 14, r.width - 250))) + "px," + (canvas.offsetTop + y + 14) + "px)";
   }
   canvas.addEventListener("pointerleave", () => { $("hover-tip").hidden = true; });
   canvas.addEventListener("pointermove", ev => {
@@ -991,7 +1016,7 @@ export function mountStnViewer(root, cfg) {
     const sx = (cx / cw * 0.5 + 0.5) * W, sy = (1 - (cy / cw * 0.5 + 0.5)) * H;
     const m = 28;                                        // half a marker
     if (sx < -m || sx > W + m || sy < -m || sy > H + m) return null;   // off-viewport
-    return [sx, sy];
+    return [canvas.offsetLeft + sx, canvas.offsetTop + sy];
   }
 
   function projectWorld(x, y, z) {
@@ -1002,7 +1027,7 @@ export function mountStnViewer(root, cfg) {
     const cx = VP[0] * x + VP[4] * y + VP[8] * z + VP[12];
     const cy = VP[1] * x + VP[5] * y + VP[9] * z + VP[13];
     const W = canvas.clientWidth, H = canvas.clientHeight;
-    return [(cx / cw * 0.5 + 0.5) * W, (1 - (cy / cw * 0.5 + 0.5)) * H];
+    return [canvas.offsetLeft + (cx / cw * 0.5 + 0.5) * W, canvas.offsetTop + (1 - (cy / cw * 0.5 + 0.5)) * H];
   }
 
   /* ── UI ──────────────────────────────────────────────────────── */

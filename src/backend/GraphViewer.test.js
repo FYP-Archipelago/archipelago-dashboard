@@ -17,7 +17,7 @@ test('empty and switched runs destroy old geometry, while live updates retain th
 });
 test('saved result can be replayed from initial island nodes and returned to the full graph',async()=>{
   const shown=[];
-  const mountViewer=()=>({destroy(){},setBackendGraph(graph){shown.push(graph);}});
+  const mountViewer=root=>{root.innerHTML='<div class="rail-foot"><button>Reset all</button><button>Save image</button></div>';return {destroy(){root.innerHTML='';},setBackendGraph(graph){shown.push(graph);}};};
   const graph={...emptyGraph(),nodes:new Map([
     [1,{id:1,island:0,first_eval:0}],
     [2,{id:2,island:1,first_eval:0}],
@@ -25,7 +25,13 @@ test('saved result can be replayed from initial island nodes and returned to the
   ]),edges:new Map([[10,{id:10,source:1,target:3}]]),migrations:new Map([[20,{id:20,source:2,target:3,count:4}]])};
   const view=await mount(Viewer,{runId,graph,canReplay:true,mountViewer});
   try{
+    assert.ok(document.querySelector('.run-replay').classList.contains('idle'));
+    const footer=document.querySelector('.rail-foot');
+    assert.ok(footer.contains(button('Replay run')));
+    assert.ok(footer.lastElementChild.contains(button('Replay run')));
+    assert.equal(document.querySelector('.view-tabs'),null);
     await click(button('Replay run'));
+    assert.ok(document.querySelector('.run-replay').classList.contains('active'));
     assert.deepEqual([...shown.at(-1).nodes.keys()],[1,2]);
     assert.equal(shown.at(-1).migrations.size,0);
     assert.match(document.body.textContent,/migration timing is unavailable/);
@@ -40,5 +46,6 @@ test('saved result can be replayed from initial island nodes and returned to the
     await click(button('Show full graph'));
     assert.equal(shown.at(-1),graph);
     assert.ok(button('Replay run'));
+    assert.ok(document.querySelector('.run-replay').classList.contains('idle'));
   }finally{await view.close();}
 });
