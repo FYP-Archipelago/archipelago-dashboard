@@ -1,7 +1,7 @@
 import {nodeTable,links,result,delta} from '../../test-support/backend-fixture.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {compile,mount,act,dom,runId,click,button} from '../../test-support/dom.js';
+import {compile,mount,act,dom,runId,click,button,input} from '../../test-support/dom.js';
 
 const Workspace=await compile('src/backend/RunWorkspace.jsx');
 dom.window.HTMLCanvasElement.prototype.getContext=()=>null;
@@ -141,23 +141,6 @@ test('done status recovers the persisted result when the final event is unavaila
   const view=await mount(Workspace,{runId,api,onBack(){},view:'run',eventSourceFactory:()=>source=new FakeSource('')});
   try{await act(async()=>source.emit('status',{status:'done'}));assert.equal(calls,2);assert.match(document.body.textContent,/Final result loaded/);assert.ok(source.closed);}finally{await view.close();}
 });
-
-test('stream completion loads the backend migration summary without reopening the run',async()=>{
-  let source,calls=0;
-  const migration_summary={islands:[0,1],total:2,routes:1,maximum:2,
-    rows:[{island:0,cells:[{island:0,count:0,intensity:0},{island:1,count:2,intensity:1}]},{island:1,cells:[{island:0,count:0,intensity:0},{island:1,count:0,intensity:0}]}],
-    totals:[{island:0,sent:2,received:0,sent_percent:100,received_percent:0},{island:1,sent:0,received:2,sent_percent:0,received_percent:100}]};
-  const api={url:p=>p,result:async()=>{if(!calls++)throw Object.assign(Error('no result'),{status:404});return {...result,migration_summary};}};
-  const view=await mount(Workspace,{runId,api,view:'migration',eventSourceFactory:()=>source=new FakeSource('')});
-  try {
-    await act(async()=>source.emit('final',result));
-    assert.equal(calls,2);
-    assert.ok(document.querySelector('.migration-matrix'));
-    assert.equal(document.querySelector('.migration-metrics dd').textContent,'2');
-    assert.equal(document.querySelector('.migration-details').open,false);
-    assert.ok(source.closed);
-  } finally {await view.close();}
-});
 test('permanently closed streams offer retry and pending streams close on unmount',async()=>{
   let source;const factory=()=>source=new FakeSource('');
   const view=await mount(Workspace,{runId,api:pendingApi(),onBack(){},view:'run',eventSourceFactory:factory});
@@ -228,9 +211,80 @@ test('saved result drives diagnostics and separation without an SSE connection',
   const view=await mount(Workspace,{runId,api,onBack(){},view:'diagnostics',eventSourceFactory:()=>{opened++;return new FakeSource('');}});
   try{
     assert.equal(opened,0);
-    assert.match(document.body.textContent,/Island separation/);
-    assert.match(document.body.textContent,/one malformed row|0.4/);
-    assert.match(document.body.textContent,/200/);
+    assert.ok(document.querySelector('.page-head').contains(button('← Back to Runs')));
+    assert.ok(document.querySelector('.page-head').contains(document.querySelector('.run-status')));
+    assert.equal(document.querySelectorAll('.run-status').length,1);
+    assert.equal(document.querySelector('.run-status').children.length,3);
+    assert.ok(document.querySelector('.clustering-overview').contains(document.querySelector('.clustering-summary')));
+    assert.match(document.querySelector('.clustering-summary').textContent,/200.*2/s);
+    assert.doesNotMatch(document.querySelector('.clustering-summary').textContent,/What happened|Solutions evaluated/);
+    assert.equal(document.querySelectorAll('.clustering-stages li').length,2);
+    assert.match(document.querySelector('.clustering-stages').textContent,/LSH.*BIRCH/s);
+    assert.match(document.querySelector('.clustering-stages').textContent,/Threshold.*0.3/s);
+    assert.doesNotMatch(document.querySelector('.clustering-stages').textContent,/DenStream/);
+    assert.equal(document.querySelectorAll('.island-pair').length,0);
+    const details=document.querySelector('.clustering-technical');
+    assert.equal(details.tagName,'SECTION');
+    assert.equal(document.querySelectorAll('.stage-run-values').length,1);
+    assert.match(document.querySelector('.metric-column').textContent,/BIRCH run values.*Whole run/s);
+    assert.match(document.querySelector('.clustering-counts').textContent,/rows clustered.*200.*Elapsed time.*1.20 s/s);
+    assert.doesNotMatch(details.textContent,/Resolved settings/);
+    assert.match(details.textContent,/rows clustered/i);
+    assert.match(details.textContent,/0.01/);
+    assert.match(details.textContent,/Generation window/);
+    assert.equal(details.querySelectorAll('table').length,0);
+  }finally{await view.close();}
+});
+
+test('enabled stages show backend-resolved settings under the matching stage',async()=>{
+  const data=structuredClone(result);
+  data.clustering.stages=['lsh','birch','denstream'];
+  data.clustering.resolved={lsh_bucket_width:0.25,birch_threshold:0.3,denstream_epsilon:0.01,denstream_half_life:2.5};
+  data.clustering.diagnostics={lsh:{family:'p_stable'},birch:{clusters:2},denstream:{clusters:1}};
+  const view=await mount(Workspace,{runId,api:{result:async()=>data,url:()=>'/backend/events'},view:'diagnostics'});
+  try{
+    const stages=[...document.querySelectorAll('.clustering-stages li')].map(stage=>stage.textContent);
+    assert.equal(stages.length,3);
+    assert.match(stages[0],/LSH.*Family.*p_stable.*Bucket width.*0.25/s);
+    assert.match(stages[1],/BIRCH.*Threshold.*0.3/s);
+    assert.match(stages[2],/DenStream.*Epsilon.*0.01.*Half life.*2.5/s);
+  }finally{await view.close();}
+});
+
+test('island matrices preserve small exact values and switch generation windows',async()=>{
+  const data=structuredClone(result);
+  data.run.islands=[0,1,2];
+  data.separation.pairs={a:[0,0,1],b:[1,2,2],mmd2:[0.000012345,0.001,0.002],p:[0.0033222591362126247,0.02,0.04]};
+  data.separation.windows={from_generation:[0,10],typical_distance:[0.6,0.8]};
+  data.separation.window_pairs={window:[0,1],a:[0,0],b:[1,1],mmd2:[0.3,0.9]};
+  const view=await mount(Workspace,{runId,api:{result:async()=>data,url:()=>'/backend/events'},view:'diagnostics'});
+  try{
+    const whole=document.querySelector('[aria-label="Whole-run island comparisons"]');
+    assert.match(whole.querySelector('.matrix-legend').textContent,/MMD² colour scale.*Lower.*Higher/s);
+    assert.match(whole.textContent,/0.000012345/);
+    assert.match(whole.textContent,/0.0033222591362126247/);
+    assert.equal(whole.querySelectorAll('.matrix-cell').length,6);
+    assert.equal(whole.querySelectorAll('.matrix-diagonal').length,3);
+    assert.equal(whole.querySelector('[aria-label^="Island 0 and island 1:"]').style.getPropertyValue('--heat-opacity'),whole.querySelector('[aria-label^="Island 1 and island 0:"]').style.getPropertyValue('--heat-opacity'));
+    assert.equal(whole.querySelector('[aria-label^="Island 0 and island 1:"]').style.getPropertyValue('--heat-opacity'),String(0.5*(0.000012345/0.002)));
+    assert.equal(whole.querySelector('[aria-label^="Island 1 and island 2:"]').style.getPropertyValue('--heat-opacity'),'0.5');
+    await click(whole.querySelector('[aria-label^="Island 0 and island 2:"]'));
+    assert.match(whole.querySelector('.matrix-selection').textContent,/0.001.*0.02/s);
+    const windows=document.querySelector('[aria-label="Generation-window island comparisons"]');
+    assert.match(windows.textContent,/Generation 0/);
+    assert.match(windows.textContent,/0.3/);
+    assert.ok(windows.querySelectorAll('.matrix-missing').length>0);
+    assert.doesNotMatch(windows.querySelector('.matrix-cell').getAttribute('aria-label'),/p value/);
+    assert.ok(button('← Previous').disabled);
+    await click(button('Next →'));
+    assert.match(windows.textContent,/Generation 10/);
+    assert.match(windows.textContent,/0.9/);
+    assert.doesNotMatch(windows.querySelector('.matrix-selection').textContent,/0.3/);
+    assert.ok(button('Next →').disabled);
+    await click(button('← Previous'));
+    assert.match(windows.textContent,/Generation 0/);
+    await input('separation-window','1');
+    assert.match(windows.textContent,/Generation 10/);
   }finally{await view.close();}
 });
 
@@ -239,6 +293,7 @@ test('Back to Runs is visible above the run heading and returns to Runs',async()
   const view=await mount(Workspace,{runId,api:{result:async()=>result,url:()=>'/backend/events'},onBack(){returned++;},view:'archipelago'});
   try{
     assert.equal(document.querySelector('.backend-run-workspace').firstElementChild.className,'run-back');
+    assert.ok(document.querySelector('.page-head').contains(document.querySelector('.run-status')));
     await click(button('← Back to Runs'));
     assert.equal(returned,1);
   }finally{await view.close();}
@@ -291,7 +346,7 @@ test('run metadata is checked before accepting a saved result',async t=>{
 test('metadata validation preserves nullable values and backend diagnostic value types',async()=>{
   const data={...result,run:{...result.run,migration_topology:null},clustering:{...result.clustering,diagnostics:{denstream:{epsilon:.2,input_points:2,family:'p_stable',summarised:false,prune_period:null,epsilon_checkpoints:[.1,.2]}}},separation:{...result.separation,typical_distance:null}};
   const view=await mount(Workspace,{runId,api:{url:p=>p,result:async()=>data},view:'diagnostics'});
-  try{assert.match(document.body.textContent,/Final result loaded/);assert.match(document.body.textContent,/p_stable/);assert.match(document.body.textContent,/0.1, 0.2/);assert.match(document.body.textContent,/Unavailable/);}finally{await view.close();}
+  try{assert.match(document.body.textContent,/Final result loaded/);assert.match(document.body.textContent,/p_stable/);assert.deepEqual([...document.querySelectorAll('.metric-series span')].map(item=>item.textContent),['0.1','0.2']);assert.match(document.body.textContent,/Unavailable/);}finally{await view.close();}
 });
 
 test('final results require complete metadata before declaring success',async t=>{
