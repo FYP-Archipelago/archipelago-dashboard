@@ -3,6 +3,8 @@ import useRunSession from './useRunSession.js';
 import GraphViewer from './GraphViewer.jsx';
 import MigrationOverview from './MigrationOverview.jsx';
 import RecordedConvergence from '../demo/RecordedConvergence.jsx';
+import RunConfiguration from '../app/RunConfiguration.jsx';
+import {runValueLabel} from '../runs/run-form.js';
 import './run-workspace.css';
 
 const show=value=>value===null||value===undefined?'Unavailable':typeof value==='number'?value.toLocaleString():String(value);
@@ -32,19 +34,39 @@ function Diagnostics({session}) {
   </>;
 }
 
-function RunDetails({session,runId}) {
+function RunDetails({session,configuration,recorded}) {
   const run=session.result?.run;
   const layout=session.layout;
-  return <><div className="run-card"><h2>Run</h2><dl><dt>Run ID</dt><dd><code>{runId}</code></dd><dt>Status</dt><dd>{session.status}</dd>{run&&entries(run).filter(([key])=>key!=='run_id').map(([key,value])=><React.Fragment key={key}><dt>{key.replaceAll('_',' ')}</dt><dd>{Array.isArray(value)?value.join(', '):show(value)}</dd></React.Fragment>)}<dt>Malformed rows</dt><dd>{show(session.malformedRows)}</dd><dt>Graph overlap</dt><dd>{show(session.graph.overlap)}</dd></dl></div>
-    {!run&&<p className="notice">Algorithm, benchmark, and island details arrive with the final backend result.</p>}
-    <div className="run-card"><h2>Layout diagnostics</h2><dl><dt>Method</dt><dd>{layout?.method?.toUpperCase()||'Unavailable'}</dd><dt>2D variance retained</dt><dd>{variance(layout?.variance_kept_2d)}</dd><dt>3D variance retained</dt><dd>{variance(layout?.variance_kept_3d)}</dd></dl></div>
-    <h2>Warnings</h2>{session.warnings.length?<ul>{session.warnings.map((warning,i)=><li key={i}>{warning}</li>)}</ul>:<p>No warnings reported.</p>}
-  </>;
+  const counts=session.clustering?.counts;
+  const best=[...session.graph.nodes.values()].find(node=>node.overall_best)?.best_fitness;
+  const number=value=>value==null?'—':new Intl.NumberFormat('en',{maximumSignificantDigits:21,notation:'standard'}).format(value);
+  return <div className="run-overview">
+    {run&&<dl className="run-identity" aria-label="Execution">
+      <div className="run-algorithm"><dt>Algorithm</dt><dd><span className="algorithm-badge">{run.algorithm.toUpperCase()}</span></dd></div>
+      <div><dt>Benchmark</dt><dd>{runValueLabel(run.benchmark)}</dd></div>
+      <div><dt>Topology</dt><dd>{run.migration_topology?runValueLabel(run.migration_topology):'—'}</dd></div>
+      <div><dt>Islands</dt><dd>{run.islands.join(', ')}</dd></div>
+    </dl>}
+    <dl className="run-outcomes" aria-label="Run results">
+      <div><dt>Evaluations</dt><dd>{number(counts?.evaluations)}</dd></div>
+      <div><dt>Clusters</dt><dd>{number(counts?.nodes)}</dd></div>
+      <div><dt>Best fitness</dt><dd>{number(best)}</dd></div>
+      <div><dt>Clustering time</dt><dd>{session.clustering?.elapsed_seconds==null?'—':session.clustering.elapsed_seconds.toLocaleString('en',{minimumFractionDigits:3,maximumFractionDigits:3,roundingMode:'trunc'})}{session.clustering?.elapsed_seconds!=null&&<small> s</small>}</dd></div>
+    </dl>
+    <RunConfiguration configuration={configuration} recorded={recorded}/>
+    <details className="run-technical"><summary>Diagnostics <span>{session.warnings.length} warnings</span></summary>
+      <div className="run-technical-columns">
+        <section><h2>Layout</h2><dl><dt>Method</dt><dd>{layout?.method?.toUpperCase()||'—'}</dd><dt>2D variance retained</dt><dd>{layout?variance(layout.variance_kept_2d):'—'}</dd><dt>3D variance retained</dt><dd>{layout?variance(layout.variance_kept_3d):'—'}</dd><dt>Graph overlap</dt><dd>{session.clustering?number(session.graph.overlap):'—'}</dd><dt>Malformed rows</dt><dd>{session.clustering?number(session.malformedRows):'—'}</dd></dl></section>
+        <section><h2>Execution metadata</h2><dl>{run?entries(run).filter(([key])=>!['run_id','algorithm','benchmark','migration_topology','islands'].includes(key)).map(([key,value])=><React.Fragment key={key}><dt>{key==='maximising'?'Objective':key.replaceAll('_',' ')}</dt><dd>{key==='maximising'?(value?'Maximum':'Minimum'):Array.isArray(value)?value.join(', '):show(value)}</dd></React.Fragment>):<><dt>Metadata</dt><dd>Pending</dd></>}</dl></section>
+      </div>
+    </details>
+    {session.warnings.length>0&&<div className="run-warning-list" role="status"><h2>Warnings</h2><ul>{session.warnings.map((warning,i)=><li key={i}>{warning}</li>)}</ul></div>}
+  </div>;
 }
 
-export default function RunWorkspace({runId,api,onBack,warning='',view='archipelago',eventSourceFactory}) {
+export default function RunWorkspace({runId,api,onBack,warning='',view='archipelago',eventSourceFactory,configuration}) {
   const session=useRunSession({runId,api,eventSourceFactory});
-  const titles={archipelago:'Archipelago',migration:'Migration',convergence:'Convergence',diagnostics:'Clustering',run:'Run details'};
+  const titles={archipelago:'Archipelago',migration:'Migration',convergence:'Convergence',diagnostics:'Clustering',run:'Run configurations'};
   const best=[...session.graph.nodes.values()].find(node=>node.overall_best)?.best_fitness;
   const run=session.result?.run;
   const islands=run?.islands?.length??new Set([...session.graph.nodes.values()].map(node=>node.island)).size;
@@ -61,6 +83,6 @@ export default function RunWorkspace({runId,api,onBack,warning='',view='archipel
     {view==='migration'&&<MigrationOverview session={session}/>}
     {view==='convergence'&&(api.analytics?<RecordedConvergence runId={runId} api={api}/>:<p className="notice">The backend does not provide a fitness-over-generation time series. Inspect the graph's current best fitness and node details instead.</p>)}
     {view==='diagnostics'&&<Diagnostics session={session}/>}
-    {view==='run'&&<RunDetails session={session} runId={runId}/>}
+    {view==='run'&&<RunDetails session={session} configuration={configuration} recorded={api.isDemo}/>}
   </section>;
 }

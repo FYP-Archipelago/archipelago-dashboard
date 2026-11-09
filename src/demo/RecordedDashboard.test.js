@@ -6,7 +6,8 @@ const Page=await compile('src/demo/RecordedDashboard.jsx');
 const id=result.run.run_id;
 const recording={run_id:id,label:'DE · Rastrigin · ring',recorded_at:'2026-09-03T23:08:38Z',configuration:{preset:'Saved ring run',overrides:{num_islands:4},stream:false,clustering:{lsh:true,birch:true}}};
 const api={isDemo:true,identity:async()=> 'recorded-demo:v1',recordings:async()=>[recording],result:async()=>result};
-const Workspace=({runId})=>React.createElement('div',null,`Recorded graph ${runId}`);
+const Configuration=await compile('src/app/RunConfiguration.jsx');
+const Workspace=({runId,configuration,view})=>React.createElement(React.Fragment,null,React.createElement('div',null,`Recorded graph ${runId}`),view==='run'&&React.createElement(Configuration,{configuration,recorded:true}));
 
 test('recorded deployment preloads runs and preserves navigation without exposing live actions',async()=>{
   const view=await mount(Page,{api,Workspace});
@@ -18,8 +19,8 @@ test('recorded deployment preloads runs and preserves navigation without exposin
     assert.equal(document.querySelector('.new-run-form'),null);
     await click(button('Open recording'));assert.match(window.location.hash,/#archipelago\?run_id=/);
     assert.match(document.body.textContent,/Recorded graph/);
-    for(const label of ['Migration','Convergence','Clustering','Run details']){await click(button(label));assert.match(document.body.textContent,/Recorded graph/);}
-    await click(button('Run configuration'));assert.match(document.body.textContent,/Recorded runner settings/);assert.match(document.body.textContent,/Offline clustering/);
+    for(const label of ['Migration','Convergence','Clustering','Run configurations']){await click(button(label));assert.match(document.body.textContent,/Recorded graph/);}
+    await click(button('Run configurations'));assert.match(document.body.textContent,/Recorded runner settings/);assert.match(document.body.textContent,/Offline clustering/);
     await click(button('About'));assert.match(document.body.textContent,/Archipelago/);
     await act(async()=>{window.history.replaceState(null,'',`#migration?run_id=${id}`);window.dispatchEvent(new dom.window.PopStateEvent('popstate'));});
     assert.match(document.body.textContent,/Recorded graph/);

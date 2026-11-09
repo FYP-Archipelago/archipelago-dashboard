@@ -31,7 +31,8 @@ test('known cross-field constraints use effective defaults and migration disable
 test('current clustering allows auto nulls and manual positive values, with a mandatory stage',()=>{
   const auto=initialClustering();
   assert.equal(build().clustering.birch_threshold,null);
-  assert.equal(build({clustering:{...auto,birch_threshold:'0.25',denstream_half_life:''}}).clustering.birch_threshold,0.25);
-  for(const settings of [{lsh:false,birch:false,denstream:false},{detail:'0.4'},{birch_threshold:0},{denstream_epsilon:-1},{denstream_half_life:'x'},{denstream_mu:''},{denstream_beta:1.01},{lsh_hashes:'1.5'},{seed:'1.5'},{birch_branching_factor:50}]) assert.throws(()=>build({clustering:{...auto,...settings}}),FormError);
+  assert.equal(build({clustering:{...auto,birch_threshold:'0.25',denstream_half_life:null}}).clustering.birch_threshold,0.25);
+  assert.equal(build({clustering:{...auto,denstream:false,denstream_half_life:''}}).clustering.denstream_half_life,null);
+  for(const settings of [{lsh:false,birch:false,denstream:false},{detail:'0.4'},{birch_threshold:''},{birch_threshold:0},{denstream_epsilon:-1},{denstream_half_life:'x'},{denstream_mu:''},{denstream_beta:1.01},{lsh_hashes:'1.5'},{seed:'1.5'},{birch_branching_factor:50}]) assert.throws(()=>build({clustering:{...auto,...settings}}),FormError);
   assert.equal(build({stream:false}).stream,false);
 });

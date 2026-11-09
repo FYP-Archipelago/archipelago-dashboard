@@ -6,6 +6,8 @@ export class FormError extends Error {
   }
 }
 
+export const runValueLabel = value => String(value).replaceAll('_',' ').replace(/\b[a-z]/g,letter=>letter.toUpperCase());
+
 const object = value => value !== null && typeof value === 'object' && !Array.isArray(value);
 export const CLUSTER_FIELDS = {
   detail:{label:'Clustering detail',min:0.5,max:2,default:1,step:0.1},
@@ -83,7 +85,7 @@ export function buildRunRequest({catalog,preset,values={},clustering,stream=true
   for (const key of Object.keys(clustering || {})) if (!(key in CLUSTER_FIELDS) && !['lsh','birch','denstream'].includes(key)) errors[key] = `Unsupported clustering setting: ${key}.`;
   for (const [key,rule] of Object.entries(CLUSTER_FIELDS)) {
     const raw = clustering?.[key] === undefined ? (rule.auto ? null : rule.default) : clustering[key];
-    if (rule.auto && (raw == null || (typeof raw === 'string' && raw.trim() === ''))) {config[key]=null;continue;}
+    if (rule.auto && (raw == null || (rule.stage && !config[rule.stage] && typeof raw === 'string' && raw.trim() === ''))) {config[key]=null;continue;}
     try {config[key] = parseValue(rule.label,raw,rule);} catch (error) {errors[key] = error.message;}
   }
   if (typeof stream !== 'boolean') errors.stream = 'Choose live updates or final result only.';

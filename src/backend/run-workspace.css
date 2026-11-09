@@ -35,3 +35,51 @@
 .mmd-bar span{position:absolute;inset:0 auto 0 0;background:var(--accent);opacity:.35}
 .mmd-bar strong{position:relative;padding:3px 7px;display:block;color:var(--ink);font-weight:500}
 @media(max-width:650px){.backend-run-workspace dl{grid-template-columns:1fr}.backend-run-workspace dd{margin-bottom:8px}}
+
+.run-overview {max-width: 1200px; margin-top: 18px;}
+.backend-run-workspace .run-identity {display:flex; flex-wrap:wrap; align-items:center; gap:16px 0; padding:0 0 20px;}
+.run-identity > div {display:flex; flex-direction:column; align-items:flex-start; gap:8px; padding:0 28px; border-left:1px solid var(--line); min-width:0;}
+.run-identity > div:first-child {padding-left:0; border:0;}
+.backend-run-workspace .run-identity dt {font-size:11px; font-weight:500; letter-spacing:.04em; text-transform:uppercase;}
+.backend-run-workspace .run-identity dd {font-size:16px; font-weight:500; color:var(--ink); margin:0;}
+.algorithm-badge {display:inline-flex; align-items:center; padding:5px 11px; border:1px solid var(--line); border-radius:4px; background:var(--raised); color:var(--ink); font-size:16px; font-weight:600; letter-spacing:.02em;}
+.backend-run-workspace .run-outcomes {display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:0; border:1px solid var(--line); border-radius:6px; background:var(--panel);}
+.run-outcomes > div {min-width:0; padding:18px 20px; border-left:1px solid var(--line);}
+.run-outcomes > div:first-child {border-left:0;}
+.run-outcomes dt {margin-bottom:10px; font-size:12px;}
+.backend-run-workspace .run-outcomes dd {font-size:23px; font-weight:500; font-variant-numeric:tabular-nums;}
+.run-outcomes dd small {font-size:12px; color:var(--soft);}
+.run-configuration {margin-top:26px; padding-top:20px; border-top:1px solid var(--line);}
+.backend-run-workspace .run-configuration h2 {margin:0 0 18px; font-size:14px; font-weight:500;}
+.backend-run-workspace .configuration-summary {display:flex; flex-wrap:wrap; gap:16px 32px; margin-bottom:22px;}
+.configuration-summary > div {display:flex; flex-direction:column; gap:7px;}
+.configuration-summary dt {font-size:11px;}
+.configuration-summary dd {font-size:13px;}
+.configuration-columns,.run-technical-columns {display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:28px;}
+.configuration-columns > section {min-width:0;}
+.configuration-columns > section+section {padding-left:28px; border-left:1px solid var(--line);}
+.configuration-columns h3 {margin:0 0 10px; font-size:12px; font-weight:500; color:var(--soft);}
+.configuration-additional {margin-top:14px;}
+.configuration-additional summary {cursor:pointer; font-size:12px; color:var(--soft); padding:6px 0;}
+.backend-run-workspace .configuration-fields {display:block;}
+.configuration-field {display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:20px; padding:10px 0; border-bottom:1px solid var(--line);}
+.configuration-field dd {text-align:right; font-variant-numeric:tabular-nums;}
+.backend-run-workspace .configuration-note {color:var(--faint); font-size:12px; margin:14px 0;}
+.run-technical {margin-top:24px; padding:14px 0; border-top:1px solid var(--line); border-bottom:1px solid var(--line);}
+.run-technical summary {cursor:pointer; font-size:13px; color:var(--soft);}
+.run-technical summary span {float:right; font-size:11px; color:var(--faint);}
+.run-technical-columns {margin:20px 0;}
+.backend-run-workspace .run-technical h2 {font-size:12px; font-weight:500; margin:0 0 14px;}
+.run-warning-list {padding:0 16px; border-left:2px solid var(--accent);}
+.backend-run-workspace .run-warning-list h2 {font-size:12px; margin:18px 0 8px;}
+.run-warning-list ul {padding-left:16px; font-size:12px; color:var(--soft);}
+@media(max-width:750px) {
+  .backend-run-workspace .run-outcomes {grid-template-columns:repeat(2,minmax(0,1fr));}
+  .run-outcomes > div:nth-child(3) {border-left:0;}
+  .run-outcomes > div:nth-child(n+3) {border-top:1px solid var(--line);}
+  .configuration-columns,.run-technical-columns {grid-template-columns:1fr; gap:24px;}
+  .configuration-columns > section+section {padding:0; border-left:0;}
+  .run-identity > div {padding:0 12px;}
+  .backend-run-workspace .run-technical dl {grid-template-columns:minmax(0,1fr) minmax(0,1fr);}
+  .run-technical dd {margin:0;}
+}

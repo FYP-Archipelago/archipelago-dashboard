@@ -4,7 +4,8 @@ import { readRoute, runHash } from './navigation.js';
 const id='run-20261102T120000Z-aabbccdd';
 test('backend IDs survive refresh and current-run tabs',()=>{
   assert.deepEqual(readRoute(runHash(id)),{page:'archipelago',runId:id});
-  assert.deepEqual(readRoute(runHash(id,'configuration')),{page:'configuration',runId:id});
+  assert.deepEqual(readRoute(runHash(id,'configuration')),{page:'run',runId:id});
+  assert.deepEqual(readRoute(`#configuration?run_id=${id}`),{page:'run',runId:id});
   assert.deepEqual(readRoute('#library'),{page:'library',runId:null});
   assert.deepEqual(readRoute(''),{page:'library',runId:null});
   assert.deepEqual(readRoute('#archipelago?run_id=%ZZ'),{page:'archipelago',runId:null});

@@ -1,20 +1,27 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { backendApi } from '../backend/api.js';
 import ClusteringControls from './ClusteringControls.jsx';
-import { buildRunRequest, initialClustering, validatePresets } from './run-form.js';
+import { buildRunRequest, initialClustering, runValueLabel, validatePresets } from './run-form.js';
 import './runs.css';
 
-const LABELS = {num_islands:'Islands',evaluation_budget:'Evaluation budget',target_generations:'Target generations','migration.enabled':'Enable migration','migration.topology':'Migration topology','migration.interval':'Migration interval (generations)','migration.num_migrants':'Migrants per event',seed:'Runner seed (optional)'};
+const LABELS = {num_islands:'Islands',evaluation_budget:'Evaluation budget',target_generations:'Target generations','migration.enabled':'Migration','migration.topology':'Migration topology','migration.interval':'Migration interval (generations)','migration.num_migrants':'Migrants per event',seed:'Runner seed (optional)'};
 const labelFor = key => LABELS[key] || key.replaceAll('_',' ');
+const HELP = {
+  evaluation_budget:'Total fitness evaluations shared across all islands.',
+  target_generations:'Guides population size; it does not set a hard generation limit.',
+  seed:'Blank uses a fresh seed; migration timing can still change the outcome.',
+};
 
 function OverrideField({name,rule,value,onChange,error}) {
-  const label = labelFor(name), common = {name,'aria-invalid':!!error};
-  if (rule.type === 'bool') return <label className="check"><input {...common} type="checkbox" checked={!!value} onChange={event=>onChange(event.target.checked)}/>{label}</label>;
+  const label = labelFor(name), description = [HELP[name]&&`hint-${name}`,error&&`error-${name}`].filter(Boolean).join(' ');
+  const common = {name,'aria-invalid':!!error,'aria-describedby':description||undefined};
+  const islandChoices = name==='num_islands' && Number.isSafeInteger(rule.min) && Number.isSafeInteger(rule.max) && rule.max>=rule.min && rule.max-rule.min<=12 ? Array.from({length:rule.max-rule.min+1},(_,index)=>rule.min+index) : null;
   return <label>{label}
-    {rule.type === 'choice' ? <select {...common} value={value ?? ''} onChange={event=>onChange(event.target.value)}>{rule.choices.map(choice=><option key={choice} value={choice}>{choice.replaceAll('_',' ')}</option>)}</select> :
+    {rule.type === 'bool' ? <select {...common} value={String(!!value)} onChange={event=>onChange(event.target.value==='true')}><option value="true">Enabled</option><option value="false">Disabled</option></select> :
+      rule.type === 'choice' || islandChoices ? <select {...common} value={value ?? ''} onChange={event=>onChange(event.target.value)}>{(islandChoices||rule.choices).map(choice=><option key={choice} value={choice}>{runValueLabel(choice)}</option>)}</select> :
       <input {...common} type="number" step="1" min={rule.min} max={rule.max} value={value ?? ''} onChange={event=>onChange(event.target.value)} placeholder={rule.optional?'Automatic when blank':undefined}/>}
-    {rule.type === 'int' && <small>{rule.min !== undefined ? `Minimum ${rule.min.toLocaleString()}` : 'Integer'}{rule.max !== undefined ? ` · maximum ${rule.max.toLocaleString()}` : ''}</small>}
-    {error && <span className="field-error">{error}</span>}
+    {HELP[name]&&<small id={`hint-${name}`}>{HELP[name]}</small>}
+    {error && <span id={`error-${name}`} className="field-error">{error}</span>}
   </label>;
 }
 
@@ -58,25 +65,25 @@ export default function RunsPage({api=backendApi,onOpenRun,onBusyChange,canStart
     finally{submitting.current=false;if(mounted.current)setBusy(false);}
   };
   return <div className="runs-page">
-    <header className="page-head"><h1>Start a new run</h1><p className="question">Evolutionary search configuration and clustering parameters.</p></header>
+    <header className="page-head"><h1>Start a new run</h1></header>
     <div className="backend-connection" role="status" aria-live="polite"><span className={`status-dot ${health.state==='connected'?'online':''}`}/><strong>{health.state==='connected'?'Backend connected':health.state==='checking'?'Checking backend…':'Backend unavailable'}</strong><button type="button" onClick={()=>setRetry(value=>value+1)} disabled={busy}>Retry connection</button></div>
     {health.message&&<div className="notice error" role="alert">{health.message}</div>}
     {loading&&<p role="status">Loading presets…</p>}
     {catalogError&&<div className="notice error" role="alert">{catalogError}</div>}
     {selected&&<section className="run-entry"><form className="new-run-form" onSubmit={submit} noValidate aria-busy={busy}>
       <fieldset disabled={busy||loading||!!catalogError}>
-        <label>Preset<select name="preset" value={preset} onChange={event=>{setPreset(event.target.value);setErrors({});setSubmitError('');}}>{catalog.presets.map(item=><option key={item.preset} value={item.preset}>{item.algorithm.toUpperCase()} · {item.benchmark} — {item.preset}</option>)}</select></label>
-        <p className="preset-description">{selected.description}</p>
-        <div className="preset-tags"><span>{selected.algorithm.toUpperCase()}</span><span>{selected.benchmark.replaceAll('_',' ')}</span><span>Defaults supplied by runner</span></div>
-        <h3>Runner settings</h3>
+        <section className="run-preset" aria-label="Preset selection">
+          <label>Preset<select name="preset" value={preset} onChange={event=>{setPreset(event.target.value);setErrors({});setSubmitError('');}}>{catalog.presets.map(item=><option key={item.preset} value={item.preset}>{item.algorithm.toUpperCase()} · {runValueLabel(item.benchmark)} — {item.preset}</option>)}</select></label>
+        </section>
+        <section className="runner-controls" aria-labelledby="runner-title"><h3 id="runner-title">Runner settings</h3>
         <div className="param-grid">{Object.entries(catalog.overrides).map(([key,rule])=><OverrideField key={`${preset}:${key}`} name={key} rule={rule} value={Object.hasOwn(values,key)?values[key]:selected.defaults[key]} onChange={value=>changeValue(key,value)} error={errors[key]}/>)}</div>
-        <p className="caption">An unspecified seed enables automatic seeding. Asynchronous migration prevents deterministic replay from the seed alone.</p>
+        </section>
         <ClusteringControls value={clustering} onChange={setClustering} errors={errors}/>
         <section className="run-display-mode" aria-labelledby="display-mode-title"><h3 id="display-mode-title">Display mode</h3>
-          <label className="check"><input id="live-updates" name="stream-mode" type="radio" checked={stream} onChange={()=>setStream(true)}/>Live updates</label>
-          <p className="caption">Incremental clustered graph updates during execution.</p>
-          <label className="check"><input id="final-only" name="stream-mode" type="radio" checked={!stream} onChange={()=>setStream(false)}/>Final result only</label>
-          <p className="caption">Batch clustering after execution. Final results are persisted in both modes.</p>
+          <div className="display-options" role="radiogroup" aria-labelledby="display-mode-title">
+            <label className="display-option"><input id="live-updates" name="stream-mode" type="radio" value="live" aria-labelledby="live-mode-label" aria-describedby="live-mode-help" checked={stream} onChange={()=>setStream(true)}/><span><strong id="live-mode-label">Live updates</strong><small id="live-mode-help">Update the clustered graph as the run progresses.</small></span></label>
+            <label className="display-option"><input id="final-only" name="stream-mode" type="radio" value="batch" aria-labelledby="batch-mode-label" aria-describedby="batch-mode-help" checked={!stream} onChange={()=>setStream(false)}/><span><strong id="batch-mode-label">Final result only</strong><small id="batch-mode-help">Cluster after execution and show the completed graph.</small></span></label>
+          </div>
         </section>
         {submitError&&<div className="notice error" role="alert">{submitError}</div>}
         {!canStart&&<p className="caption" role="status">Waiting for the run browser to identify this backend. Use “Retry run browser” if it is unavailable.</p>}

@@ -14,6 +14,51 @@ class FakeSource {
 }
 const pendingApi=()=>({url:path=>path,result:async()=>{throw Object.assign(Error('no result: run is running'),{status:404});}});
 
+test('combined Run view keeps request settings beside final results with technical details collapsed',async()=>{
+  const configuration={preset:'de_rastrigin',stream:false,overrides:{seed:0,migration:{enabled:true,interval:3}},clustering:{birch:true,birch_threshold:null,lsh_hashes:6}};
+  const final=structuredClone(result);
+  final.clustering.elapsed_seconds=7.501225799991516;
+  final.run.benchmark='shifted_rotated';
+  final.graph.nodes.overall_best=[true,false];final.graph.nodes.best_fitness[0]=0.00000149109;
+  const view=await mount(Workspace,{runId,configuration,api:{result:async()=>final},view:'run'});
+  try {
+    assert.equal(document.querySelectorAll('h1').length,1);
+    assert.equal(document.querySelector('h1').textContent,'Run configurations');
+    assert.match(document.querySelector('.run-outcomes').textContent,/200/);
+    assert.equal(document.querySelector('.algorithm-badge').textContent,'DE');
+    assert.match(document.querySelector('.run-identity').textContent,/Shifted Rotated/);
+    assert.match(document.querySelector('.run-identity').textContent,/Ring/);
+    assert.equal(document.querySelectorAll('.run-outcomes dd')[3].textContent,'7.501 s');
+    const columns=document.querySelectorAll('.configuration-columns > section');
+    assert.match(columns[0].textContent,/Clustering settings/);
+    assert.match(columns[1].textContent,/Runner overrides/);
+    assert.equal(document.querySelector('.configuration-additional').open,false);
+    assert.match(document.querySelector('.run-outcomes').textContent,/0\.00000149109/);
+    assert.match(document.querySelector('.run-configuration').textContent,/Final result only/);
+    assert.match(columns[1].querySelector('.configuration-fields').textContent,/migration \/ interval3/);
+    assert.match(document.querySelector('.run-configuration').textContent,/Automatic/);
+    assert.doesNotMatch(document.querySelector('.run-configuration').textContent,/\{"enabled"/);
+    assert.equal(document.querySelector('.run-technical').open,false);
+    assert.match(document.querySelector('.run-warning-list').textContent,/one malformed row/);
+  } finally {await view.close();}
+});
+
+test('Run result counters update from backend events while remembered configuration stays available',async()=>{
+  let source;
+  const configuration={preset:'de_rastrigin',stream:true,overrides:{},clustering:{lsh:true}};
+  const view=await mount(Workspace,{runId,configuration,api:pendingApi(),view:'run',eventSourceFactory:()=>source=new FakeSource('')});
+  try {
+    assert.equal(document.querySelector('.run-outcomes dd').textContent,'—');
+    assert.match(document.querySelector('.run-configuration').textContent,/Live updates/);
+    await act(async()=>source.emit('update',{status:'live',graph:delta(),clustering:{...result.clustering,counts:{evaluations:12345,nodes:42}},malformed_rows:0,warnings:[]}));
+    assert.equal(document.querySelector('.run-outcomes dd').textContent,'12,345');
+    assert.equal(document.querySelectorAll('.run-outcomes dd')[1].textContent,'42');
+    assert.ok(button('Cancel run'));
+    assert.match(document.querySelector('.run-configuration').textContent,/Preset defaults/);
+    assert.equal(document.querySelector('.run-warning-list'),null);
+  } finally {await view.close();}
+});
+
 test('run details display final and live backend layout diagnostics',async()=>{
   const final=await mount(Workspace,{runId,api:{url:p=>p,result:async()=>result},view:'run'});
   try{assert.match(document.body.textContent,/Layout/);assert.match(document.body.textContent,/PCA/);assert.match(document.body.textContent,/80%/);}finally{await final.close();}
@@ -131,8 +176,8 @@ test('run switch clears previous data immediately and ignores events from the ol
   try{
     const old=source;await act(async()=>old.emit('final',result));
     await view.rerender({runId:'run-20261103T120000Z-11223344'});
-    assert.doesNotMatch(document.body.textContent,/rastrigin/);
-    await act(async()=>old.emit('final',result));assert.doesNotMatch(document.body.textContent,/rastrigin/);
+    assert.doesNotMatch(document.body.textContent,/rastrigin/i);
+    await act(async()=>old.emit('final',result));assert.doesNotMatch(document.body.textContent,/rastrigin/i);
   }finally{await view.close();}
 });
 test('done status recovers the persisted result when the final event is unavailable',async()=>{

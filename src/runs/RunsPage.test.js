@@ -7,7 +7,7 @@ const render=async(client=makeApi())=>{const opened=[];const view=await mount(Ru
 test('preset form submits published override types and forwards the accepted backend configuration',async()=>{
   let body;const view=await render(makeApi({createRun:async value=>{body=value;return {run_id:runId,status:'queued',...value};}}));
   try{
-    assert.match(document.body.textContent,/Backend connected/);assert.equal(find('num_islands').min,'4');
+    assert.match(document.body.textContent,/Backend connected/);assert.equal(find('num_islands').tagName,'SELECT');assert.deepEqual([...find('num_islands').options].map(option=>option.value),['4','5','6']);
     await input('seed','0');await submit();
     assert.deepEqual(body.overrides,{seed:0});assert.equal(body.stream,true);assert.equal(view.opened[0].run.run_id,runId);
     assert.equal(view.opened[0].run.clustering.birch,true);
@@ -40,6 +40,36 @@ test('catalog retry preserves form values and exposes no unsupported upload or l
 test('batch mode sends stream false and leaves the compute request with the backend',async()=>{
   let body;const view=await render(makeApi({createRun:async value=>{body=value;return {run_id:runId,status:'queued',...value};}}));
   try{await click(find('final-only'));await submit();assert.equal(body.stream,false);assert.deepEqual(Object.keys(body).sort(),['clustering','overrides','preset','stream']);}finally{await view.close();}
+});
+
+test('setup dropdowns preserve backend numeric, boolean and automatic values',async()=>{
+  const bodies=[];
+  const view=await render(makeApi({createRun:async body=>{bodies.push(body);return {run_id:runId,status:'queued',...body};}}));
+  try {
+    assert.match(find('preset').selectedOptions[0].textContent,/Shifted Rotated/);
+    assert.doesNotMatch(document.body.textContent,/Five islands explore Rastrigin/);
+    assert.equal(document.querySelectorAll('[role="radiogroup"] input[type="radio"]').length,2);
+    await input('num_islands','6');
+    await input('migration.enabled','false');
+    await input('migration.topology','torus');
+    await input('detail','1.4');
+    assert.equal(document.querySelector('.advanced-clustering').open,false);
+    await click(document.querySelector('.advanced-clustering summary'));
+    assert.ok(find('clustering.birch_threshold').disabled);
+    await input('cluster-mode-birch_threshold','manual');
+    assert.equal(find('clustering.birch_threshold').disabled,false);
+    await submit();assert.equal(bodies.length,0);
+    assert.match(document.body.textContent,/BIRCH threshold is required/);
+    await input('clustering.birch_threshold','0.37');
+    await click(find('final-only'));await submit();
+    assert.deepEqual(bodies[0].overrides,{num_islands:6,'migration.enabled':false,'migration.topology':'torus'});
+    assert.equal(bodies[0].clustering.detail,1.4);
+    assert.equal(bodies[0].clustering.birch_threshold,0.37);
+    assert.equal(bodies[0].stream,false);
+    await input('cluster-mode-birch_threshold','auto');
+    assert.ok(find('clustering.birch_threshold').disabled);
+    await submit();assert.equal(bodies[1].clustering.birch_threshold,null);
+  } finally {await view.close();}
 });
 test('unhealthy backend blocks create and stale preset responses cannot replace a retry',async()=>{
   let done,calls=0;const pending=new Promise(resolve=>done=resolve);

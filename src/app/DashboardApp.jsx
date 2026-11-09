@@ -6,7 +6,6 @@ import { acceptedConfiguration } from '../runs/recent-runs.js';
 import { readRoute, runHash, RUN_VIEWS } from '../runs/navigation.js';
 import useRunLibrary, { browserStorage } from './useRunLibrary.js';
 import RunBrowserSidebar from './RunBrowserSidebar.jsx';
-import RunConfiguration from './RunConfiguration.jsx';
 import AboutPage from './AboutPage.jsx';
 import ExplainabilityPage from '../explainability/ExplainabilityPage.jsx';
 import RecordedRunsPage from '../demo/RecordedRunsPage.jsx';
@@ -50,8 +49,7 @@ export default function DashboardApp({api=backendApi,storage=browserStorage(),Wo
       <div hidden={route.page!=='library'} className="runs-home">{api.isDemo?<RecordedRunsPage entries={library.entries} onOpenRun={openRun}/>:<RunsPage api={api} onOpenRun={openRun} onBusyChange={setBusy} canStart={!!library.backendKey&&!library.loading}/>}<RunBrowserSidebar library={library} selectedId={route.runId} onOpenRun={openRun} onNewRun={newRun} busy={busy} recorded={api.isDemo}/></div>
       {route.page==='about'&&<AboutPage/>}
       {route.page==='explainability'&&<ExplainabilityPage runId={route.runId} api={api} onSelectRun={id=>navigate(runHash(id,'explainability'))}/>}
-      {route.runId&&route.page==='configuration'&&<RunConfiguration configuration={configuration} runId={route.runId} recorded={api.isDemo}/>}
-      {route.runId&&['archipelago','migration','convergence','diagnostics','run'].includes(route.page)&&<Workspace runId={route.runId} api={api} onBack={newRun} warning="" view={route.page}/>}
+      {route.runId&&['archipelago','migration','convergence','diagnostics','run'].includes(route.page)&&<Workspace runId={route.runId} api={api} configuration={configuration} onBack={newRun} warning="" view={route.page}/>}
       <footer>Archipelago · Distributed evolutionary search</footer>
     </main>
   </div>;

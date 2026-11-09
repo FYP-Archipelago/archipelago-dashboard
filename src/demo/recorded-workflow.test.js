@@ -35,8 +35,8 @@ test('both published recordings load through actual workspace and analysis tabs 
       await click(button('Show full graph'));
       await click(button('Migration'));await ready(()=>document.querySelectorAll('tbody tr').length>0);
       await click(button('Clustering'));await ready(()=>/Resolved settings/.test(document.body.textContent));assert.match(document.body.textContent,/MMD/);
-      await click(button('Run details'));await ready(()=>/No warnings reported/.test(document.body.textContent));assert.match(document.body.textContent,/rastrigin/);
-      await click(button('Run configuration'));assert.match(document.body.textContent,/Recorded runner settings/);assert.match(document.body.textContent,/Offline clustering/);
+      await click(button('Run configurations'));await ready(()=>document.querySelector('.run-outcomes'));assert.match(document.querySelector('.run-identity').textContent,/Rastrigin/);
+      assert.equal(button('Run configuration'),undefined);assert.match(document.body.textContent,/Recorded runner settings/);assert.match(document.body.textContent,/Offline clustering/);
       await click(button('Convergence'));await ready(()=>document.querySelectorAll('polyline').length>0);assert.match(document.body.textContent,/Fitness history/);
       await click(button('Explainability'));await ready(()=>document.querySelector('[data-attribution]'));
       await click(button('Migration routes'));assert.match(document.body.textContent,/Migration-route contributions/);
