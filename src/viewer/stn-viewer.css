@@ -103,6 +103,8 @@ input[type=range]::-moz-range-thumb{width:13px; height:13px; border:0; border-ra
   border:1px solid var(--viz-rule); border-radius:3px; color:var(--viz-ink);
   max-height:58%; overflow-y:auto; overscroll-behavior:contain;
 }
+.reset-view{position:absolute;z-index:4;padding:10px 14px;border:1px solid var(--viz-rule);border-radius:3px;background:color-mix(in srgb,var(--panel) 94%,transparent);color:var(--viz-ink);font:500 12px "IBM Plex Mono",monospace;cursor:pointer}
+.reset-view:hover,.reset-view:focus-visible{border-color:var(--accent)}
 .inspect::-webkit-scrollbar{width:6px}
 .inspect::-webkit-scrollbar-thumb{background:var(--line); border-radius:3px}
 .ins-h{

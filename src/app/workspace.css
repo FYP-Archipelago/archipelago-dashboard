@@ -59,8 +59,28 @@
 .backend-run-workspace .page-head .reading .deck{position:absolute;z-index:10;right:20px;max-width:72ch;padding:14px;border:1px solid var(--line);border-radius:5px;background:var(--panel)}
 .backend-stn-host{--stage-h:calc(100vh - 230px);width:100%;min-height:420px;margin:0 0 20px}
 .backend-viz-wrap{position:relative}
-.backend-viz-wrap .views{left:16px;top:16px}
 .backend-stn-host .stage{min-height:420px}
+@media(min-width:901px){
+  .backend-stn-host{--side:clamp(220px,23%,420px)}
+  .backend-stn-host .stage #gl{left:var(--side);width:calc(100% - var(--side) - var(--side))}
+  .backend-stn-host .stage .stage-note{left:var(--side);right:var(--side)}
+  .backend-stn-host .stage .axis{right:calc(var(--side) + 16px)}
+  .backend-stn-host .stage .inspect{right:calc(var(--side) + 14px)}
+  .backend-stn-host .stage .reset-view{left:calc(var(--side) + 14px);bottom:14px}
+  .backend-stn-host .stage .rail{top:0;bottom:0;display:flex;flex-direction:column;width:var(--side);max-height:none;overflow:hidden;border-radius:0;background:var(--panel);backdrop-filter:none}
+  .backend-stn-host .stage #rail-left{left:0;right:auto;border:0;border-right:1px solid var(--line)}
+  .backend-stn-host .stage #rail{left:auto;right:0;border:0;border-left:1px solid var(--line)}
+  .backend-stn-host .rail-sections{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain}
+  .backend-stn-host .rail-foot{position:static;flex:none}
+}
+@media(max-width:900px){
+  .backend-stn-host .stage{height:auto;overflow:visible}
+  .backend-stn-host .stage #gl{height:440px}
+  .backend-stn-host .stage .reset-view{left:14px;top:390px;bottom:auto}
+  .backend-stn-host .stage .rail{width:100%}
+  .backend-stn-host .rail-sections{overflow:visible}
+  .backend-stn-host .rail-foot{position:static}
+}
 .runs-home{display:grid;grid-template-columns:minmax(0,1fr) 260px;gap:24px;align-items:start}
 .workspace-shell .runs-home .run-browser{position:static;grid-area:auto;height:auto;max-height:none;border:1px solid var(--line);border-radius:6px;padding:16px}
 .workspace-shell .runs-home .runs-page{max-width:900px}
