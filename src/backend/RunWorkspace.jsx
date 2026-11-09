@@ -1,6 +1,7 @@
 import React from 'react';
 import useRunSession from './useRunSession.js';
 import GraphViewer from './GraphViewer.jsx';
+import MigrationOverview from './MigrationOverview.jsx';
 import RecordedConvergence from '../demo/RecordedConvergence.jsx';
 import './run-workspace.css';
 
@@ -31,13 +32,6 @@ function Diagnostics({session}) {
   </>;
 }
 
-function Migration({session}) {
-  const routes=[...session.graph.migrations.values()];
-  const nodes=session.graph.nodes;
-  return <><p>These are aggregate migration routes in the backend graph. Individual migration times and latencies are not supplied by the current result.</p>
-    {routes.length?<div className="run-table-wrap"><table><caption>Migration routes</caption><thead><tr><th>Source node</th><th>Source island</th><th>Arrival node</th><th>Arrival island</th><th>Migrants</th></tr></thead><tbody>{routes.map(route=><tr key={route.id}><td>{route.source}</td><td>{show(nodes.get(route.source)?.island)}</td><td>{route.target}</td><td>{show(nodes.get(route.target)?.island)}</td><td>{show(route.count)}</td></tr>)}</tbody></table></div>:<p className="notice">No migration routes are available yet.</p>}</>;
-}
-
 function RunDetails({session,runId}) {
   const run=session.result?.run;
   const layout=session.layout;
@@ -64,8 +58,8 @@ export default function RunWorkspace({runId,api,onBack,warning='',view='archipel
     {session.cancelNotice&&<div className="notice" role="status">{session.cancelNotice}</div>}
     {session.error&&<div className="notice run-error" role="alert">{session.error} <button className="secondary" type="button" onClick={session.retry}>Retry connection</button></div>}
     {view==='archipelago'&&<GraphViewer graph={session.graph} runId={runId} canReplay={session.status==='done'}/>}
-    {view==='migration'&&<Migration session={session}/>}
-    {view==='convergence'&&(api.isDemo?<RecordedConvergence runId={runId} api={api}/>:<p className="notice">The backend does not provide a fitness-over-generation time series. Inspect the graph's current best fitness and node details instead.</p>)}
+    {view==='migration'&&<MigrationOverview session={session}/>}
+    {view==='convergence'&&(api.analytics?<RecordedConvergence runId={runId} api={api}/>:<p className="notice">The backend does not provide a fitness-over-generation time series. Inspect the graph's current best fitness and node details instead.</p>)}
     {view==='diagnostics'&&<Diagnostics session={session}/>}
     {view==='run'&&<RunDetails session={session} runId={runId}/>}
   </section>;

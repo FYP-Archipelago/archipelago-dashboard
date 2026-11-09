@@ -141,6 +141,23 @@ test('done status recovers the persisted result when the final event is unavaila
   const view=await mount(Workspace,{runId,api,onBack(){},view:'run',eventSourceFactory:()=>source=new FakeSource('')});
   try{await act(async()=>source.emit('status',{status:'done'}));assert.equal(calls,2);assert.match(document.body.textContent,/Final result loaded/);assert.ok(source.closed);}finally{await view.close();}
 });
+
+test('stream completion loads the backend migration summary without reopening the run',async()=>{
+  let source,calls=0;
+  const migration_summary={islands:[0,1],total:2,routes:1,maximum:2,
+    rows:[{island:0,cells:[{island:0,count:0,intensity:0},{island:1,count:2,intensity:1}]},{island:1,cells:[{island:0,count:0,intensity:0},{island:1,count:0,intensity:0}]}],
+    totals:[{island:0,sent:2,received:0,sent_percent:100,received_percent:0},{island:1,sent:0,received:2,sent_percent:0,received_percent:100}]};
+  const api={url:p=>p,result:async()=>{if(!calls++)throw Object.assign(Error('no result'),{status:404});return {...result,migration_summary};}};
+  const view=await mount(Workspace,{runId,api,view:'migration',eventSourceFactory:()=>source=new FakeSource('')});
+  try {
+    await act(async()=>source.emit('final',result));
+    assert.equal(calls,2);
+    assert.ok(document.querySelector('.migration-matrix'));
+    assert.equal(document.querySelector('.migration-metrics dd').textContent,'2');
+    assert.equal(document.querySelector('.migration-details').open,false);
+    assert.ok(source.closed);
+  } finally {await view.close();}
+});
 test('permanently closed streams offer retry and pending streams close on unmount',async()=>{
   let source;const factory=()=>source=new FakeSource('');
   const view=await mount(Workspace,{runId,api:pendingApi(),onBack(){},view:'run',eventSourceFactory:factory});

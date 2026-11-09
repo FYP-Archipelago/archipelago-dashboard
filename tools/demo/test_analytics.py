@@ -61,9 +61,9 @@ class RecordedAnalyticsTests(unittest.TestCase):
         result = analytics.collect([start(), summary(island_id=0, generation=0, best_so_far_fitness=10),
                                      summary(island_id=1, generation=4, best_so_far_fitness=2)], RUN_ID)
         chart = result['chart']
-        self.assertEqual((chart['width'], chart['height'], chart['metric']), (720, 260, 'best_so_far_fitness'))
-        self.assertEqual(chart['lines'], [dict(island_id=0, points=[dict(x=65.0, y=20.0)]),
-                                         dict(island_id=1, points=[dict(x=700.0, y=220.0)])])
+        self.assertEqual((chart['width'], chart['height'], chart['metric']), (900, 330, 'best_so_far_fitness'))
+        self.assertEqual(chart['lines'], [dict(island_id=0, points=[dict(x=120.0, y=28.0)]),
+                                         dict(island_id=1, points=[dict(x=876.0, y=280.0)])])
         self.assertEqual([tick['label'] for tick in chart['x_ticks']], ['0', '1', '2', '3', '4'])
         self.assertEqual([tick['label'] for tick in chart['y_ticks']], ['2', '4', '6', '8', '10'])
         without_best_so_far = dict(type='generation_end', run_id=RUN_ID,
@@ -76,15 +76,24 @@ class RecordedAnalyticsTests(unittest.TestCase):
                        [start(), summary(generation=0, best_so_far_fitness=-3),
                         summary(generation=1, best_so_far_fitness=-3)]]:
             chart = analytics.collect(events, RUN_ID)['chart']
-            self.assertEqual(len(chart['x_ticks']), 5)
+            self.assertGreaterEqual(len(chart['x_ticks']), 2)
+            self.assertTrue(all(int(tick['label']) >= 0 for tick in chart['x_ticks']))
             self.assertEqual(len(chart['y_ticks']), 5)
             for line in chart['lines']:
                 for point in line['points']:
                     self.assertTrue(all(math.isfinite(value) for value in point.values()))
-                    self.assertGreaterEqual(point['x'], 65)
-                    self.assertLessEqual(point['x'], 700)
-                    self.assertGreaterEqual(point['y'], 20)
-                    self.assertLessEqual(point['y'], 220)
+                    self.assertGreaterEqual(point['x'], 120)
+                    self.assertLessEqual(point['x'], 876)
+                    self.assertGreaterEqual(point['y'], 28)
+                    self.assertLessEqual(point['y'], 280)
+
+    def test_small_values_keep_nonzero_decimal_labels_and_metrics_get_independent_geometry(self):
+        result = analytics.collect([start(), summary(generation=0, best_so_far_fitness=0.00000149109),
+                                    summary(generation=3, best_so_far_fitness=37)], RUN_ID)
+        self.assertEqual(result['chart']['y_ticks'][0]['label'], '0.00000149109')
+        self.assertTrue(all('e' not in tick['label'].lower() for tick in result['chart']['y_ticks']))
+        self.assertEqual(set(result['charts']), {'best_so_far_fitness', 'mean_fitness', 'diversity'})
+        self.assertEqual(result['charts']['diversity']['metric'], 'diversity')
 
     def test_rejects_unreliable_identity_direction_and_numerical_fields(self):
         cases = [summary(run_id='another-run'), summary(best_fitness=float('nan')),
@@ -97,6 +106,14 @@ class RecordedAnalyticsTests(unittest.TestCase):
         for events in [[], [summary()], [dict(type='run_start', run_id=RUN_ID), summary()]]:
             with self.subTest(events=events), self.assertRaises(ValueError):
                 analytics.collect(events, RUN_ID)
+
+    def test_axis_labels_distinguish_close_fitness_values(self):
+        chart = analytics.collect([start(), summary(generation=0, best_so_far_fitness=1.0000001),
+                                   summary(generation=1, best_so_far_fitness=1.0000004)], RUN_ID)['chart']
+        labels = [tick['label'] for tick in chart['y_ticks']]
+        self.assertEqual(len(set(labels)), 5)
+        self.assertEqual(float(labels[0]), 1.0000001)
+        self.assertEqual(float(labels[-1]), 1.0000004)
 
     def test_export_reads_only_saved_generation_summaries(self):
         with tempfile.TemporaryDirectory(dir=ROOT) as temporary:

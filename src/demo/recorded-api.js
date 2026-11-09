@@ -11,12 +11,19 @@ export function validateRecordedAnalytics(value,id) {
       count(row.generation)&&finite(row.best_fitness)&&(!index||row.generation>island.series[index-1].generation)&&metrics.every(key=>row[key]===undefined||(key==='evaluations'?count(row[key]):finite(row[key])))))&&
     new Set(value.islands.map(island=>island.island_id)).size===value.islands.length;
   const chart=value?.chart;
-  if(!valid||!chart||!finite(chart.width)||chart.width<=0||!finite(chart.height)||chart.height<=0||!['best_so_far_fitness','best_fitness'].includes(chart.metric)||
-    !Array.isArray(chart.x_ticks)||!chart.x_ticks.length||!chart.x_ticks.every(t=>finite(t.x)&&t.x>=0&&t.x<=chart.width&&typeof t.label==='string')||
-    !Array.isArray(chart.y_ticks)||!chart.y_ticks.length||!chart.y_ticks.every(t=>finite(t.y)&&t.y>=0&&t.y<=chart.height&&typeof t.label==='string')||
+  if(!valid||!chart||!finite(chart.width)||chart.width<=0||!finite(chart.height)||chart.height<=0||!['best_so_far_fitness','best_fitness','mean_fitness','diversity'].includes(chart.metric)||
+    !Array.isArray(chart.x_ticks)||!chart.x_ticks.length||!chart.x_ticks.every(t=>finite(t.x)&&t.x>=0&&t.x<=chart.width&&typeof t.label==='string'&&finite(Number(t.label)))||
+    !Array.isArray(chart.y_ticks)||!chart.y_ticks.length||!chart.y_ticks.every(t=>finite(t.y)&&t.y>=0&&t.y<=chart.height&&typeof t.label==='string'&&finite(Number(t.label)))||
     !Array.isArray(chart.lines)||chart.lines.length!==value.islands.length||new Set(chart.lines.map(line=>line.island_id)).size!==chart.lines.length||
     !chart.lines.every(line=>{const island=value.islands.find(item=>item.island_id===line.island_id);return island&&Array.isArray(line.points)&&line.points.length===island.series.length&&line.points.every(point=>finite(point.x)&&point.x>=0&&point.x<=chart.width&&finite(point.y)&&point.y>=0&&point.y<=chart.height);})||
-    (chart.metric==='best_so_far_fitness'&&value.islands.some(island=>island.series.some(row=>!finite(row.best_so_far_fitness)))))throw Error('Published recorded history is malformed or belongs to another run.');
+    value.islands.some(island=>island.series.some(row=>!finite(row[chart.metric]))))throw Error('Published recorded history is malformed or belongs to another run.');
+  if (value.charts !== undefined) {
+    if (!value.charts || typeof value.charts !== 'object' || Array.isArray(value.charts) || !Object.hasOwn(value.charts, chart.metric)) throw Error('Published recorded history has invalid metric charts.');
+    for (const [metric, metricChart] of Object.entries(value.charts)) {
+      if (metricChart?.metric !== metric) throw Error('Published recorded history has invalid metric charts.');
+      validateRecordedAnalytics({...value, chart: metricChart, charts: undefined}, id);
+    }
+  }
   return value;
 }
 export function recordingStorage(recordings,backend=IDENTITY) {

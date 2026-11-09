@@ -135,7 +135,15 @@ export default function useRunSession({runId,api,eventSourceFactory=nativeEventS
           if(update.layout)patch({layout:update.layout});
         } catch(error){acceptingEvents=false;patch({error:message(error),connection:'closed'});source.close();}
       });
-      source.addEventListener('final',event=>{if(!active||!acceptingEvents)return;try{finish(parse(event,'final'));}catch(error){acceptingEvents=false;patch({error:message(error),connection:'closed'});source.close();}});
+      source.addEventListener('final',event=>{
+        if(!active||!acceptingEvents)return;
+        try {
+          const result=parse(event,'final');
+          finish(result);
+          // The persisted endpoint includes summaries prepared by the API.
+          if(terminal&&!result.migration_summary)loadResult({terminal:true});
+        }catch(error){acceptingEvents=false;patch({error:message(error),connection:'closed'});source.close();}
+      });
       source.addEventListener('error',event=>{
         if(!active||(!acceptingEvents&&!failedStatus))return;
         if(failedStatus){clearTimeout(timer);failedStatus=false;acceptingEvents=false;if(!event.data){source.close();patch({connection:'closed',error:'Run failed. The event stream closed before error details arrived.'});return;}}

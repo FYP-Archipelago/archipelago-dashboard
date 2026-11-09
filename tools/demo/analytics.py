@@ -8,6 +8,7 @@ missing generations, metrics, wall-clock timings or convergence values are infer
 import argparse
 import json
 import math
+from decimal import Decimal
 from pathlib import Path
 import re
 
@@ -32,27 +33,30 @@ def number(value, field, *, integer=False):
     return value
 
 
-def build_chart(islands):
+def build_chart(islands, metric=None):
     """Prepare drawing geometry on shared numeric axes; preserve objective direction."""
     samples = [point for island in islands for point in island['series']]
-    metric = 'best_so_far_fitness' if all('best_so_far_fitness' in point for point in samples) else 'best_fitness'
+    metric = metric or ('best_so_far_fitness' if all('best_so_far_fitness' in point for point in samples) else 'best_fitness')
     xs = [point['generation'] for point in samples]
     ys = [point[metric] for point in samples]
     x_min, x_max = min(xs), max(xs)
     y_min, y_max = min(ys), max(ys)
     if x_min == x_max:
-        padding = max(abs(x_min) * 0.05, 1)
-        x_min, x_max = x_min - padding, x_max + padding
+        padding = max(math.ceil(abs(x_min) * 0.05), 1)
+        x_min, x_max = max(0, x_min - padding), x_max + padding
     if y_min == y_max:
-        padding = max(abs(y_min) * 0.05, 1)
+        padding = abs(y_min) * 0.05 if y_min else 1
         y_min, y_max = y_min - padding, y_max + padding
-    x = lambda value: 65.0 + (value - x_min) / (x_max - x_min) * 635.0
-    y = lambda value: 220.0 - (value - y_min) / (y_max - y_min) * 200.0
-    x_values = [x_min + (x_max - x_min) * i / 4 for i in range(5)]
+    x = lambda value: 120.0 + (value - x_min) / (x_max - x_min) * 756.0
+    y = lambda value: 280.0 - (value - y_min) / (y_max - y_min) * 252.0
+    x_values = sorted({round(x_min + (x_max - x_min) * i / 4) for i in range(5)})
     y_values = [y_min + (y_max - y_min) * i / 4 for i in range(5)]
-    return dict(width=720, height=260, metric=metric,
-                x_ticks=[dict(x=x(value), label=f'{value:.6g}') for value in x_values],
-                y_ticks=[dict(y=y(value), label=f'{value:.6g}') for value in y_values],
+    precision = 6
+    while precision < 17 and len({f'{value:.{precision}g}' for value in y_values}) < len(set(y_values)):
+        precision += 1
+    return dict(width=900, height=330, metric=metric,
+                x_ticks=[dict(x=x(value), label=str(value)) for value in x_values],
+                y_ticks=[dict(y=y(value), label=format(Decimal(f'{value:.{precision}g}'), 'f')) for value in y_values],
                 lines=[dict(island_id=island['island_id'],
                             points=[dict(x=x(point['generation']), y=y(point[metric])) for point in island['series']])
                        for island in islands])
@@ -103,6 +107,10 @@ def collect(events, run_id):
                   source='recorded-generation-summaries',
                   note='Values copied from saved generation_end events. Each island ends at its last recorded generation; missing generations are not filled.',
                   islands=islands, chart=build_chart(islands))
+    result['charts'] = {result['chart']['metric']: result['chart']}
+    for metric in ('mean_fitness', 'diversity'):
+        if all(metric in point for island in islands for point in island['series']):
+            result['charts'][metric] = build_chart(islands, metric)
     if diversity_metrics:
         result['diversity_metric'] = next(iter(diversity_metrics))
     return result
