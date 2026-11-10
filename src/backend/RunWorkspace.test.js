@@ -429,19 +429,25 @@ test('invalid scalar result metadata is recoverable',async t=>{
 });
 
 
-test('stream completion loads the backend migration summary without reopening the run',async()=>{
-  let source,calls=0;
-  const migration_summary={islands:[0,1],total:2,routes:1,maximum:2,
-    rows:[{island:0,cells:[{island:0,count:0,intensity:0},{island:1,count:2,intensity:1}]},{island:1,cells:[{island:0,count:0,intensity:0},{island:1,count:0,intensity:0}]}],
-    totals:[{island:0,sent:2,received:0,sent_percent:100,received_percent:0},{island:1,sent:0,received:2,sent_percent:0,received_percent:100}]};
-  const api={url:p=>p,result:async()=>{if(!calls++)throw Object.assign(Error('no result'),{status:404});return {...result,migration_summary};}};
-  const view=await mount(Workspace,{runId,api,view:'migration',eventSourceFactory:()=>source=new FakeSource('')});
+test('the final event carries migration routes, so completion needs no second result request', async () => {
+  let source;
+  let calls = 0;
+  const final = { ...result, migration_routes: [{ source: 0, destination: 1, migrants: 2 }] };
+  const api = {
+    url: path => path,
+    result: async () => {
+      calls += 1;
+      throw Object.assign(new Error('no result'), { status: 404 });
+    },
+  };
+  const view = await mount(Workspace, { runId, api, view: 'migration', eventSourceFactory: () => (source = new FakeSource('')) });
   try {
-    await act(async()=>source.emit('final',result));
-    assert.equal(calls,2);
+    await act(async () => source.emit('final', final));
+    assert.equal(calls, 1);
     assert.ok(document.querySelector('.migration-matrix'));
-    assert.equal(document.querySelector('.migration-metrics dd').textContent,'2');
-    assert.equal(document.querySelector('.migration-details').open,false);
+    assert.equal(document.querySelector('.migration-metrics dd').textContent, '2');
     assert.ok(source.closed);
-  } finally {await view.close();}
+  } finally {
+    await view.close();
+  }
 });

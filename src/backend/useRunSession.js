@@ -138,11 +138,12 @@ export default function useRunSession({runId,api,eventSourceFactory=nativeEventS
       source.addEventListener('final',event=>{
         if(!active||!acceptingEvents)return;
         try {
-          const result=parse(event,'final');
-          finish(result);
-          // The persisted endpoint includes summaries prepared by the API.
-          if(terminal&&!result.migration_summary)loadResult({terminal:true});
-        }catch(error){acceptingEvents=false;patch({error:message(error),connection:'closed'});source.close();}
+          finish(parse(event, 'final'));
+        } catch (error) {
+          acceptingEvents = false;
+          patch({ error: message(error), connection: 'closed' });
+          source.close();
+        }
       });
       source.addEventListener('error',event=>{
         if(!active||(!acceptingEvents&&!failedStatus))return;

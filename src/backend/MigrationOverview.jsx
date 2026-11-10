@@ -1,12 +1,26 @@
 import React from 'react';
+import { migrationSummary } from './migration-summary.js';
 import './migration.css';
 
 const format = value => value.toLocaleString();
 
+const OLDER_RESULT = 'This result was computed before the clustering module counted migrants per route.';
+
+// The summary to show, or the notice explaining why there is none.
+function summaryFor(result) {
+  if (!result) return { summary: null, notice: 'Waiting for the final migration summary…' };
+  try {
+    const summary = migrationSummary(result);
+    return summary ? { summary, notice: '' } : { summary: null, notice: OLDER_RESULT };
+  } catch (error) {
+    return { summary: null, notice: error.message };
+  }
+}
+
 export default function MigrationOverview({session}) {
   const links = [...session.graph.migrations.values()];
   const nodes = session.graph.nodes;
-  const summary = session.result?.migration_summary;
+  const { summary, notice } = summaryFor(session.result);
   return <div className="migration-overview">
     {summary && <>
       <dl className="migration-metrics" aria-label="Migration totals">
@@ -32,7 +46,7 @@ export default function MigrationOverview({session}) {
         </section>
       </div>
     </>}
-    {!summary && <p className="notice">{session.result?'Migration summary unavailable.':'Waiting for the final migration summary…'}</p>}
+    {!summary && <p className="notice">{notice}</p>}
     <details className="migration-details"><summary><span>All routes</span><span className="migration-route-count">{format(links.length)} cluster links</span></summary>
       {links.length?<div className="run-table-wrap"><table><caption>Migration routes</caption><thead><tr><th>Source node</th><th>Source island</th><th>Arrival node</th><th>Arrival island</th><th>Migrants</th></tr></thead><tbody>{links.map(link=><tr key={link.id}><td>{link.source}</td><td>{nodes.get(link.source)?.island??'Unavailable'}</td><td>{link.target}</td><td>{nodes.get(link.target)?.island??'Unavailable'}</td><td>{format(link.count)}</td></tr>)}</tbody></table></div>:<p>No migration links are available yet.</p>}
     </details>

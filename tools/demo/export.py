@@ -112,29 +112,6 @@ def export(data_root, output, *, analyzer=None, analysis_version=None):
         public = Result.model_validate(result.model_dump(mode='json')).model_dump(mode='json')
         if public['run']['run_id'] != directory.name:
             raise ValueError(f'{directory.name}: analyzer returned a different run ID')
-        nodes, migrations = public["graph"]["nodes"], public["graph"]["migrations"]
-        islands = sorted(set(public["run"]["islands"]) | set(nodes["island"]))
-        island_of = dict(zip(nodes["id"], nodes["island"]))
-        counts = {a: {b: 0 for b in islands} for a in islands}
-        for source, target, count in zip(migrations["source"], migrations["target"], migrations["count"]):
-            counts[island_of[source]][island_of[target]] += count
-        maximum = max((count for row in counts.values() for count in row.values()), default=0)
-        totals = [{"island": a, "sent": sum(counts[a].values()), "received": sum(counts[b][a] for b in islands)} for a in islands]
-        bar_max = max((max(row["sent"], row["received"]) for row in totals), default=0)
-        public["migration_summary"] = {
-            "islands": islands,
-            "total": sum(row["sent"] for row in totals),
-            "routes": sum(count > 0 for row in counts.values() for count in row.values()),
-            "rows": [
-                {"island": a, "cells": [{"island": b, "count": counts[a][b], "intensity": counts[a][b] / maximum if maximum else 0} for b in islands]}
-                for a in islands
-            ],
-            "totals": [
-                dict(row, sent_percent=100 * row["sent"] / bar_max if bar_max else 0, received_percent=100 * row["received"] / bar_max if bar_max else 0)
-                for row in totals
-            ],
-            "maximum": maximum,
-        }
         artifacts.append((directory.name, public))
         index['runs'].append(recording_metadata(start, config))
     if not artifacts:
