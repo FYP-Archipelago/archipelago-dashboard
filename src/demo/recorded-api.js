@@ -1,5 +1,4 @@
 import {acceptedConfiguration,HISTORY_KEY,isRunId} from '../runs/recent-runs.js';
-import {createExplanationClient} from '../explainability/client.js';
 
 const IDENTITY='recorded-demo:v1';
 export function validateRecordedAnalytics(value,id) {
@@ -32,7 +31,6 @@ export function recordingStorage(recordings,backend=IDENTITY) {
 }
 
 export function createRecordedApi({fetchImpl=globalThis.fetch,baseUrl='/recorded-runs'}={}) {
-  const samples=createExplanationClient({fetchImpl});
   let catalog;
   async function read(file,{signal}={},root=baseUrl) {
     signal?.throwIfAborted();
@@ -63,7 +61,6 @@ export function createRecordedApi({fetchImpl=globalThis.fetch,baseUrl='/recorded
       if(value?.run?.run_id!==id)throw Error('Published result belongs to another run.');
       return value;
     },
-    async explanation(id,options) {await requireRun(id,options);return {schema_version:1,run_id:id,status:'ready',explanation:await samples.run(id,options)};},
     async analytics(id,options) {await requireRun(id,options);return validateRecordedAnalytics(await read(`${id}.json`,options,'/recorded-analytics'),id);},
     createRun:blocked,cancelRun:blocked,
     url:()=>{throw Error('Saved recordings have no live event stream.');},

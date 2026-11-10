@@ -48,7 +48,7 @@ export default function DashboardApp({api=backendApi,storage=browserStorage(),Wo
       {warning&&<div className="notice" role="status">{warning}</div>}
       <div hidden={route.page!=='library'} className="runs-home">{api.isDemo?<RecordedRunsPage entries={library.entries} onOpenRun={openRun}/>:<RunsPage api={api} onOpenRun={openRun} onBusyChange={setBusy} canStart={!!library.backendKey&&!library.loading}/>}<RunBrowserSidebar library={library} selectedId={route.runId} onOpenRun={openRun} onNewRun={newRun} busy={busy} recorded={api.isDemo}/></div>
       {route.page==='about'&&<AboutPage/>}
-      {route.page==='explainability'&&<ExplainabilityPage runId={route.runId} api={api} onSelectRun={id=>navigate(runHash(id,'explainability'))}/>}
+      {route.page==='explainability'&&<ExplainabilityPage runId={route.runId} api={api}/>}
       {route.runId&&['archipelago','migration','convergence','diagnostics','run'].includes(route.page)&&<Workspace runId={route.runId} api={api} configuration={configuration} onBack={newRun} warning="" view={route.page}/>}
       <footer>Archipelago · Distributed evolutionary search</footer>
     </main>
