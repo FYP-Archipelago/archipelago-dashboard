@@ -4,7 +4,7 @@ import {mountStnViewer} from '../viewer/stn-viewer.js';
 import {graphAtReplayProgress,replayOrder} from './graph-replay.js';
 import '../viewer/stn-viewer.css';
 
-export default function GraphViewer({graph,runId,canReplay=false,mountViewer=mountStnViewer}) {
+export default function GraphViewer({graph,runId,canReplay=false,maximising,mountViewer=mountStnViewer}) {
   const host=useRef(null),viewer=useRef(null),replaySlot=useRef(null);
   const [slotReady,setSlotReady]=useState(false);
   const [replay,setReplay]=useState(false),[playing,setPlaying]=useState(false);
@@ -26,7 +26,7 @@ export default function GraphViewer({graph,runId,canReplay=false,mountViewer=mou
     }
     return()=>{viewer.current?.destroy();viewer.current=null;};
   },[runId,hasNodes,mountViewer]);
-  useEffect(()=>{viewer.current?.setBackendGraph(shown,runId);},[shown,runId]);
+  useEffect(()=>{viewer.current?.setBackendGraph(shown,runId,{maximising});},[shown,runId,maximising]);
   useEffect(()=>{
     if(!playing||!replay)return;
     const timer=setInterval(()=>setProgress(value=>Math.min(1,value+speed/150)),200);

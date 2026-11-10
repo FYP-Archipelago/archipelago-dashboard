@@ -29,3 +29,27 @@ test('backend graph keeps stable IDs, island labels, best markers and migration 
   assert.equal(G.mig[0].count,9);
   assert.equal(G.nodes[1].genome_hash,'h72');
 });
+
+test('best fitness height agrees with run best despite worse cluster mean, and preserves ties',()=>{
+  for(const maximising of [false,true]){
+    const best=maximising?100:32.236880940830986;
+    const worse=maximising?80:70;
+    const nodes=new Map([
+      [233,{id:233,island:0,best_fitness:best,mean_fitness:312.0987587053001,fitness_percentile:.666,overall_best:true,island_best:true}],
+      [1493,{id:1493,island:4,best_fitness:best,mean_fitness:188.7754364814985,fitness_percentile:.572,island_best:true}],
+      [1500,{id:1500,island:4,best_fitness:worse,mean_fitness:worse,fitness_percentile:.1}],
+    ]);
+    const {G}=backendViewerGraph({nodes,edges:new Map(),migrations:new Map()},'',{maximising});
+    assert.equal(G.bestHeightAvailable,true);
+    assert.deepEqual([...G.bestPct],[0,0,1]);
+    assert.ok(G.pct[0]>G.pct[2],'Mean ordering remains available independently');
+    assert.equal(G.bestOfRun[0],0);
+    assert.equal(G.nodes[0].best_fitness,best,'Display does not alter supplied fitness');
+  }
+});
+
+test('best height requires an explicit objective and handles equal or missing fitness',()=>{
+  const graph={nodes:new Map([[0,{id:0,island:0,best_fitness:7}],[1,{id:1,island:1,best_fitness:7}],[2,{id:2,island:1,best_fitness:null}]]),edges:new Map(),migrations:new Map()};
+  assert.equal(backendViewerGraph(graph).G.bestHeightAvailable,false);
+  assert.deepEqual([...backendViewerGraph(graph,'',{maximising:false}).G.bestPct],[0,0,.5]);
+});
