@@ -1,3 +1,6 @@
+import {regionCameraTarget} from './region-focus.js';
+import {tourCameraPose,bestTourTarget,groupedTourTarget} from './camera-tour.js';
+import {placeBestLabel} from './best-labels.js';
 import {migrationVisible,MIGRATION_VISIBILITY_DEFAULTS} from './visibility.js';
 import {backendViewerGraph,remapBackendAnchor} from './backend-graph.js';
 
@@ -412,6 +415,11 @@ export function mountStnViewer(root, cfg) {
     reset.classList.remove('btn-wide');
     reset.classList.add('reset-view');
     root.querySelector('.stage').append(reset);
+    const tour=document.createElement('button');tour.id='tour-best';tour.className='btn-wide';
+    tour.textContent='Tour best nodes';tour.disabled=true;tour.style.marginTop='10px';
+    const tourStatus=document.createElement('div');tourStatus.id='tour-status';
+    tourStatus.className='tour-status';tourStatus.setAttribute('role','status');
+    right.querySelector('#bests').after(tour,tourStatus);
   }
   const $ = id => root.querySelector("#" + id);
   const canvas = $("gl"), note = $("note");
@@ -807,6 +815,36 @@ export function mountStnViewer(root, cfg) {
   let exIShown = 0, exRShown = 0, contestShown = 0, flatShown = 0, groupShown = 0, hsShown = 1;
   let camGoal = null;      // eased camera move set by Group by island
   let flyNode = -1, flyFrames = 0;
+  let bestTour=null;
+  function stopBestTour(){
+    bestTour=null;root.classList.remove('best-tour-running');
+    if(cfg.backend){$('tour-best').textContent='Tour best nodes';$('tour-status').textContent='';}
+  }
+  function beginTourStop(now){
+    const stop=bestTour.stops[bestTour.index];
+    bestTour.started=now;bestTour.from={...cam};
+    const node=stop.overview||stop.bestArea?-1:G.nodes.findIndex(n=>n.id===stop.id);
+    select(node);
+    $('tour-status').textContent=stop.label+' · '+(bestTour.index+1)+' / '+bestTour.stops.length;
+  }
+  function stepBestTour(now){
+    if(!bestTour)return;
+    const stop=bestTour.stops[bestTour.index];
+    const node=stop.overview||stop.bestArea?-1:G.nodes.findIndex(n=>n.id===stop.id);
+    let target=stop.overview?bestTour.origin:stop.bestArea?bestTour.area:node>=0
+      ? bestTourTarget(bestTour.area,worldOf(node),bestTour.index,bestTour.area.dist):null;
+    if(node>=0&&(state.group||state.exI>0)){
+      const points=[];
+      for(let i=0;i<G.nodeCount;i++)if(G.pGrp[i]===G.pGrp[node])points.push(worldOf(i));
+      target=groupedTourTarget(bestTour.origin,worldOf(node),bestTour.index,points,canvas.clientWidth/canvas.clientHeight);
+    }
+    const duration=state.group||state.exI>0?2400:1800;
+    if(target)Object.assign(cam,tourCameraPose(bestTour.from,target,now-bestTour.started,duration));
+    if(now-bestTour.started>=duration+1600){
+      if(++bestTour.index>=bestTour.stops.length){stopBestTour();return;}
+      beginTourStop(now);
+    }
+  }
   const placed = [];
   let lastInteract = 0;
 
@@ -838,7 +876,7 @@ export function mountStnViewer(root, cfg) {
   let dragging = 0, lx = 0, ly = 0, travel = 0;   // 1 = orbit, 2 = pan
   canvas.addEventListener("contextmenu", ev => ev.preventDefault());
   canvas.addEventListener("pointerdown", ev => {
-    flyNode = -1; zoomTarget = 0; camGoal = null;
+    stopBestTour();flyNode = -1; zoomTarget = 0; camGoal = null;
     dragging = (ev.button === 2 || ev.button === 1 || ev.shiftKey) ? 2 : 1;
     lx = ev.clientX; ly = ev.clientY; travel = 0;
     canvas.classList.add("dragging");
@@ -932,7 +970,7 @@ export function mountStnViewer(root, cfg) {
 
   canvas.addEventListener("wheel", ev => {
     ev.preventDefault();
-    flyNode = -1; camGoal = null;
+    stopBestTour();flyNode = -1; camGoal = null;
     const r = canvas.getBoundingClientRect();
     zoomNx = ((ev.clientX - r.left) / r.width) * 2 - 1;
     zoomNy = 1 - ((ev.clientY - r.top) / r.height) * 2;
@@ -1002,6 +1040,7 @@ export function mountStnViewer(root, cfg) {
   // Fly the camera to a cluster and open it. The target is recomputed every
   // frame from the node index, so it stays locked on while explode animates.
   function jumpTo(node, grp) {
+    stopBestTour();
     if (node == null || node < 0 || !G || node >= G.nodeCount) return;
     if (grp >= 0 && !state.grpOn[grp]) { state.grpOn[grp] = true; syncSelectors(); }
     select(node);
@@ -1175,6 +1214,16 @@ export function mountStnViewer(root, cfg) {
       markBox.appendChild(d);
       markEls.push({ el: d, kind: "isl", g: g });
     }
+    if(cfg.backend)for(const m of markEls){
+      m.leader=document.createElement('div');m.leader.className='best-leader';m.leader.hidden=true;
+      m.label=document.createElement('button');m.label.className='best-callout';m.label.hidden=true;
+      m.label.textContent=m.kind==='run'?'◆ Run best':'○ Island '+islLabel(gIsl[m.g])+' best';
+      m.label.addEventListener('click',()=>{
+        const node=m.kind==='run'?G.bestOfRun[m.r]:G.bestOfGroup[m.g];
+        jumpTo(node,node>=0?G.pGrp[node]:-1);
+      });
+      markBox.append(m.leader,m.label);
+    }
   }
 
   /* inspector */
@@ -1321,6 +1370,7 @@ export function mountStnViewer(root, cfg) {
   // the camera eased to look down on the layout. Turning it off restores the
   // separation the reader had.
   $("b-group").addEventListener("click", () => {
+    stopBestTour();
     state.group = !state.group;
     $("b-group").setAttribute("aria-pressed", String(state.group));
     if (state.group) {
@@ -1343,9 +1393,27 @@ export function mountStnViewer(root, cfg) {
     for (let i = 0; i < state.routesOn.length; i++) state.routesOn[i] = anyOff;
     syncSelectors();
   });
+  if(cfg.backend)$('tour-best').addEventListener('click',()=>{
+
+    if(bestTour){stopBestTour();return;}
+    const stops=[];
+    const runNode=G.bestOfRun[0];
+    if(runNode>=0&&runAnyOn(0))stops.push({id:G.nodes[runNode].id,kind:'run',r:0,label:'Run best'});
+    for(let g=0;g<NG;g++)if(grpVisible(g)&&G.bestOfGroup[g]>=0){
+      stops.push({id:G.nodes[G.bestOfGroup[g]].id,kind:'isl',g,label:'Island '+islLabel(gIsl[g])+' best'});
+    }
+    if(!stops.length)return;
+    camGoal=null;flyNode=-1;zoomTarget=0;
+    const points=stops.map(stop=>worldOf(G.nodes.findIndex(n=>n.id===stop.id)));
+    const area=regionCameraTarget(points,canvas.clientWidth/canvas.clientHeight,cam);
+    stops.unshift({bestArea:true,label:'Best nodes overview'});
+    stops.push({overview:true,label:'Return to starting view'});
+    bestTour={stops,index:0,origin:{...cam},area};root.classList.add('best-tour-running');$('tour-best').textContent='Stop tour';beginTourStop(performance.now());
+  });
   $("reset").addEventListener("click", () => {
+    stopBestTour();
     cam.az = DS.runs > 1 ? 1.14 : 0.62; cam.el = 0.30; cam.dist = DS.runs > 1 ? 4.3 : 3.15; cam.tx = cam.ty = cam.tz = 0;
-    zoomTarget = 0;
+    zoomTarget = 0;camGoal=null;flyNode=-1;
   });
 
   let rebuildTimer = null;
@@ -1437,6 +1505,7 @@ export function mountStnViewer(root, cfg) {
     const adapted=backendViewerGraph(graph,runId,options);
     if(previousFly>=0){flyNode=remapBackendAnchor(previousNodes,adapted.idIndex,previousFly);if(flyNode<0)flyFrames=0;}
     if(previousZoom>=0){zoomNode=remapBackendAnchor(previousNodes,adapted.idIndex,previousZoom);if(zoomNode<0)zoomTarget=0;}
+    $('tour-best').disabled=false;
     DS=adapted.DS;G=adapted.G;NG=DS.isl;gRun=DS.gRun;gIsl=DS.gIsl;
     state.grpOn=DS.islandIds.map(id=>oldGroups.get(id)??true);
     state.routesOn=G.routes.map(route=>oldRoutes.get(`${DS.islandIds[route.sg]}:${DS.islandIds[route.dg]}`)??true);
@@ -1508,6 +1577,7 @@ export function mountStnViewer(root, cfg) {
 
     if (flyNode >= 0) zoomTarget = 0;
     stepZoom();
+    stepBestTour(now);
     const cz = [Math.sin(cam.az) * Math.cos(cam.el), Math.sin(cam.el), Math.cos(cam.az) * Math.cos(cam.el)];
     const eye = [cam.tx + cz[0] * cam.dist, cam.ty + cz[1] * cam.dist, cam.tz + cz[2] * cam.dist];
     const near = Math.max(0.00002, cam.dist * 0.004), far = cam.dist * 8 + 40;
@@ -1610,15 +1680,37 @@ export function mountStnViewer(root, cfg) {
     } else mk.hidden = true;
 
     placed.length = 0;
+    const labelBoxes=[];
+    const labelBounds={x:canvas.offsetLeft,y:canvas.offsetTop,width:canvas.clientWidth,height:canvas.clientHeight};
     if (selPos) placed.push(selPos[0], selPos[1]);
     for (let i = 0; i < markEls.length; i++) {
       const m = markEls[i];
       const on = m.kind === "isl" ? (state.bestIsl && grpVisible(m.g))
         : (state.bestRun && runAnyOn(m.r));
       const node = m.kind === "isl" ? G.bestOfGroup[m.g] : G.bestOfRun[m.r];
-      if (!on || node < 0 || !nodeData || (state.selMark && node === selected)) { m.el.hidden = true; continue; }
+      if(m.label){m.label.hidden=true;m.leader.hidden=true;}
+      if (!on || node < 0 || !nodeData || (!cfg.backend&&state.selMark&&node===selected)) { m.el.hidden = true; continue; }
       const s = project(node);
       if (!s) { m.el.hidden = true; continue; }
+      if(m.label){
+        const stop=bestTour?.stops[bestTour.index];
+        const active=stop&&stop.kind===m.kind&&(m.kind==='run'?stop.r===m.r:stop.g===m.g);
+        if(!active){
+          m.el.hidden=false;
+          m.el.style.transform='translate('+s[0]+'px,'+s[1]+'px)';
+          continue;
+        }
+        const box=placeBestLabel(s,labelBounds,labelBoxes);labelBoxes.push(box);
+        m.label.hidden=false;m.leader.hidden=false;m.el.hidden=false;
+        m.label.style.left=box.x+'px';m.label.style.top=box.y+'px';m.label.style.width=box.width+'px';
+        const endX=Math.max(box.x,Math.min(s[0],box.x+box.width));
+        const endY=Math.max(box.y,Math.min(s[1],box.y+box.height));
+        const dx=endX-s[0],dy=endY-s[1];
+        m.leader.style.transform='translate('+s[0]+'px,'+s[1]+'px) rotate('+Math.atan2(dy,dx)+'rad)';
+        m.leader.style.width=Math.hypot(dx,dy)+'px';
+        m.el.style.transform='translate('+s[0]+'px,'+s[1]+'px)';
+        continue;
+      }
       let clash = false;
       for (let k = 0; k < placed.length; k += 2)
         if (Math.abs(placed[k] - s[0]) < 9 && Math.abs(placed[k + 1] - s[1]) < 9) { clash = true; break; }

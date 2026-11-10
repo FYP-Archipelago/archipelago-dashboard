@@ -273,8 +273,16 @@ input[type=range]::-moz-range-thumb{width:13px; height:13px; border:0; border-ra
 .legend-inline i.fit{width:44px; height:6px; border:0; border-radius:2px; background:linear-gradient(90deg,#fce824,#21a887,#451f78)}
 .hover-tip{position:absolute; left:0; top:0; z-index:5; pointer-events:none; padding:4px 8px; border:1px solid var(--line); border-radius:4px; background:var(--panel); color:var(--ink); font-size:12px; white-space:nowrap}
 
+.best-callout{position:absolute;z-index:4;height:26px;box-sizing:border-box;padding:4px 7px;border:1px solid var(--best);border-radius:4px;background:var(--panel);color:var(--ink);font:11px "IBM Plex Mono",monospace;white-space:nowrap;cursor:pointer}
+.best-callout:hover,.best-callout:focus-visible{background:var(--raised);outline:2px solid var(--best);outline-offset:2px}
+.best-leader{position:absolute;left:0;top:0;height:1px;transform-origin:0 0;z-index:3;background:var(--best);opacity:.75;pointer-events:none}
 .backend-stn-host .bmark.bi{width:15px;height:15px;margin:-7.5px 0 0 -7.5px;border-width:2px}
+.backend-stn-host .bmark.br{width:16px;height:16px;margin:-8px 0 0 -8px}
+.tour-status{min-height:16px;margin-top:5px;color:var(--soft);font-size:11px;text-align:center}
+
 /* Keep the run-best diamond distinct above coincident island rings. */
 .bmark.br{z-index:4;background:none;border-radius:0;clip-path:none}
 .bmark.br svg{display:block;width:100%;height:100%;overflow:visible;fill:var(--best);stroke:var(--viz-bg);stroke-width:1.5;stroke-linejoin:miter}
 .backend-stn-host .bmark.br{width:24px;height:24px;margin:-12px 0 0 -12px}
+/* Keep the graph unobstructed during camera travel and best-node pauses. */
+.best-tour-running .inspect{display:none}
