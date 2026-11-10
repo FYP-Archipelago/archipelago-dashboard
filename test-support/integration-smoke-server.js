@@ -6,8 +6,8 @@ import {catalog} from './presets.js';
 import {result,delta} from './backend-fixture.js';
 
 const runs=new Map();let sequence=0;
-// Python-precomputed recording; only its test run identity is changed below.
-const recordedExplanation=JSON.parse(readFileSync(new URL('../public/sample-explanations/run-20260903T230838Z-4891f68f.json',import.meta.url),'utf8'));
+// Python-precomputed attribution from a published recording, attached to every fixture result.
+const {explainability}=JSON.parse(readFileSync(new URL('../public/recorded-runs/run-20260903T230838Z-4891f68f.json',import.meta.url),'utf8'));
 const json=(res,value,status=200)=>{res.writeHead(status,{'content-type':'application/json'});res.end(JSON.stringify(value));};
 const send=(entry,event,data)=>{for(const res of entry.clients)res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);};
 const status=(entry,next)=>{entry.status=next;send(entry,'status',{status:next});};
@@ -18,7 +18,7 @@ http.createServer(async(req,res)=>{
   if(req.method==='POST'&&path==='/runs'){
     let text='';for await(const chunk of req)text+=chunk;
     const request=JSON.parse(text),id=`run-20261104T120000Z-${(++sequence).toString(16).padStart(8,'0')}`;
-    const final=structuredClone(result);final.run.run_id=id;
+    const final={...structuredClone(result),explainability};final.run.run_id=id;
     const entry={...request,run_id:id,status:'queued',clients:new Set(),final};runs.set(id,entry);
     const later=(ms,action)=>setTimeout(()=>{if(!['cancelled','done','failed'].includes(entry.status))action();},ms);
     later(500,()=>status(entry,'running'));
@@ -32,15 +32,9 @@ http.createServer(async(req,res)=>{
     console.log(`Fixture created ${id}, stream=${request.stream}`);
     return json(res,{...request,run_id:id,status:'queued',error:null},202);
   }
-  const match=path.match(/^\/runs\/([^/]+)\/(events|result|cancel|explanation)$/);
+  const match=path.match(/^\/runs\/([^/]+)\/(events|result|cancel)$/);
   const entry=match&&runs.get(match[1]);
   if(!entry)return json(res,{detail:'run not found'},404);
-  if(req.method==='GET'&&match[2]==='explanation'){
-    const envelope={schema_version:1,run_id:entry.run_id};
-    if(entry.status==='done')return json(res,{...envelope,status:'ready',explanation:{...recordedExplanation,run_id:entry.run_id}});
-    if(entry.status==='cancelled')return json(res,{...envelope,status:'unavailable',detail:'Shapley analysis is unavailable: run cancelled.'});
-    return json(res,{...envelope,status:'pending',detail:`Shapley analysis is pending: run ${entry.status}.`},202);
-  }
   if(req.method==='GET'&&match[2]==='result')return entry.status==='done'?json(res,entry.final):json(res,{detail:`no result: run is ${entry.status}`},404);
   if(req.method==='GET'&&match[2]==='events'){
     res.writeHead(200,{'content-type':'text/event-stream','cache-control':'no-cache'});res.flushHeaders();entry.clients.add(res);

@@ -9,9 +9,7 @@
     "preview": "vite preview",
     "server": "node server/index.js",
     "start": "node server/index.js",
-    "test": "node --test",
-    "test:explainability": "python -m unittest discover -s tools/explainability -p test_*.py",
-    "explainability:prepare": "python tools/explainability/export.py"
+    "test": "node --test"
   },
   "dependencies": {
     "react": "^19.1.1",

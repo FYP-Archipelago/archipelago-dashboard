@@ -1,1 +1,0 @@
-{"schema_version":1,"runs":[{"run_id":"run-20260903T230838Z-4891f68f","algorithm":"de","benchmark":"rastrigin","islands":4,"coverage_percent":100.0},{"run_id":"run-20260903T230942Z-c7f38cc1","algorithm":"de","benchmark":"rastrigin","islands":5,"coverage_percent":100.0}],"errors":[]}

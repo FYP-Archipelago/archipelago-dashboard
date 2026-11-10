@@ -7,7 +7,7 @@ import {createRecordedApi} from './recorded-api.js';
 const originalFetch=globalThis.fetch,requests=[];
 const fileFetch=async target=>{
   const path=new URL(target,'http://localhost').pathname;requests.push(path);
-  assert.match(path,/^\/(recorded-runs|recorded-analytics|sample-explanations)\/[a-zA-Z0-9.-]+\.json$/,'Demo must use only published recording files.');
+  assert.match(path,/^\/(recorded-runs|recorded-analytics)\/[a-zA-Z0-9.-]+\.json$/,'Demo must use only published recording files.');
   return new Response(await readFile(new URL('../../public'+path,import.meta.url)),{headers:{'content-type':'application/json'}});
 };
 globalThis.fetch=fileFetch;

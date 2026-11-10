@@ -41,7 +41,10 @@ def result_fixture(run_id):
                 separation=dict(method='mmd-random-fourier-features', typical_distance=None,
                     pairs=dict(a=[], b=[], mmd2=[], p=[]),
                     windows=dict(from_generation=[], typical_distance=[]),
-                    window_pairs=dict(window=[], a=[], b=[], mmd2=[])), malformed_rows=0, warnings=[])
+                    window_pairs=dict(window=[], a=[], b=[], mmd2=[])),
+                migration_routes=[],
+                explainability=dict(shapley=dict(status='unavailable', detail='No lineage in this fixture.')),
+                malformed_rows=0, warnings=[])
 
 
 class ExportTests(unittest.TestCase):

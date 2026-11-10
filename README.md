@@ -20,7 +20,7 @@ Vite serves the UI, uncached `/api/backend-config` metadata and the fixed-target
 
 The Vercel demonstration is built from `feat/backend-integration` with `VITE_RECORDED_DEMO=true`. It preloads two published recordings and exposes the original graph controls, aggregate migrations, clustering/separation diagnostics, recorded settings, convergence histories and Shapley analysis without a backend. It is labelled as a recorded-data demonstration. Run creation and live execution require normal backend mode; the demo never submits or simulates an execution request. Detailed migration timing remains explicitly unavailable.
 
-`public/recorded-runs` contains final Results computed offline by the current Python module; `public/sample-explanations` contains recorded-lineage attribution; `public/recorded-analytics` contains genuine saved generation summaries and Python-prepared chart geometry. Raw CSV, genomes, local host diagnostics and private logs are not served or uploaded. To regenerate graph/history artifacts, use the backend's Python environment from this dashboard directory:
+`public/recorded-runs` contains final Results computed offline by the current Python module; `public/recorded-analytics` contains genuine saved generation summaries and Python-prepared chart geometry. Raw CSV, genomes, local host diagnostics and private logs are not served or uploaded. To regenerate graph/history artifacts, use the backend's Python environment from this dashboard directory:
 
 ```powershell
 ../archipelago-shapley-backend/.venv/Scripts/python.exe tools/demo/export.py
@@ -37,7 +37,7 @@ See [the faculty demo guide](docs/faculty-demo-guide.md) for the walkthrough and
 1. Start the backend, Postgres, Redis, clustering workers and runner using [the backend setup instructions](https://github.com/FYP-Archipelago/archipelago-backend#readme). Start this dashboard with `npm run dev` and open <http://127.0.0.1:5173>.
 2. On **Runs**, choose a backend preset and adjust the runner and clustering settings. Choose **Live updates** to see graph updates while the runner works, or **Final result only** to view the graph after clustering finishes. Click **Start run**.
 3. The accepted `run_id` opens the **Archipelago** view. Status and connection text show queued, running, clustering, done or failed. The original WebGL viewer uses the backend's clustered nodes, lineage edges, migrations, positions and best flags. The view buttons **Overview**, **By island**, **Migration only**, **Shared ground** and **Best solution** control the original viewer. Its right rail contains island, path, height, migration, best marker and appearance controls. Drag to orbit, shift/right-drag to pan, scroll to zoom and click a node for backend details.
-4. The top tabs provide aggregate **Migration** routes, **Clustering** diagnostics and MMD island separation, **Run details**, and accepted **Run configuration**. **Explainability** reads Python-computed island and migration-route Shapley attribution from the backend, with explicitly labelled sample recordings available independently. The Shapley backend extension must be installed for automatic analysis of new runs; see [the analysis guide](docs/local-explainability.md). **About** describes the analysis views. The backend does not currently provide a fitness-over-generation series or per-migration timing, so **Convergence** and detailed timing remain unavailable.
+4. The top tabs provide aggregate **Migration** routes, **Clustering** diagnostics and MMD island separation, **Run details**, and accepted **Run configuration**. **Explainability** reads Python-computed island and migration-route Shapley attribution from the backend. **About** describes the analysis views. The backend does not currently provide a fitness-over-generation series or per-migration timing, so **Convergence** and detailed timing remain unavailable.
 5. Refresh to reopen a saved result. The **Run** selector and the **Runs** page remember up to 30 IDs in this browser for the selected backend. You can also paste a known ID into the run browser. This is not a server-wide run list.
 
 When a run is complete, **Replay run** starts from the earliest cluster on each island. Press **Play**, **Pause**, **Restart**, move the progress slider, or change speed to explore how the saved graph builds up. Migration routes appear once both endpoint clusters are visible. This is an illustrative replay ordered by node first-evaluation indices: the backend result contains aggregate route counts but no exact migration event times.
@@ -48,7 +48,7 @@ Active runs expose **Cancel run**. Cancellation uses the backend's acknowledged 
 
 ## Removed legacy paths
 
-Local file imports, CSV decoding, PCA/projection, per-evaluation aggregation for backend runs, local metrics and the retired clustering API are removed from the backend-run workflow and Node server. The browser performs no scientific analysis. The optional Python explainability adapter reads ignored local `data/` records and exports attribution artifacts without genomes; raw run files are not exposed by the dashboard.
+Local file imports, CSV decoding, PCA/projection, per-evaluation aggregation for backend runs, local metrics and the retired clustering API are removed from the backend-run workflow and Node server. The browser performs no scientific analysis.
 
 Existing-run upload is excluded from the current product scope. The dashboard has no upload tab or import workflow.
 
@@ -66,7 +66,6 @@ There is no backend run-list or run-status route. Status comes from events, fina
 | Clustering statistics | `clustering.counts`, `resolved`, `diagnostics`, `elapsed_seconds`, `malformed_rows`, `warnings` already supplied |
 | Island separation | Backend `separation` pairs, windows and window pairs already supplied |
 | Run details | Backend result `run` and `layout`; request settings may be remembered by this browser |
-| Shapley attribution | `GET /runs/{id}/explanation`: pending, ready or unavailable; requires the Shapley backend extension |
 | Convergence time series | Generation histories are absent from the current result; backend/module must expose them if required |
 | Detailed migration timings | Graph route counts exist; delivery latency and event timing are absent and require backend/module support if needed |
 
