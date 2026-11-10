@@ -472,3 +472,22 @@ test('the final event carries migration routes, so completion needs no second re
     await view.close();
   }
 });
+
+test('real convergence uses final module history without consulting local archives',async()=>{
+  const final=structuredClone(result);
+  final.generation_history=[{island_id:0,generation:0,best_fitness:3,mean_fitness:5,best_so_far_fitness:3,std_fitness:1,evaluations_total:10,diversity:0.4,diversity_metric:'euclidean'},
+    {island_id:0,generation:2,best_fitness:0.00000149109,mean_fitness:2,best_so_far_fitness:0.00000149109,std_fitness:null,evaluations_total:30,diversity:0.2,diversity_metric:'euclidean'}];
+  let archives=0;
+  const view=await mount(Workspace,{runId,api:{result:async()=>final,analytics:async()=>{archives++;throw Error('archive called');}},view:'convergence'});
+  try {
+    assert.match(document.body.textContent,/Fitness history/);
+    assert.equal(archives,0);
+    assert.equal(document.querySelectorAll('tbody tr').length,2);
+    assert.equal(document.querySelector('.history-point-value strong').textContent,'0.00000149109');
+    assert.equal(document.querySelector('.history-data').open,false);
+  } finally {await view.close();}
+});
+test('real convergence handles older runs without history',async()=>{
+  const view=await mount(Workspace,{runId,api:{result:async()=>result},view:'convergence'});
+  try{assert.match(document.body.textContent,/No generation history/);assert.equal(document.querySelector('.recorded-chart'),null);}finally{await view.close();}
+});

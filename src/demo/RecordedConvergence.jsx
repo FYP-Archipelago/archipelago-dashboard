@@ -1,6 +1,7 @@
-import React, {useEffect, useState} from 'react';
+import React, {useEffect, useMemo, useState} from 'react';
 import {validateRecordedAnalytics} from './recorded-api.js';
 import './recorded.css';
+import {convergenceHistory} from '../backend/convergence-history.js';
 
 const COLORS = ['#7ec8ff', '#f2615c', '#18a37a', '#f4d64f', '#c07ae8', '#e79039'];
 const LABELS = {
@@ -10,16 +11,22 @@ const LABELS = {
   diversity: 'Diversity',
 };
 const number = new Intl.NumberFormat('en', {maximumSignificantDigits: 21, notation: 'standard'});
-const show = value => value === undefined ? '—' : number.format(value);
+const show = value => value == null ? '—' : number.format(value);
 
-export default function RecordedConvergence({runId, api}) {
+export default function RecordedConvergence({runId, api, result, backend=false}) {
   const [state, setState] = useState({runId, data: undefined, error: ''});
   const [retry, setRetry] = useState(0);
   const [selected, setSelected] = useState('all');
   const [metric, setMetric] = useState('');
   const [inspection, setInspection] = useState(null);
 
+  const supplied = useMemo(() => {
+    if (!backend || !result) return {};
+    try { return {data:convergenceHistory(result)}; } catch (error) { return {error:error.message}; }
+  }, [backend,result]);
+
   useEffect(() => {
+    if (backend) return;
     let active = true;
     const controller = new AbortController();
     setState({runId, data: undefined, error: ''});
@@ -34,9 +41,13 @@ export default function RecordedConvergence({runId, api}) {
       if (active) setState({runId, data: undefined, error: error.message});
     });
     return () => { active = false; controller.abort(); };
-  }, [runId, api, retry]);
+  }, [runId, api, retry, backend]);
 
-  const data = state.runId === runId ? state.data : undefined;
+  const data = backend ? supplied.data : state.runId === runId ? state.data : undefined;
+  if (backend && supplied.error) return <div className="notice" role="alert">{supplied.error}</div>;
+  if (backend && !result) return <p role="status">Generation history is available when clustering finishes.</p>;
+  if (backend && data === null) return <p className="notice">No generation history was returned for this run.</p>;
+  if (backend && data && !data.chart) return <p className="notice">No fitness or diversity values were returned for these generations.</p>;
   if (state.runId === runId && state.error) return <div className="notice" role="alert">{state.error} <button className="secondary" onClick={() => setRetry(value => value + 1)}>Retry history</button></div>;
   if (data === undefined) return <p role="status">Loading generation history…</p>;
   if (data === null) return <div className="notice">No generation history was archived locally for this run. <button className="secondary" onClick={() => setRetry(value => value + 1)}>Retry history</button></div>;
@@ -45,7 +56,7 @@ export default function RecordedConvergence({runId, api}) {
   const chart = charts[metric] || data.chart;
   const visible = island => selected === 'all' || String(island.island_id) === selected;
   const inspectedIsland = data.islands.find(island => island.island_id === inspection?.island) || data.islands[0];
-  const inspectedIndex = inspection?.index ?? inspectedIsland.series.length - 1;
+  const inspectedIndex = Math.min(inspection?.index ?? inspectedIsland.series.length - 1, inspectedIsland.series.length - 1);
   const sample = inspectedIsland.series[inspectedIndex];
   const inspectedLine = chart.lines.find(line => line.island_id === inspectedIsland.island_id);
   const marker = inspectedLine.points[inspectedIndex];
@@ -82,13 +93,13 @@ export default function RecordedConvergence({runId, api}) {
           const index = data.islands.findIndex(island => island.island_id === line.island_id);
           const island = data.islands[index];
           return visible(line) && <g key={line.island_id}>
-          <polyline fill="none" stroke={COLORS[index % COLORS.length]} strokeWidth="2" vectorEffect="non-scaling-stroke" points={line.points.map(point => `${point.x},${point.y}`).join(' ')}/>
-          {line.points.map((point, sampleIndex) => <circle className="history-hit-point" key={sampleIndex} cx={point.x} cy={point.y} r="7" onMouseEnter={() => inspect(line.island_id, sampleIndex)} onClick={() => inspect(line.island_id, sampleIndex)}>
+          {line.points.reduce((segments,point)=>{if(point)segments.at(-1).push(point);else segments.push([]);return segments;},[[]]).filter(segment=>segment.length).map((segment,i)=><polyline key={i} fill="none" stroke={COLORS[index % COLORS.length]} strokeWidth="2" vectorEffect="non-scaling-stroke" points={segment.map(point=>`${point.x},${point.y}`).join(' ')}/>)}
+          {line.points.map((point, sampleIndex) => point && <circle className="history-hit-point" key={sampleIndex} cx={point.x} cy={point.y} r="7" onMouseEnter={() => inspect(line.island_id, sampleIndex)} onClick={() => inspect(line.island_id, sampleIndex)}>
             <title>{`Island ${line.island_id} · Generation ${island.series[sampleIndex].generation} · ${show(island.series[sampleIndex][chart.metric])}`}</title>
           </circle>)}
         </g>;
         })}
-        <circle className="history-marker" cx={marker.x} cy={marker.y} r="4"/>
+        {marker&&<circle className="history-marker" cx={marker.x} cy={marker.y} r="4"/>}
       </svg>
       <figcaption>Generation</figcaption>
     </figure>
@@ -103,7 +114,7 @@ export default function RecordedConvergence({runId, api}) {
     </div>
     <p className="history-context">Generations are local to each island.</p>
     <details className="history-data"><summary>Generation data</summary>
-      <div className="run-table-wrap"><table><caption>Saved generation summaries</caption><thead><tr><th>Island</th><th>Generation</th><th>Evaluations</th><th>Best</th><th>Best so far</th><th>Mean</th><th>Fitness SD</th><th>Diversity</th></tr></thead><tbody>
+      <div className="run-table-wrap"><table><caption>{backend?'Generation summaries':'Saved generation summaries'}</caption><thead><tr><th>Island</th><th>Generation</th><th>Evaluations</th><th>Best</th><th>Best so far</th><th>Mean</th><th>Fitness SD</th><th>Diversity</th></tr></thead><tbody>
         {data.islands.filter(visible).flatMap(island => island.series.map(row => <tr key={`${island.island_id}-${row.generation}`}><td>{island.island_id}</td><td>{row.generation}</td><td>{show(row.evaluations)}</td><td>{show(row.best_fitness)}</td><td>{show(row.best_so_far_fitness)}</td><td>{show(row.mean_fitness)}</td><td>{show(row.fitness_std)}</td><td>{show(row.diversity)}</td></tr>))}
       </tbody></table></div>
     </details>

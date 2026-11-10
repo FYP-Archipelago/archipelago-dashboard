@@ -152,7 +152,7 @@ export default function RunWorkspace({runId,api,onBack,warning='',view='archipel
     {session.error&&<div className="notice run-error" role="alert">{session.error} <button className="secondary" type="button" onClick={session.retry}>Retry connection</button></div>}
     {view==='archipelago'&&<GraphViewer graph={session.graph} runId={runId} maximising={run?.maximising} canReplay={session.status==='done'}/>}
     {view==='migration'&&<MigrationOverview session={session}/>}
-    {view==='convergence'&&(api.analytics?<RecordedConvergence runId={runId} api={api}/>:<p className="notice">The backend does not provide a fitness-over-generation time series. Inspect the graph's current best fitness and node details instead.</p>)}
+    {view==='convergence'&&<RecordedConvergence key={runId} runId={runId} api={api} backend={!api.isDemo} result={session.result}/>}
     {view==='diagnostics'&&<Diagnostics session={session}/>}
     {view==='run'&&<RunDetails session={session} configuration={configuration} recorded={api.isDemo}/>}
   </section>;

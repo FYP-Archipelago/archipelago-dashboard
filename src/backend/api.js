@@ -20,7 +20,7 @@ function errorDetail(body) {
   return null;
 }
 
-export function createBackendClient({baseUrl='/backend', identityUrl, localHistory=false, fetchImpl=globalThis.fetch, timeoutMs=15000}={}) {
+export function createBackendClient({baseUrl='/backend', identityUrl, fetchImpl=globalThis.fetch, timeoutMs=15000}={}) {
   const base = String(baseUrl).replace(/\/+$/, '');
   if (!/^https?:\/\/[^\s]+$/.test(base) && !/^\/(?!\/)[^?#\s]*$/.test(base)) throw new Error('Backend URL must be HTTP(S) or a same-origin path.');
   const url = path => {
@@ -63,16 +63,6 @@ export function createBackendClient({baseUrl='/backend', identityUrl, localHisto
     health: options => request('/health', options),
     presets: options => request('/presets', options),
     result: (runId, options) => request(`/runs/${encodeURIComponent(runId)}/result`, options),
-    ...(localHistory && {
-      async analytics(runId, options) {
-        try {
-          return await requestAt(`/api/local-convergence/${encodeURIComponent(runId)}`, options);
-        } catch (error) {
-          if (error.status === 404) return null;
-          throw error;
-        }
-      },
-    }),
     async cancelRun(runId, options={}) {
       const value=await request(`/runs/${encodeURIComponent(runId)}/cancel`, {...options,method:'POST'});
       if(value?.run_id!==runId||!RUN_STATUSES.has(value.status))throw new BackendError('Backend returned an invalid cancellation response.');
@@ -90,5 +80,4 @@ export function createBackendClient({baseUrl='/backend', identityUrl, localHisto
 
 export const backendApi = createBackendClient({
   baseUrl: import.meta.env?.VITE_BACKEND_URL || '/backend',
-  localHistory: import.meta.env?.DEV && !import.meta.env?.VITE_BACKEND_URL,
 });
