@@ -39,7 +39,7 @@ export default function DashboardApp({api=backendApi,storage=browserStorage(),Wo
   const newRun=()=>{setWarning('');navigate('#library');};
   return <div className="app workspace-shell">
     <header className="workspace-topbar">
-      <div className="brand"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true"><path d="M3 17L8 6l5 9 5-12 3 14"/></svg><span>Archipelago</span></div>
+      <div className="brand"><span>Archipelago</span></div>
       <nav aria-label="Dashboard views">{RUN_VIEWS.map(([page,label])=><button type="button" key={page} disabled={busy||(!selectedRunId&&page!=='explainability')} title={!selectedRunId&&page!=='explainability'?'Start or select a run to open this view':undefined} className={route.page===page?'active':''} aria-current={route.page===page?'page':undefined} onClick={()=>navigate(selectedRunId?runHash(selectedRunId,page):`#${page}`)}>{label}</button>)}<button type="button" className={route.page==='library'?'active':''} onClick={newRun}>Runs</button><button type="button" className={route.page==='about'?'active':''} onClick={()=>navigate('#about')}>About</button></nav>
       <label className="top-run-select">Run <select aria-label="Select run" value={selectedRunId||''} onChange={event=>event.target.value?openRun(event.target.value):newRun()}><option value="">Select a run</option>{selectedRunId&&!library.entries.some(entry=>entry.run_id===selectedRunId)&&<option value={selectedRunId}>{selectedRunId}</option>}{library.entries.map(entry=><option key={entry.run_id} value={entry.run_id}>{entry.run_id}</option>)}</select></label>
     </header>

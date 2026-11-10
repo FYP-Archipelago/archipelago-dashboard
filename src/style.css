@@ -11,7 +11,6 @@ button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visi
 .app{display:grid;grid-template-columns:232px minmax(0,1fr);min-height:100vh;background:var(--bg)}
 aside{position:sticky;top:0;height:100vh;display:flex;flex-direction:column;gap:18px;padding:18px 14px 16px;background:var(--panel);border-right:1px solid var(--line);overflow-y:auto}
 .brand{display:flex;align-items:center;gap:10px;padding:2px 8px;color:var(--ink);font-size:16px;font-weight:600;letter-spacing:-.02em}
-.brand svg{width:22px;height:22px;color:var(--accent);flex:none}
 .brand small{margin-left:auto;font:500 10px 'IBM Plex Mono',monospace;color:var(--faint)}
 nav{display:flex;flex-direction:column;gap:2px}
 .nav-heading{margin:12px 10px 5px;color:var(--faint);font:500 10px 'IBM Plex Mono',monospace;letter-spacing:.12em;text-transform:uppercase}
