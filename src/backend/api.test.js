@@ -6,7 +6,7 @@ const run = {run_id:'run-20261102T120000Z-aabbccdd',status:'queued',stream:true,
 const reply = (value, status=200) => new Response(JSON.stringify(value), {status,headers:{'content-type':'application/json'}});
 
 test('cancel validates run identity and preserves terminal completion races',async()=>{
-  for(const value of [{...run,status:'cancelled'},{...run,status:'done'}]){
+  for(const value of [{...run,status:'cancelling'},{...run,status:'cancelled'},{...run,status:'done'}]){
     let options;
     const api=createBackendClient({fetchImpl:async(_,request)=>{options=request;return reply(value,202);}});
     assert.deepEqual(await api.cancelRun(run.run_id),value);assert.equal(options.method,'POST');

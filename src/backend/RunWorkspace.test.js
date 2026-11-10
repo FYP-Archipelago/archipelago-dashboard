@@ -94,6 +94,27 @@ test('cancellation submits once, retains graph and ignores late successful event
   }finally{await view.close();}
 });
 
+test('a cancelling run keeps its stream open until the backend confirms the cancellation', async () => {
+  let source;
+  const api = { ...pendingApi(), cancelRun: async () => ({ run_id: runId, status: 'cancelling' }) };
+  const view = await mount(Workspace, { runId, api, view: 'run', eventSourceFactory: () => (source = new FakeSource('')) });
+  try {
+    await act(async () => source.emit('status', { status: 'running' }));
+    await click(button('Cancel run'));
+    assert.match(document.body.textContent, /Status: cancelling/);
+    assert.doesNotMatch(document.body.textContent, /invalid|not confirmed/i);
+    assert.equal(source.closed, false);
+
+    await act(async () => source.emit('status', { status: 'cancelling' }));
+    assert.equal(source.closed, false);
+    await act(async () => source.emit('status', { status: 'cancelled' }));
+    assert.match(document.body.textContent, /Status: cancelled/);
+    assert.ok(source.closed);
+  } finally {
+    await view.close();
+  }
+});
+
 test('cancellation failure is retryable and a completion race loads the actual result',async()=>{
   let source,cancels=0,reads=0;
   const api={url:p=>p,result:async()=>{if(!reads++)throw Object.assign(Error('no result'),{status:404});return result;},cancelRun:async()=>{if(!cancels++)throw Error('runner offline');return {run_id:runId,status:'done'};}};

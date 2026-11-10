@@ -1,5 +1,6 @@
 import {useEffect,useRef,useState} from 'react';
 import {applyGraphDelta,emptyGraph,graphFromResult} from './graph-model.js';
+import { RUN_STATUSES } from './api.js';
 
 const initial = (runId) => ({runId,status:'loading',connection:'connecting',graph:emptyGraph(),result:null,layout:null,clustering:null,malformedRows:0,warnings:[],error:'',cancelPending:false,cancelError:'',cancelNotice:''});
 const message = error => error instanceof Error ? error.message : String(error);
@@ -84,7 +85,7 @@ export default function useRunSession({runId,api,eventSourceFactory=nativeEventS
         const response=await api.cancelRun(runId,{signal:abort.signal});
         if(!active)return;
         if(terminal){patch({cancelPending:false});return;}
-        if(response?.run_id!==runId||!['queued','running','clustering','done','failed','cancelled'].includes(response.status))throw Error('Backend returned an invalid cancellation response.');
+        if(response?.run_id!==runId||!RUN_STATUSES.has(response.status))throw Error('Backend returned an invalid cancellation response.');
         patch({cancelPending:false});
         if(response.status==='done'){
           acceptingEvents=false;terminal=true;source?.close();patch({status:'done',connection:'loading result',error:''});await loadResult({terminal:true});
@@ -92,6 +93,9 @@ export default function useRunSession({runId,api,eventSourceFactory=nativeEventS
           acceptingEvents=false;terminal=true;failedStatus=false;clearTimeout(timer);source?.close();
           const failure=response.error;
           patch({status:response.status,connection:'closed',error:response.status==='failed'?`${failure?.phase?failure.phase+': ':''}${failure?.message||'Run failed.'}`:''});
+        } else if (response.status === 'cancelling') {
+          // Recorded but not yet confirmed; the event stream reports cancelled once both runner and worker stop.
+          patch({ status: 'cancelling' });
         }else patch({cancelNotice:`Cancellation was not confirmed. Backend status: ${response.status}.`});
       }catch(error){if(active)patch({cancelPending:false,cancelError:terminal?'':message(error)});}
       finally{cancelling=false;}
@@ -107,7 +111,7 @@ export default function useRunSession({runId,api,eventSourceFactory=nativeEventS
         if(!active||!acceptingEvents)return;
         try {
           const {status}=parse(event,'status');
-          if(!['queued','running','clustering','done','failed','cancelled'].includes(status))throw Error('Backend sent an invalid status event.');
+          if(!RUN_STATUSES.has(status))throw Error('Backend sent an invalid status event.');
           patch({status,connection:'connected'});
           if(['done','failed','cancelled'].includes(status))terminal=true;
           if(status==='done') {acceptingEvents=false;source.close();patch({connection:'loading result'});loadResult({terminal:true});}
