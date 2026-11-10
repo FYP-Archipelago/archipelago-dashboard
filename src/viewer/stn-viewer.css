@@ -279,6 +279,11 @@ input[type=range]::-moz-range-thumb{width:13px; height:13px; border:0; border-ra
 .backend-stn-host .bmark.bi{width:15px;height:15px;margin:-7.5px 0 0 -7.5px;border-width:2px}
 .backend-stn-host .bmark.br{width:16px;height:16px;margin:-8px 0 0 -8px}
 .tour-status{min-height:16px;margin-top:5px;color:var(--soft);font-size:11px;text-align:center}
+.select-region{position:absolute;z-index:4;padding:10px 14px;border:1px solid var(--viz-rule);border-radius:3px;background:var(--panel);color:var(--ink);font:12px "IBM Plex Mono",monospace;cursor:pointer}
+.select-region[aria-pressed=true]{border-color:var(--accent);color:var(--accent)}
+.region-box{position:absolute;z-index:5;box-sizing:border-box;border:1px solid var(--accent);background:color-mix(in srgb,var(--accent) 12%,transparent);pointer-events:none}
+#gl.region-selecting{cursor:crosshair}
+.region-mode .best-callout{pointer-events:none}
 
 /* Keep the run-best diamond distinct above coincident island rings. */
 .bmark.br{z-index:4;background:none;border-radius:0;clip-path:none}

@@ -415,6 +415,14 @@ export function mountStnViewer(root, cfg) {
     reset.classList.remove('btn-wide');
     reset.classList.add('reset-view');
     root.querySelector('.stage').append(reset);
+    const region=document.createElement('button');region.id='select-region';region.className='select-region';
+    region.textContent='Select region';region.setAttribute('aria-pressed','false');
+    const regionBox=document.createElement('div');regionBox.id='region-box';regionBox.className='region-box';regionBox.hidden=true;
+    root.querySelector('.stage').append(region,regionBox);
+    const resetSettings=document.createElement('button');
+    resetSettings.id='reset-settings';resetSettings.className='btn-wide';
+    resetSettings.textContent='Reset settings';
+    right.querySelector('.rail-foot').prepend(resetSettings);
     const tour=document.createElement('button');tour.id='tour-best';tour.className='btn-wide';
     tour.textContent='Tour best nodes';tour.disabled=true;tour.style.marginTop='10px';
     const tourStatus=document.createElement('div');tourStatus.id='tour-status';
@@ -815,6 +823,35 @@ export function mountStnViewer(root, cfg) {
   let exIShown = 0, exRShown = 0, contestShown = 0, flatShown = 0, groupShown = 0, hsShown = 1;
   let camGoal = null;      // eased camera move set by Group by island
   let flyNode = -1, flyFrames = 0;
+  let regionMode=false,regionStart=null,regionFlight=null;
+  function setRegionMode(on){
+    regionMode=on;root.classList.toggle('region-mode',on);
+    if(cfg.backend){$('select-region').textContent=on?'Drag a region…':'Select region';
+      $('select-region').setAttribute('aria-pressed',String(on));canvas.classList.toggle('region-selecting',on);
+      if(!on)$('region-box').hidden=true;}
+  }
+  function regionPoint(ev){
+    const r=canvas.getBoundingClientRect();
+    return [canvas.offsetLeft+Math.max(0,Math.min(r.width,ev.clientX-r.left)),
+      canvas.offsetTop+Math.max(0,Math.min(r.height,ev.clientY-r.top))];
+  }
+  function focusRegion(end){
+    const x0=Math.min(regionStart[0],end[0]),x1=Math.max(regionStart[0],end[0]);
+    const y0=Math.min(regionStart[1],end[1]),y1=Math.max(regionStart[1],end[1]);
+    const points=[];
+    if(x1-x0>=5&&y1-y0>=5)for(let i=0;i<G.nodeCount;i++){
+      if(!grpVisible(G.pGrp[i]))continue;
+      const p=project(i);
+      if(p&&p[0]>=x0&&p[0]<=x1&&p[1]>=y0&&p[1]<=y1)points.push(worldOf(i));
+    }
+    const target=regionCameraTarget(points,canvas.clientWidth/canvas.clientHeight,cam);
+    setRegionMode(false);
+    if(target)regionFlight={from:{...cam},target,start:performance.now()};
+    else $('select-region').textContent='No nodes — select again';
+  }
+  if(cfg.backend)$('select-region').addEventListener('click',()=>{
+    stopBestTour();flyNode=-1;camGoal=null;zoomTarget=0;regionFlight=null;setRegionMode(!regionMode);
+  });
   let bestTour=null;
   function stopBestTour(){
     bestTour=null;root.classList.remove('best-tour-running');
@@ -876,9 +913,10 @@ export function mountStnViewer(root, cfg) {
   let dragging = 0, lx = 0, ly = 0, travel = 0;   // 1 = orbit, 2 = pan
   canvas.addEventListener("contextmenu", ev => ev.preventDefault());
   canvas.addEventListener("pointerdown", ev => {
-    stopBestTour();flyNode = -1; zoomTarget = 0; camGoal = null;
-    dragging = (ev.button === 2 || ev.button === 1 || ev.shiftKey) ? 2 : 1;
+    regionFlight=null;stopBestTour();flyNode = -1; zoomTarget = 0; camGoal = null;
+    dragging = regionMode&&ev.button===0 ? 3 : (ev.button === 2 || ev.button === 1 || ev.shiftKey) ? 2 : 1;
     lx = ev.clientX; ly = ev.clientY; travel = 0;
+    if(dragging===3){regionStart=regionPoint(ev);const box=$('region-box');box.style.width='0px';box.style.height='0px';box.style.left=regionStart[0]+'px';box.style.top=regionStart[1]+'px';box.hidden=false;$('hover-tip').hidden=true;}
     canvas.classList.add("dragging");
     canvas.setPointerCapture(ev.pointerId);
     lastInteract = performance.now();
@@ -896,7 +934,13 @@ export function mountStnViewer(root, cfg) {
   }
   canvas.addEventListener("pointerleave", () => { $("hover-tip").hidden = true; });
   canvas.addEventListener("pointermove", ev => {
-    if (!dragging) return showHover(ev);
+    if (!dragging) return regionMode?undefined:showHover(ev);
+    if(dragging===3){
+      const p=regionPoint(ev),box=$('region-box');
+      box.style.left=Math.min(p[0],regionStart[0])+'px';box.style.top=Math.min(p[1],regionStart[1])+'px';
+      box.style.width=Math.abs(p[0]-regionStart[0])+'px';box.style.height=Math.abs(p[1]-regionStart[1])+'px';
+      return;
+    }
     const dx = ev.clientX - lx, dy = ev.clientY - ly;
     travel += Math.abs(dx) + Math.abs(dy);
     if (dragging === 1) {
@@ -913,13 +957,14 @@ export function mountStnViewer(root, cfg) {
   });
   const endDrag = () => { dragging = 0; canvas.classList.remove("dragging"); lastInteract = performance.now(); };
   canvas.addEventListener("pointerup", ev => {
+    if(dragging===3){focusRegion(regionPoint(ev));endDrag();return;}
     const wasDrag = travel > 5, wasPan = dragging === 2;
     endDrag();
     if (wasDrag || wasPan) return;
     const r = canvas.getBoundingClientRect();
     select(pickAt(ev.clientX - r.left, ev.clientY - r.top));
   });
-  canvas.addEventListener("pointercancel", endDrag);
+  canvas.addEventListener("pointercancel", ()=>{endDrag();setRegionMode(false);});
 
   // Zoom toward the cursor, not the centre: the point under the pointer stays
   // put, so you can drive into any part of the cloud instead of only the middle.
@@ -970,7 +1015,7 @@ export function mountStnViewer(root, cfg) {
 
   canvas.addEventListener("wheel", ev => {
     ev.preventDefault();
-    stopBestTour();flyNode = -1; camGoal = null;
+    regionFlight=null;stopBestTour();flyNode = -1; camGoal = null;
     const r = canvas.getBoundingClientRect();
     zoomNx = ((ev.clientX - r.left) / r.width) * 2 - 1;
     zoomNy = 1 - ((ev.clientY - r.top) / r.height) * 2;
@@ -1040,7 +1085,7 @@ export function mountStnViewer(root, cfg) {
   // Fly the camera to a cluster and open it. The target is recomputed every
   // frame from the node index, so it stays locked on while explode animates.
   function jumpTo(node, grp) {
-    stopBestTour();
+    regionFlight=null;setRegionMode(false);stopBestTour();
     if (node == null || node < 0 || !G || node >= G.nodeCount) return;
     if (grp >= 0 && !state.grpOn[grp]) { state.grpOn[grp] = true; syncSelectors(); }
     select(node);
@@ -1394,7 +1439,7 @@ export function mountStnViewer(root, cfg) {
     syncSelectors();
   });
   if(cfg.backend)$('tour-best').addEventListener('click',()=>{
-
+    regionFlight=null;setRegionMode(false);
     if(bestTour){stopBestTour();return;}
     const stops=[];
     const runNode=G.bestOfRun[0];
@@ -1410,8 +1455,31 @@ export function mountStnViewer(root, cfg) {
     stops.push({overview:true,label:'Return to starting view'});
     bestTour={stops,index:0,origin:{...cam},area};root.classList.add('best-tour-running');$('tour-best').textContent='Stop tour';beginTourStop(performance.now());
   });
+  if(cfg.backend)$("reset-settings").addEventListener('click',()=>{
+    regionFlight=null;setRegionMode(false);stopBestTour();
+    Object.assign(state,{
+      wt:1,ns:100,zMode:0,op:180,dom:140,exI:0,exR:0,bestFitness:true,
+      colourBy:'island',contest:false,edges:true,selMark:true,bestIsl:true,bestRun:true,
+      includeHiddenPaths:MIGRATION_VISIBILITY_DEFAULTS.includeHiddenPaths,
+      group:false,exIBefore:0,flat:false,hs:100,hsBefore:100,
+      grpOn:new Array(NG).fill(true),routesOn:G.routes.map(()=>true)
+    });
+    // Stop a pending group/best camera animation without changing its current pose.
+    camGoal=null;flyNode=-1;zoomTarget=0;
+    zTarget=new Float32Array([1,0,0,0,0,0]);
+    for(const [id,key,label] of [
+      ['wt','wt',GE+' 1 visit'],['ns','ns','1.00'],['op','op','1.80'],
+      ['dom','dom','1.40'],['exi','exI','0.00'],['exr','exR','0.00'],['hs','hs','1.00']
+    ]){$('s-'+id).value=state[key];$('v-'+id).textContent=label;}
+    for(const [id,key] of [['b-group','group'],['contest','contest'],['t-edges','edges'],
+      ['b-sel','selMark'],['b-isl','bestIsl'],['b-run','bestRun'],['include-hidden-migrations','includeHiddenPaths']]){
+      $(id).setAttribute('aria-pressed',String(state[key]));
+    }
+    ['c-isl','c-run','c-fit'].forEach((id,i)=>$(id).setAttribute('aria-pressed',String(i===0)));
+    buildGeometry();buildIndex();buildSelectors();syncSelectors();syncHeight();updateStats();
+  });
   $("reset").addEventListener("click", () => {
-    stopBestTour();
+    regionFlight=null;setRegionMode(false);stopBestTour();
     cam.az = DS.runs > 1 ? 1.14 : 0.62; cam.el = 0.30; cam.dist = DS.runs > 1 ? 4.3 : 3.15; cam.tx = cam.ty = cam.tz = 0;
     zoomTarget = 0;camGoal=null;flyNode=-1;
   });
@@ -1578,6 +1646,10 @@ export function mountStnViewer(root, cfg) {
     if (flyNode >= 0) zoomTarget = 0;
     stepZoom();
     stepBestTour(now);
+    if(regionFlight){
+      Object.assign(cam,tourCameraPose(regionFlight.from,regionFlight.target,now-regionFlight.start,1000));
+      if(now-regionFlight.start>=1000)regionFlight=null;
+    }
     const cz = [Math.sin(cam.az) * Math.cos(cam.el), Math.sin(cam.el), Math.cos(cam.az) * Math.cos(cam.el)];
     const eye = [cam.tx + cz[0] * cam.dist, cam.ty + cz[1] * cam.dist, cam.tz + cz[2] * cam.dist];
     const near = Math.max(0.00002, cam.dist * 0.004), far = cam.dist * 8 + 40;
