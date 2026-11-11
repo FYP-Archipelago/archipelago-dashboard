@@ -6,35 +6,60 @@ export class FormError extends Error {
   }
 }
 
-export const runValueLabel = value => String(value).replaceAll('_',' ').replace(/\b[a-z]/g,letter=>letter.toUpperCase());
+export const runValueLabel = (value) =>
+  String(value)
+    .replaceAll('_', ' ')
+    .replace(/\b[a-z]/g, (letter) => letter.toUpperCase());
 
-const object = value => value !== null && typeof value === 'object' && !Array.isArray(value);
+const object = (value) => value !== null && typeof value === 'object' && !Array.isArray(value);
 export const CLUSTER_FIELDS = {
-  detail:{label:'Clustering detail',min:0.5,max:2,default:1,step:0.1},
-  birch_threshold:{label:'BIRCH threshold',positive:true,auto:true,stage:'birch',step:'any'},
-  denstream_epsilon:{label:'DenStream epsilon',positive:true,auto:true,stage:'denstream',step:'any'},
-  denstream_half_life:{label:'DenStream half-life (seconds)',positive:true,auto:true,stage:'denstream',step:'any'},
-  denstream_mu:{label:'DenStream mu',positive:true,default:10,stage:'denstream',step:'any'},
-  denstream_beta:{label:'DenStream beta',positive:true,max:1,default:0.5,stage:'denstream',step:'any'},
-  lsh_hashes:{label:'LSH hashes',type:'int',min:1,default:6,stage:'lsh',step:1},
-  seed:{label:'Clustering seed',type:'int',default:0,step:1},
+  detail: { label: 'Clustering detail', min: 0.5, max: 2, default: 1, step: 0.1 },
+  birch_threshold: { label: 'BIRCH threshold', positive: true, auto: true, stage: 'birch', step: 'any' },
+  denstream_epsilon: { label: 'DenStream epsilon', positive: true, auto: true, stage: 'denstream', step: 'any' },
+  denstream_half_life: { label: 'DenStream half-life (seconds)', positive: true, auto: true, stage: 'denstream', step: 'any' },
+  denstream_mu: { label: 'DenStream mu', positive: true, default: 10, stage: 'denstream', step: 'any' },
+  denstream_beta: { label: 'DenStream beta', positive: true, max: 1, default: 0.5, stage: 'denstream', step: 'any' },
+  lsh_hashes: { label: 'LSH hashes', type: 'int', min: 1, default: 6, stage: 'lsh', step: 1 },
+  seed: { label: 'Clustering seed', type: 'int', default: 0, step: 1 },
 };
-export const initialClustering = () => ({lsh:true,birch:true,denstream:true,...Object.fromEntries(Object.entries(CLUSTER_FIELDS).map(([key,rule])=>[key,rule.auto?null:rule.default]))});
+export const initialClustering = () => ({
+  lsh: true,
+  birch: true,
+  denstream: true,
+  ...Object.fromEntries(Object.entries(CLUSTER_FIELDS).map(([key, rule]) => [key, rule.auto ? null : rule.default])),
+});
 
 export function validatePresets(value) {
-  if (!object(value) || !object(value.overrides) || !Array.isArray(value.presets) || !value.presets.length) throw new Error('Backend returned no usable presets. Retry when the runner is available.');
-  for (const [key,rule] of Object.entries(value.overrides)) {
-    if (!object(rule) || !['int','bool','choice'].includes(rule.type)) throw new Error(`Unsupported override type for ${key}.`);
-    if (rule.type === 'choice' && (!Array.isArray(rule.choices) || !rule.choices.length || !rule.choices.every(item=>typeof item === 'string'))) throw new Error(`Invalid override choices for ${key}.`);
-    if (['min','max'].some(bound=>rule[bound] !== undefined && !Number.isSafeInteger(rule[bound])) || (rule.min !== undefined && rule.max !== undefined && rule.min > rule.max)) throw new Error(`Invalid override bounds for ${key}.`);
+  if (!object(value) || !object(value.overrides) || !Array.isArray(value.presets) || !value.presets.length)
+    throw new Error('Backend returned no usable presets. Retry when the runner is available.');
+  for (const [key, rule] of Object.entries(value.overrides)) {
+    if (!object(rule) || !['int', 'bool', 'choice'].includes(rule.type)) throw new Error(`Unsupported override type for ${key}.`);
+    if (rule.type === 'choice' && (!Array.isArray(rule.choices) || !rule.choices.length || !rule.choices.every((item) => typeof item === 'string')))
+      throw new Error(`Invalid override choices for ${key}.`);
+    if (
+      ['min', 'max'].some((bound) => rule[bound] !== undefined && !Number.isSafeInteger(rule[bound])) ||
+      (rule.min !== undefined && rule.max !== undefined && rule.min > rule.max)
+    )
+      throw new Error(`Invalid override bounds for ${key}.`);
   }
   const names = new Set();
   for (const preset of value.presets) {
-    if (!object(preset) || !['preset','algorithm','benchmark','description'].every(key=>typeof preset[key] === 'string') || !preset.preset || names.has(preset.preset) || !object(preset.defaults)) throw new Error('Backend returned malformed preset metadata.');
+    if (
+      !object(preset) ||
+      !['preset', 'algorithm', 'benchmark', 'description'].every((key) => typeof preset[key] === 'string') ||
+      !preset.preset ||
+      names.has(preset.preset) ||
+      !object(preset.defaults)
+    )
+      throw new Error('Backend returned malformed preset metadata.');
     names.add(preset.preset);
-    for (const [key,rule] of Object.entries(value.overrides)) {
+    for (const [key, rule] of Object.entries(value.overrides)) {
       if (rule.optional && preset.defaults[key] == null) continue;
-      try {parseValue(key,preset.defaults[key],rule);} catch {throw new Error(`Invalid preset default for ${key}.`);}
+      try {
+        parseValue(key, preset.defaults[key], rule);
+      } catch {
+        throw new Error(`Invalid preset default for ${key}.`);
+      }
     }
   }
   return value;
@@ -51,44 +76,62 @@ function parseValue(label, value, rule) {
   }
   if ((typeof value !== 'string' && typeof value !== 'number') || String(value).trim() === '') throw new Error(`${label} is required.`);
   const number = Number(value);
-  if (!Number.isFinite(number) || (rule.type === 'int' && !Number.isSafeInteger(number))) throw new Error(`${label} must be ${rule.type === 'int' ? 'an integer' : 'a finite number'}.`);
+  if (!Number.isFinite(number) || (rule.type === 'int' && !Number.isSafeInteger(number)))
+    throw new Error(`${label} must be ${rule.type === 'int' ? 'an integer' : 'a finite number'}.`);
   if (rule.positive && number <= 0) throw new Error(`${label} must be greater than 0.`);
   if (rule.min !== undefined && number < rule.min) throw new Error(`${label} must be at least ${rule.min}.`);
   if (rule.max !== undefined && number > rule.max) throw new Error(`${label} must be at most ${rule.max}.`);
   return number;
 }
 
-export function buildRunRequest({catalog,preset,values={},clustering,stream=true}) {
-  const selected = catalog?.presets?.find(item=>item.preset === preset);
-  if (!selected) throw new FormError({preset:'Choose a preset from the backend.'});
-  const errors = {}, overrides = {}, effective = {...selected.defaults};
+export function buildRunRequest({ catalog, preset, values = {}, clustering, stream = true }) {
+  const selected = catalog?.presets?.find((item) => item.preset === preset);
+  if (!selected) throw new FormError({ preset: 'Choose a preset from the backend.' });
+  const errors = {},
+    overrides = {},
+    effective = { ...selected.defaults };
   for (const key of Object.keys(values)) {
-    const rule = catalog.overrides[key], raw = values[key];
-    if (!rule) {errors[key]=`Unsupported override: ${key}.`;continue;}
+    const rule = catalog.overrides[key],
+      raw = values[key];
+    if (!rule) {
+      errors[key] = `Unsupported override: ${key}.`;
+      continue;
+    }
     if (rule.optional && (raw == null || String(raw).trim() === '')) continue;
     try {
-      const parsed = parseValue(key,raw,rule);
+      const parsed = parseValue(key, raw, rule);
       effective[key] = parsed;
       if (parsed !== selected.defaults[key]) overrides[key] = parsed;
-    } catch (error) {errors[key] = error.message;}
+    } catch (error) {
+      errors[key] = error.message;
+    }
   }
   if (effective['migration.enabled']) {
     if (effective['migration.topology'] === 'torus' && effective.num_islands !== 6) errors['migration.topology'] = 'A torus needs 6 islands.';
-    if (effective['migration.interval'] > effective.target_generations) errors['migration.interval'] = 'Migration interval must not exceed target generations.';
+    if (effective['migration.interval'] > effective.target_generations)
+      errors['migration.interval'] = 'Migration interval must not exceed target generations.';
   }
   const config = {};
-  for (const key of ['lsh','birch','denstream']) {
+  for (const key of ['lsh', 'birch', 'denstream']) {
     if (typeof clustering?.[key] !== 'boolean') errors[key] = `Choose whether ${key} runs.`;
     config[key] = clustering?.[key];
   }
   if (!config.lsh && !config.birch && !config.denstream) errors.stages = 'Enable at least one clustering stage.';
-  for (const key of Object.keys(clustering || {})) if (!(key in CLUSTER_FIELDS) && !['lsh','birch','denstream'].includes(key)) errors[key] = `Unsupported clustering setting: ${key}.`;
-  for (const [key,rule] of Object.entries(CLUSTER_FIELDS)) {
+  for (const key of Object.keys(clustering || {}))
+    if (!(key in CLUSTER_FIELDS) && !['lsh', 'birch', 'denstream'].includes(key)) errors[key] = `Unsupported clustering setting: ${key}.`;
+  for (const [key, rule] of Object.entries(CLUSTER_FIELDS)) {
     const raw = clustering?.[key] === undefined ? (rule.auto ? null : rule.default) : clustering[key];
-    if (rule.auto && (raw == null || (rule.stage && !config[rule.stage] && typeof raw === 'string' && raw.trim() === ''))) {config[key]=null;continue;}
-    try {config[key] = parseValue(rule.label,raw,rule);} catch (error) {errors[key] = error.message;}
+    if (rule.auto && (raw == null || (rule.stage && !config[rule.stage] && typeof raw === 'string' && raw.trim() === ''))) {
+      config[key] = null;
+      continue;
+    }
+    try {
+      config[key] = parseValue(rule.label, raw, rule);
+    } catch (error) {
+      errors[key] = error.message;
+    }
   }
   if (typeof stream !== 'boolean') errors.stream = 'Choose live updates or final result only.';
   if (Object.keys(errors).length) throw new FormError(errors);
-  return {preset,overrides,stream,clustering:config};
+  return { preset, overrides, stream, clustering: config };
 }

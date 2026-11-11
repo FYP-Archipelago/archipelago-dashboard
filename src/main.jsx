@@ -6,6 +6,6 @@ import './style.css';
 import './designs.css';
 import './app/workspace.css';
 
-const root=import.meta.hot?.data.root || createRoot(document.getElementById('root'));
-if(import.meta.hot)import.meta.hot.data.root=root;
-root.render(import.meta.env.VITE_RECORDED_DEMO==='true'?<RecordedDashboard/>:<DashboardApp/>);
+const root = import.meta.hot?.data.root || createRoot(document.getElementById('root'));
+if (import.meta.hot) import.meta.hot.data.root = root;
+root.render(import.meta.env.VITE_RECORDED_DEMO === 'true' ? <RecordedDashboard /> : <DashboardApp />);

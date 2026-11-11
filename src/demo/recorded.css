@@ -61,7 +61,7 @@
   cursor: pointer;
 }
 
-.history-islands button[aria-pressed=true] {
+.history-islands button[aria-pressed='true'] {
   border-color: var(--line);
   background: var(--raised);
   color: var(--ink);
@@ -99,7 +99,7 @@
 
 .recorded-chart svg line {
   stroke: var(--line);
-  stroke-width: .6;
+  stroke-width: 0.6;
   stroke-dasharray: 3 5;
 }
 

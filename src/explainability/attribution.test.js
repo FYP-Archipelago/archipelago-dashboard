@@ -20,7 +20,12 @@ function result() {
       { players: [1], value: 4 },
       { players: [0, 1], value: 10 },
     ],
-    orders: [[{ player: 0, before: 2, after: 2 }, { player: 1, before: 2, after: 10 }]],
+    orders: [
+      [
+        { player: 0, before: 2, after: 2 },
+        { player: 1, before: 2, after: 10 },
+      ],
+    ],
   };
   const routes = {
     empty_value: 0,
@@ -55,15 +60,27 @@ test('derives labels, shares, bar widths, coalition percentages and marginal con
   const islands = data.games.islands;
   assert.equal(islands.allocated_gain, 8);
   assert.deepEqual(
-    islands.players.map(p => [p.id, p.label, p.share_percent, p.bar_percent]),
-    [['1', 'Island 1', 75, 100], ['0', 'Island 0', 25, 100 / 3]],
+    islands.players.map((p) => [p.id, p.label, p.share_percent, p.bar_percent]),
+    [
+      ['1', 'Island 1', 75, 100],
+      ['0', 'Island 0', 25, 100 / 3],
+    ]
   );
-  assert.deepEqual(islands.coalitions.map(c => c.value_percent), [20, 20, 40, 100]);
-  assert.deepEqual(islands.orders[0].steps.map(s => s.marginal), [0, 8]);
+  assert.deepEqual(
+    islands.coalitions.map((c) => c.value_percent),
+    [20, 20, 40, 100]
+  );
+  assert.deepEqual(
+    islands.orders[0].steps.map((s) => s.marginal),
+    [0, 8]
+  );
 
   const routes = data.games.routes;
   assert.equal(routes.sampled, true);
-  assert.deepEqual(routes.players.map(p => [p.id, p.label]), [['0-1', '0 → 1']]);
+  assert.deepEqual(
+    routes.players.map((p) => [p.id, p.label]),
+    [['0-1', '0 → 1']]
+  );
 });
 
 test('older results and module-unavailable attribution are reported as unavailable', () => {
@@ -78,11 +95,21 @@ test('older results and module-unavailable attribution are reported as unavailab
 
 test('wrong runs and malformed attribution are errors', () => {
   const mutations = [
-    r => { r.run.run_id = 'run-20261102T120001Z-11223344'; },
-    r => { r.explainability.shapley.coverage = { evaluations: 1, supported: 2 }; },
-    r => { r.explainability.shapley.routes.players[0].player = 0; },
-    r => { r.explainability.shapley.islands.coalitions.push({ players: [7], value: 1 }); },
-    r => { r.explainability.shapley.islands.players.push({ player: 1, value: 0, standard_error: null }); },
+    (r) => {
+      r.run.run_id = 'run-20261102T120001Z-11223344';
+    },
+    (r) => {
+      r.explainability.shapley.coverage = { evaluations: 1, supported: 2 };
+    },
+    (r) => {
+      r.explainability.shapley.routes.players[0].player = 0;
+    },
+    (r) => {
+      r.explainability.shapley.islands.coalitions.push({ players: [7], value: 1 });
+    },
+    (r) => {
+      r.explainability.shapley.islands.players.push({ player: 1, value: 0, standard_error: null });
+    },
   ];
   for (const mutate of mutations) {
     const value = result();

@@ -60,14 +60,14 @@ The Node server only serves static files, `/api/status`, `/api/backend-config`, 
 
 There is no backend run-list or run-status route. Status comes from events, final graphs from `/runs/{id}/result`. The viewer uses backend node IDs, coordinates, percentiles, island assignments, best markers, links and migrations directly.
 
-| View | Backend contract / remaining data |
-|---|---|
-| Graph and inspection | Columnar `graph.nodes`, `graph.edges`, `graph.migrations`, best flags and coordinates already supplied |
-| Clustering statistics | `clustering.counts`, `resolved`, `diagnostics`, `elapsed_seconds`, `malformed_rows`, `warnings` already supplied |
-| Island separation | Backend `separation` pairs, windows and window pairs already supplied |
-| Run details | Backend result `run` and `layout`; request settings may be remembered by this browser |
-| Convergence time series | Uses final `generation_history` from the module; requires API `3749658` or later with module `e913411` or later. Update dependencies and restart API/workers, then start a new run; older results are not backfilled. |
-| Detailed migration timings | Graph route counts exist; delivery latency and event timing are absent and require backend/module support if needed |
+| View                       | Backend contract / remaining data                                                                                                                                                                                     |
+| -------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Graph and inspection       | Columnar `graph.nodes`, `graph.edges`, `graph.migrations`, best flags and coordinates already supplied                                                                                                                |
+| Clustering statistics      | `clustering.counts`, `resolved`, `diagnostics`, `elapsed_seconds`, `malformed_rows`, `warnings` already supplied                                                                                                      |
+| Island separation          | Backend `separation` pairs, windows and window pairs already supplied                                                                                                                                                 |
+| Run details                | Backend result `run` and `layout`; request settings may be remembered by this browser                                                                                                                                 |
+| Convergence time series    | Uses final `generation_history` from the module; requires API `3749658` or later with module `e913411` or later. Update dependencies and restart API/workers, then start a new run; older results are not backfilled. |
+| Detailed migration timings | Graph route counts exist; delivery latency and event timing are absent and require backend/module support if needed                                                                                                   |
 
 Missing analytical data must be added to the module/backend or shown as unavailable. Do not calculate substitute results in the frontend.
 

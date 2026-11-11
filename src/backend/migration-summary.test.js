@@ -17,15 +17,32 @@ test('builds the island matrix, totals and bar widths from per-route counts', ()
   assert.equal(summary.total, 7);
   assert.equal(summary.routes, 3);
   assert.equal(summary.maximum, 4);
-  assert.deepEqual(summary.rows[0].cells.map(cell => [cell.count, cell.intensity]), [[0, 0], [4, 1], [0, 0]]);
-  assert.deepEqual(summary.totals.map(total => [total.island, total.sent, total.received]), [[0, 4, 3], [1, 2, 4], [2, 1, 0]]);
-  assert.deepEqual(summary.totals.map(total => total.sent_percent), [100, 50, 25]);
+  assert.deepEqual(
+    summary.rows[0].cells.map((cell) => [cell.count, cell.intensity]),
+    [
+      [0, 0],
+      [4, 1],
+      [0, 0],
+    ]
+  );
+  assert.deepEqual(
+    summary.totals.map((total) => [total.island, total.sent, total.received]),
+    [
+      [0, 4, 3],
+      [1, 2, 4],
+      [2, 1, 0],
+    ]
+  );
+  assert.deepEqual(
+    summary.totals.map((total) => total.sent_percent),
+    [100, 50, 25]
+  );
 });
 
 test('migration switched off gives an empty matrix, and older results give null', () => {
   const off = migrationSummary({ run: { islands: [0, 1] }, migration_routes: [] });
   assert.equal(off.total, 0);
-  assert.ok(off.rows.every(row => row.cells.every(cell => cell.count === 0 && cell.intensity === 0)));
+  assert.ok(off.rows.every((row) => row.cells.every((cell) => cell.count === 0 && cell.intensity === 0)));
   assert.equal(migrationSummary({ run: { islands: [0] } }), null);
 });
 

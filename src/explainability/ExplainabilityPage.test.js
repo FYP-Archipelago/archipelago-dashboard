@@ -17,7 +17,10 @@ const shapley = {
     full_value: 5,
     sampled_orders: null,
     players: [{ player: 0, value: 5, standard_error: null }],
-    coalitions: [{ players: [], value: 0 }, { players: [0], value: 5 }],
+    coalitions: [
+      { players: [], value: 0 },
+      { players: [0], value: 5 },
+    ],
     orders: [[{ player: 0, before: 0, after: 5 }]],
   },
   routes: { empty_value: 5, full_value: 5, sampled_orders: null, players: [], coalitions: [{ players: [], value: 5 }], orders: [] },
@@ -28,7 +31,7 @@ const resultFor = (id, explainability = { shapley }) => ({
   explainability,
 });
 const result = resultFor(runId);
-const notFound = detail => Object.assign(new Error(detail), { status: 404 });
+const notFound = (detail) => Object.assign(new Error(detail), { status: 404 });
 const attribution = () => document.querySelector('[data-attribution]');
 
 test('renders attribution from the run result, switches games and explores coalitions', async () => {
@@ -46,7 +49,7 @@ test('renders attribution from the run result, switches games and explores coali
   }
 });
 
-test('an unfinished run polls every two seconds until its result exists', async t => {
+test('an unfinished run polls every two seconds until its result exists', async (t) => {
   t.mock.timers.enable({ apis: ['setTimeout'] });
   let calls = 0;
   const api = {
@@ -72,7 +75,7 @@ test('an unfinished run polls every two seconds until its result exists', async 
   }
 });
 
-test('a failed or cancelled run is unavailable without polling', async t => {
+test('a failed or cancelled run is unavailable without polling', async (t) => {
   t.mock.timers.enable({ apis: ['setTimeout'] });
   for (const detail of ['No result: run failed', 'no result: run cancelled']) {
     let calls = 0;
@@ -96,8 +99,12 @@ test('a failed or cancelled run is unavailable without polling', async t => {
 
 test('request failures, unknown runs and malformed results show an error with retry', async () => {
   const failures = [
-    () => { throw new Error('Backend unavailable'); },
-    () => { throw notFound('Run not found'); },
+    () => {
+      throw new Error('Backend unavailable');
+    },
+    () => {
+      throw notFound('Run not found');
+    },
     () => resultFor(otherRunId),
   ];
   for (const fail of failures) {
@@ -121,7 +128,9 @@ test('changing run aborts the old request and ignores its late result', async ()
     result: (id, { signal }) => {
       if (id === otherRunId) return Promise.resolve(resultFor(otherRunId, { shapley: { status: 'unavailable', detail: 'Not this one.' } }));
       oldSignal = signal;
-      return new Promise(resolve => { resolveOld = resolve; });
+      return new Promise((resolve) => {
+        resolveOld = resolve;
+      });
     },
   };
   const root = await mount(Page, { runId, api });
@@ -136,7 +145,7 @@ test('changing run aborts the old request and ignores its late result', async ()
   }
 });
 
-test('unmount cancels the scheduled poll', async t => {
+test('unmount cancels the scheduled poll', async (t) => {
   t.mock.timers.enable({ apis: ['setTimeout'] });
   let calls = 0;
   const api = {

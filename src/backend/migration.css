@@ -59,7 +59,7 @@
 }
 
 .migration-matrix .migration-positive {
-  background: rgba(77, 174, 165, calc(.13 + var(--intensity) * .51));
+  background: rgba(77, 174, 165, calc(0.13 + var(--intensity) * 0.51));
   color: var(--ink);
   font-weight: 600;
 }
@@ -89,7 +89,7 @@
   width: 72px;
   height: 6px;
   border-radius: 2px;
-  background: linear-gradient(90deg, rgba(77, 174, 165, .13), rgba(77, 174, 165, .64));
+  background: linear-gradient(90deg, rgba(77, 174, 165, 0.13), rgba(77, 174, 165, 0.64));
 }
 
 .migration-bar-group {

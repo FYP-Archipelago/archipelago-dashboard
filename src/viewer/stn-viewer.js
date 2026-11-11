@@ -1,8 +1,8 @@
-import {regionCameraTarget} from './region-focus.js';
-import {tourCameraPose,bestTourTarget,groupedTourTarget} from './camera-tour.js';
-import {placeBestLabel} from './best-labels.js';
-import {migrationVisible,MIGRATION_VISIBILITY_DEFAULTS} from './visibility.js';
-import {backendViewerGraph,remapBackendAnchor} from './backend-graph.js';
+import { regionCameraTarget } from './region-focus.js';
+import { tourCameraPose, bestTourTarget, groupedTourTarget } from './camera-tour.js';
+import { placeBestLabel } from './best-labels.js';
+import { migrationVisible, MIGRATION_VISIBILITY_DEFAULTS } from './visibility.js';
+import { backendViewerGraph, remapBackendAnchor } from './backend-graph.js';
 
 /* Archipelago STN viewer — WebGL2, no libraries.
  *
@@ -25,7 +25,11 @@ import {backendViewerGraph,remapBackendAnchor} from './backend-graph.js';
 
 /* ═══ 2. SHADERS ══════════════════ */
 const MAXG = 32;
-const SI = 0.30, SR = 0.34, RING_I = 0.86, RING_R = 0.95, PLANE_GAP = 0.62;
+const SI = 0.3,
+  SR = 0.34,
+  RING_I = 0.86,
+  RING_R = 0.95,
+  PLANE_GAP = 0.62;
 
 const PLACE = `
 vec2 placeXY(vec2 b, vec2 oi, vec2 orr, float ei, float er){
@@ -33,7 +37,8 @@ vec2 placeXY(vec2 b, vec2 oi, vec2 orr, float ei, float er){
   return mix(p, p*${SR} + orr, er);
 }`;
 
-const VS_GRAPH = `
+const VS_GRAPH =
+  `
 in vec2 aXY; in vec2 aOffI; in vec2 aOffR; in vec3 aZ; in vec3 aZ2;
 in float aGrp; in float aSize; in float aShared;
 uniform mat4 uVP; uniform vec3 uZMix; uniform vec3 uZMix2; uniform float uPScale;
@@ -42,7 +47,9 @@ uniform vec3 uCol[${MAXG}]; uniform float uAlpha[${MAXG}];
 uniform float uBase; uniform float uFogN; uniform float uFogF;
 uniform float uContest; uniform float uFlat; uniform float uHS; uniform float uByFit;
 out vec3 vC; out float vA; out float vS;
-` + PLACE + `
+` +
+  PLACE +
+  `
 void main(){
   vec2 q = placeXY(aXY, aOffI, aOffR, uExI, uExR);
   vec3 p = vec3(q.x, (dot(aZ, uZMix) + dot(aZ2, uZMix2)) * (1.0 - uFlat) * uHS, q.y);
@@ -77,10 +84,13 @@ void emit(vec3 col, float dens, float mark){
 #endif
 }`;
 
-const FS_POINT = `
+const FS_POINT =
+  `
 precision highp float;
 in vec3 vC; in float vA; in float vS;
-` + EMIT + `
+` +
+  EMIT +
+  `
 void main(){
   vec2 c = gl_PointCoord - 0.5;
   float r = length(c)*2.0;
@@ -89,13 +99,17 @@ void main(){
   emit(vC, a * vA, ring * vA * 2.2);
 }`;
 
-const FS_LINE = `
+const FS_LINE =
+  `
 precision highp float;
 in vec3 vC; in float vA; in float vS;
-` + EMIT + `
+` +
+  EMIT +
+  `
 void main(){ emit(vC, vA, 0.0); }`;
 
-const VS_ARC = `
+const VS_ARC =
+  `
 in vec2 aA; in vec2 aAI; in vec2 aAR; in vec3 aAZ; in vec3 aAZ2;
 in vec2 aB; in vec2 aBI; in vec2 aBR; in vec3 aBZ; in vec3 aBZ2;
 in float aT; in float aSide; in float aRoute;
@@ -106,7 +120,9 @@ uniform float uAspect; uniform float uHalfW;
 uniform float uFlat; uniform float uLift; uniform float uRainbow; uniform float uHS;
 uniform vec3 uRSrc[${MAXG * 2}]; uniform vec3 uRDst[${MAXG * 2}];
 out vec3 vC; out float vA; out float vS;
-` + PLACE + `
+` +
+  PLACE +
+  `
 vec3 bez(float t, vec3 p0, vec3 p1, vec3 ctrl){
   float u = 1.0 - t;
   return u*u*p0 + 2.0*u*t*ctrl + t*t*p1;
@@ -166,45 +182,84 @@ void main(){
 
 /* ═══ 3. COLOUR ═════════════════════════════════════════════════ */
 // Validated categorical set: all-pairs CVD dE 8.5 deutan, 20.0 normal vision.
-const PAL5 = [[.494, .784, 1], [.949, .380, .361], [.094, .639, .478], [.957, .839, .310], [.753, .478, .910]];
+const PAL5 = [
+  [0.494, 0.784, 1],
+  [0.949, 0.38, 0.361],
+  [0.094, 0.639, 0.478],
+  [0.957, 0.839, 0.31],
+  [0.753, 0.478, 0.91],
+];
 
 function hsl(h, s, l) {
-  const f = n => {
+  const f = (n) => {
     const k = (n + h * 12) % 12;
     return l - s * Math.min(l, 1 - l) * Math.max(-1, Math.min(Math.min(k - 3, 9 - k), 1));
   };
   return [f(0), f(8), f(4)];
 }
-const hex = c => "#" + c.map(v => Math.round(Math.max(0, Math.min(1, v)) * 255).toString(16).padStart(2, "0")).join("");
+const hex = (c) =>
+  '#' +
+  c
+    .map((v) =>
+      Math.round(Math.max(0, Math.min(1, v)) * 255)
+        .toString(16)
+        .padStart(2, '0')
+    )
+    .join('');
 
 /* ═══ 4. MAT4 ═══════════════════════════════════════════════════ */
 function perspective(fovy, aspect, near, far) {
-  const f = 1 / Math.tan(fovy / 2), nf = 1 / (near - far);
+  const f = 1 / Math.tan(fovy / 2),
+    nf = 1 / (near - far);
   return new Float32Array([f / aspect, 0, 0, 0, 0, f, 0, 0, 0, 0, (far + near) * nf, -1, 0, 0, 2 * far * near * nf, 0]);
 }
 function lookAt(eye, ctr, up) {
-  let zx = eye[0] - ctr[0], zy = eye[1] - ctr[1], zz = eye[2] - ctr[2];
-  let l = 1 / (Math.hypot(zx, zy, zz) || 1); zx *= l; zy *= l; zz *= l;
-  let xx = up[1] * zz - up[2] * zy, xy = up[2] * zx - up[0] * zz, xz = up[0] * zy - up[1] * zx;
-  l = 1 / (Math.hypot(xx, xy, xz) || 1); xx *= l; xy *= l; xz *= l;
-  const yx = zy * xz - zz * xy, yy = zz * xx - zx * xz, yz = zx * xy - zy * xx;
+  let zx = eye[0] - ctr[0],
+    zy = eye[1] - ctr[1],
+    zz = eye[2] - ctr[2];
+  let l = 1 / (Math.hypot(zx, zy, zz) || 1);
+  zx *= l;
+  zy *= l;
+  zz *= l;
+  let xx = up[1] * zz - up[2] * zy,
+    xy = up[2] * zx - up[0] * zz,
+    xz = up[0] * zy - up[1] * zx;
+  l = 1 / (Math.hypot(xx, xy, xz) || 1);
+  xx *= l;
+  xy *= l;
+  xz *= l;
+  const yx = zy * xz - zz * xy,
+    yy = zz * xx - zx * xz,
+    yz = zx * xy - zy * xx;
   return new Float32Array([
-    xx, yx, zx, 0, xy, yy, zy, 0, xz, yz, zz, 0,
+    xx,
+    yx,
+    zx,
+    0,
+    xy,
+    yy,
+    zy,
+    0,
+    xz,
+    yz,
+    zz,
+    0,
     -(xx * eye[0] + xy * eye[1] + xz * eye[2]),
     -(yx * eye[0] + yy * eye[1] + yz * eye[2]),
-    -(zx * eye[0] + zy * eye[1] + zz * eye[2]), 1
+    -(zx * eye[0] + zy * eye[1] + zz * eye[2]),
+    1,
   ]);
 }
 function mul(a, b) {
   const o = new Float32Array(16);
-  for (let c = 0; c < 4; c++) for (let r = 0; r < 4; r++)
-    o[c * 4 + r] = a[r] * b[c * 4] + a[4 + r] * b[c * 4 + 1] + a[8 + r] * b[c * 4 + 2] + a[12 + r] * b[c * 4 + 3];
+  for (let c = 0; c < 4; c++)
+    for (let r = 0; r < 4; r++) o[c * 4 + r] = a[r] * b[c * 4] + a[4 + r] * b[c * 4 + 1] + a[8 + r] * b[c * 4 + 2] + a[12 + r] * b[c * 4 + 3];
   return o;
 }
 
 /* ═══ 5. THE VIEWER ═════════════════════════════════════════════ */
 const GRIDS = [18, 34, 70, 150, 280];
-const GRID_NAMES = ["coarse", "low", "medium", "fine", "finest"];
+const GRID_NAMES = ['coarse', 'low', 'medium', 'fine', 'finest'];
 
 const TEMPLATE = `
 <div class="wrap">
@@ -377,7 +432,7 @@ const TEMPLATE = `
 </div>`;
 
 const CAP =
-  "Shared genome-space projection with pooled fitness percentiles. Island separation offsets reveal shared-cluster membership. Trajectory edges encode within-island parent&rarr;child relationships.";
+  'Shared genome-space projection with pooled fitness percentiles. Island separation offsets reveal shared-cluster membership. Trajectory edges encode within-island parent&rarr;child relationships.';
 
 /**
  * Mount the viewer into ``root``.
@@ -407,39 +462,65 @@ export function mountStnViewer(root, cfg) {
     right.querySelector('.rail-h span').textContent = 'Routes and appearance';
     right.before(left);
     const meanHeight = document.createElement('button');
-    meanHeight.id='z-mean';meanHeight.textContent='MEAN FITNESS';
-    meanHeight.setAttribute('aria-pressed','false');
+    meanHeight.id = 'z-mean';
+    meanHeight.textContent = 'MEAN FITNESS';
+    meanHeight.setAttribute('aria-pressed', 'false');
     root.querySelector('#z-fit').after(meanHeight);
     const reset = right.querySelector('#reset');
     reset.textContent = 'Reset view';
     reset.classList.remove('btn-wide');
     reset.classList.add('reset-view');
     root.querySelector('.stage').append(reset);
-    const region=document.createElement('button');region.id='select-region';region.className='select-region';
-    region.textContent='Select region';region.setAttribute('aria-pressed','false');
-    const regionBox=document.createElement('div');regionBox.id='region-box';regionBox.className='region-box';regionBox.hidden=true;
-    root.querySelector('.stage').append(region,regionBox);
-    const resetSettings=document.createElement('button');
-    resetSettings.id='reset-settings';resetSettings.className='btn-wide';
-    resetSettings.textContent='Reset settings';
+    const region = document.createElement('button');
+    region.id = 'select-region';
+    region.className = 'select-region';
+    region.textContent = 'Select region';
+    region.setAttribute('aria-pressed', 'false');
+    const regionBox = document.createElement('div');
+    regionBox.id = 'region-box';
+    regionBox.className = 'region-box';
+    regionBox.hidden = true;
+    root.querySelector('.stage').append(region, regionBox);
+    const resetSettings = document.createElement('button');
+    resetSettings.id = 'reset-settings';
+    resetSettings.className = 'btn-wide';
+    resetSettings.textContent = 'Reset settings';
     right.querySelector('.rail-foot').prepend(resetSettings);
-    const tour=document.createElement('button');tour.id='tour-best';tour.className='btn-wide';
-    tour.textContent='Tour best nodes';tour.disabled=true;tour.style.marginTop='10px';
-    const tourStatus=document.createElement('div');tourStatus.id='tour-status';
-    tourStatus.className='tour-status';tourStatus.setAttribute('role','status');
-    right.querySelector('#bests').after(tour,tourStatus);
+    const tour = document.createElement('button');
+    tour.id = 'tour-best';
+    tour.className = 'btn-wide';
+    tour.textContent = 'Tour best nodes';
+    tour.disabled = true;
+    tour.style.marginTop = '10px';
+    const tourStatus = document.createElement('div');
+    tourStatus.id = 'tour-status';
+    tourStatus.className = 'tour-status';
+    tourStatus.setAttribute('role', 'status');
+    right.querySelector('#bests').after(tour, tourStatus);
   }
-  const $ = id => root.querySelector("#" + id);
-  const canvas = $("gl"), note = $("note");
-  const gl = canvas.getContext("webgl2", { antialias: false, alpha: false });
-  if (!gl) { note.textContent = "WEBGL2 UNAVAILABLE IN THIS BROWSER"; return { destroy() { }, loadDataset() { }, setBackendGraph() {} }; }
+  const $ = (id) => root.querySelector('#' + id);
+  const canvas = $('gl'),
+    note = $('note');
+  const gl = canvas.getContext('webgl2', { antialias: false, alpha: false });
+  if (!gl) {
+    note.textContent = 'WEBGL2 UNAVAILABLE IN THIS BROWSER';
+    return { destroy() {}, loadDataset() {}, setBackendGraph() {} };
+  }
 
   /* ── dataset-bound state ─────────────────────────────────────── */
   const entries = cfg.datasets || [];
-  let DS = null;                       // the loaded dataset
-  let NG = 0, RAW = 0;
-  let rx = null, ry = null, rf = null, gOff = null, gLen = null, gRun = null, gIsl = null;
-  let migEvents = [], fSorted = null;
+  let DS = null; // the loaded dataset
+  let NG = 0,
+    RAW = 0;
+  let rx = null,
+    ry = null,
+    rf = null,
+    gOff = null,
+    gLen = null,
+    gRun = null,
+    gIsl = null;
+  let migEvents = [],
+    fSorted = null;
   let G = null;
   let visiblePathNodes = new Set();
   let alive = true;
@@ -447,21 +528,28 @@ export function mountStnViewer(root, cfg) {
   // few thousand, so each line would accumulate almost no light. Scale the
   // density brightness by how far under that the run is; at >=200k edges the
   // gain is exactly 1, so the full-size datasets render exactly as designed.
-  let edgeGain = 1, nodeGain = 1;
+  let edgeGain = 1,
+    nodeGain = 1;
 
   function adopt(d) {
     DS = d;
     NG = d.runs * d.isl;
-    rx = d.rx; ry = d.ry; rf = d.rf;
-    gOff = d.gOff; gLen = d.gLen; gRun = d.gRun; gIsl = d.gIsl;
+    rx = d.rx;
+    ry = d.ry;
+    rf = d.rf;
+    gOff = d.gOff;
+    gLen = d.gLen;
+    gRun = d.gRun;
+    gIsl = d.gIsl;
     migEvents = d.migEvents || [];
     RAW = rx.length;
     // Pooled fitness ranking, shared by every run so heights stay comparable.
     // Large logs are strided down to a 20,000 sample; a smaller log is
     // ranked exactly.
     let s;
-    if (RAW <= 20000) { s = new Float32Array(rf); }
-    else {
+    if (RAW <= 20000) {
+      s = new Float32Array(rf);
+    } else {
       s = new Float32Array(20000);
       for (let i = 0; i < s.length; i++) s[i] = rf[(i * 19 + 7) % RAW];
     }
@@ -469,8 +557,13 @@ export function mountStnViewer(root, cfg) {
     fSorted = s;
   }
   function fitnessPct(v) {
-    let lo = 0, hi = fSorted.length;
-    while (lo < hi) { const m = (lo + hi) >> 1; if (fSorted[m] < v) lo = m + 1; else hi = m; }
+    let lo = 0,
+      hi = fSorted.length;
+    while (lo < hi) {
+      const m = (lo + hi) >> 1;
+      if (fSorted[m] < v) lo = m + 1;
+      else hi = m;
+    }
     return lo / fSorted.length;
   }
 
@@ -489,55 +582,91 @@ export function mountStnViewer(root, cfg) {
     const cellGrp = new Uint8Array(cells);
     const cellRun = new Uint8Array(cells);
     const cap = Math.min(RAW, NG * cells);
-    const px = new Float32Array(cap), py = new Float32Array(cap);
-    const pfS = new Float64Array(cap), pgS = new Float64Array(cap);
-    const pGrp = new Uint8Array(cap), pVis = new Float32Array(cap);
-    const pCell = new Int32Array(cap), pBest = new Float32Array(cap);
-    const pFirst = new Int32Array(cap), pLast = new Int32Array(cap);
-    const pIn = new Int32Array(cap), pOut = new Int32Array(cap);
+    const px = new Float32Array(cap),
+      py = new Float32Array(cap);
+    const pfS = new Float64Array(cap),
+      pgS = new Float64Array(cap);
+    const pGrp = new Uint8Array(cap),
+      pVis = new Float32Array(cap);
+    const pCell = new Int32Array(cap),
+      pBest = new Float32Array(cap);
+    const pFirst = new Int32Array(cap),
+      pLast = new Int32Array(cap);
+    const pIn = new Int32Array(cap),
+      pOut = new Int32Array(cap);
     const pSample = new Int32Array(cap);
     const maxE = Math.max(RAW, DS.parentIdx ? DS.parentIdx.length : 0);
-    const e = new Int32Array(maxE * 2), ew = new Float32Array(maxE);
+    const e = new Int32Array(maxE * 2),
+      ew = new Float32Array(maxE);
     const sampleNode = new Int32Array(RAW);
     const seen = new Map();
     // Packing two node ids as a*1e7 + b would silently merge
     // unrelated edges past ten million nodes. 2^25 per slot is exact in a
     // double up to 2^28 nodes, so pooled runs cannot collide.
     const KEY = 33554432;
-    const parentPtr = DS.parentPtr, parentIdx = DS.parentIdx;
+    const parentPtr = DS.parentPtr,
+      parentIdx = DS.parentIdx;
     sampleNode.fill(-1);
-    let nc = 0, ec = 0, maxW = 1;
+    let nc = 0,
+      ec = 0,
+      maxW = 1;
 
     for (let g = 0; g < NG; g++) {
       let prev = -1;
-      const base = gOff[g], len = gLen[g], cbase = g * cells, runBit = 1 << gRun[g];
+      const base = gOff[g],
+        len = gLen[g],
+        cbase = g * cells,
+        runBit = 1 << gRun[g];
       for (let s = 0; s < len; s++) {
         const i = base + s;
-        let ix = 0, iy = 0, xy;
+        let ix = 0,
+          iy = 0,
+          xy;
         if (clustered) xy = DS.cluster[i];
         else {
-          ix = ((rx[i] + 1) * .5 * N) | 0; if (ix < 0) ix = 0; else if (ix >= N) ix = N - 1;
-          iy = ((ry[i] + 1) * .5 * N) | 0; if (iy < 0) iy = 0; else if (iy >= N) iy = N - 1;
+          ix = ((rx[i] + 1) * 0.5 * N) | 0;
+          if (ix < 0) ix = 0;
+          else if (ix >= N) ix = N - 1;
+          iy = ((ry[i] + 1) * 0.5 * N) | 0;
+          if (iy < 0) iy = 0;
+          else if (iy >= N) iy = N - 1;
           xy = iy * N + ix;
         }
         const cell = cbase + xy;
-        if (cellLast[xy] !== g) { cellLast[xy] = g; cellGrp[xy]++; cellRun[xy] |= runBit; }
+        if (cellLast[xy] !== g) {
+          cellLast[xy] = g;
+          cellGrp[xy]++;
+          cellRun[xy] |= runBit;
+        }
         let n = clustered ? (map.get(cell) ?? -1) : map[cell];
         if (n === -1) {
           n = nc++;
-          if (clustered) map.set(cell, n); else map[cell] = n;
-          if (!clustered) { px[n] = ((ix + .5) / N) * 2 - 1; py[n] = ((iy + .5) / N) * 2 - 1; }
-          pGrp[n] = g; pCell[n] = xy; pBest[n] = rf[i]; pFirst[n] = s; pSample[n] = i;
+          if (clustered) map.set(cell, n);
+          else map[cell] = n;
+          if (!clustered) {
+            px[n] = ((ix + 0.5) / N) * 2 - 1;
+            py[n] = ((iy + 0.5) / N) * 2 - 1;
+          }
+          pGrp[n] = g;
+          pCell[n] = xy;
+          pBest[n] = rf[i];
+          pFirst[n] = s;
+          pSample[n] = i;
         }
-        pVis[n]++; pfS[n] += rf[i]; pgS[n] += s;
-        if (clustered) { pxS[n] += rx[i]; pyS[n] += ry[i]; }
+        pVis[n]++;
+        pfS[n] += rf[i];
+        pgS[n] += s;
+        if (clustered) {
+          pxS[n] += rx[i];
+          pyS[n] += ry[i];
+        }
         if (rf[i] < pBest[n]) pBest[n] = rf[i];
         pLast[n] = s;
         sampleNode[i] = n;
         // An edge is a transition INTO this cluster. With a lineage it comes
         // from each parent's cluster; without one, from the previous sample.
         const lineage = parentPtr !== undefined;
-        const nSrc = lineage ? parentPtr[i + 1] - parentPtr[i] : (prev !== -1 ? 1 : 0);
+        const nSrc = lineage ? parentPtr[i + 1] - parentPtr[i] : prev !== -1 ? 1 : 0;
         for (let k = 0; k < nSrc; k++) {
           const src = lineage ? sampleNode[parentIdx[parentPtr[i] + k]] : prev;
           if (src < 0 || src === n) continue;
@@ -545,64 +674,111 @@ export function mountStnViewer(root, cfg) {
           const idx = seen.get(key);
           if (idx === undefined) {
             seen.set(key, ec);
-            e[ec * 2] = src; e[ec * 2 + 1] = n; ew[ec] = 1; ec++;
-            pOut[src]++; pIn[n]++;
+            e[ec * 2] = src;
+            e[ec * 2 + 1] = n;
+            ew[ec] = 1;
+            ec++;
+            pOut[src]++;
+            pIn[n]++;
           } else {
-            ew[idx]++; if (ew[idx] > maxW) maxW = ew[idx];
+            ew[idx]++;
+            if (ew[idx] > maxW) maxW = ew[idx];
           }
         }
         prev = n;
       }
     }
 
-    const pf = new Float32Array(nc), pg = new Float32Array(nc);
-    const pShared = new Float32Array(nc), pRuns = new Uint8Array(nc);
+    const pf = new Float32Array(nc),
+      pg = new Float32Array(nc);
+    const pShared = new Float32Array(nc),
+      pRuns = new Uint8Array(nc);
     const counted = new Uint8Array(cells);
-    let grpSum = 0, occupied = 0;
+    let grpSum = 0,
+      occupied = 0;
     const denom = Math.max(1, NG - 1);
     for (let n = 0; n < nc; n++) {
-      pf[n] = pfS[n] / pVis[n]; pg[n] = pgS[n] / pVis[n];
-      if (clustered) { px[n] = pxS[n] / pVis[n]; py[n] = pyS[n] / pVis[n]; }
+      pf[n] = pfS[n] / pVis[n];
+      pg[n] = pgS[n] / pVis[n];
+      if (clustered) {
+        px[n] = pxS[n] / pVis[n];
+        py[n] = pyS[n] / pVis[n];
+      }
       const c = pCell[n];
       pShared[n] = Math.min(1, (cellGrp[c] - 1) / denom);
-      let m = cellRun[c], b = 0;
-      while (m) { b += m & 1; m >>= 1; }
+      let m = cellRun[c],
+        b = 0;
+      while (m) {
+        b += m & 1;
+        m >>= 1;
+      }
       pRuns[n] = b;
-      if (!counted[c]) { counted[c] = 1; occupied++; grpSum += cellGrp[c]; }
+      if (!counted[c]) {
+        counted[c] = 1;
+        occupied++;
+        grpSum += cellGrp[c];
+      }
     }
 
     // migration events -> node pairs, deduplicated into routes
-    const routeKey = new Map(), routes = [];
+    const routeKey = new Map(),
+      routes = [];
     const mig = [];
     for (let i = 0; i < migEvents.length; i++) {
       const m = migEvents[i];
       const k = m.sg * 1000 + m.dg;
       let rid = routeKey.get(k);
       if (rid === undefined) {
-        rid = routes.length; routeKey.set(k, rid);
+        rid = routes.length;
+        routeKey.set(k, rid);
         routes.push({ sg: m.sg, dg: m.dg, run: m.run, n: 0 });
       }
       routes[rid].n++;
       mig.push({ a: sampleNode[m.a], b: sampleNode[m.b], sg: m.sg, dg: m.dg, run: m.run, route: rid });
     }
     const migNodes = new Set();
-    for (let i = 0; i < mig.length; i++) { migNodes.add(mig[i].a); migNodes.add(mig[i].b); }
+    for (let i = 0; i < mig.length; i++) {
+      migNodes.add(mig[i].a);
+      migNodes.add(mig[i].b);
+    }
 
     // best cluster per group, and per run
     const bestOfGroup = new Int32Array(NG).fill(-1);
     const bestOfRun = new Int32Array(DS.runs).fill(-1);
     for (let n = 0; n < nc; n++) {
-      const g = pGrp[n], r = gRun[g];
+      const g = pGrp[n],
+        r = gRun[g];
       if (bestOfGroup[g] < 0 || pBest[n] < pBest[bestOfGroup[g]]) bestOfGroup[g] = n;
       if (bestOfRun[r] < 0 || pBest[n] < pBest[bestOfRun[r]]) bestOfRun[r] = n;
     }
 
     G = {
-      nodeCount: nc, edgeCount: ec, px, py, pf, pg, pGrp, pVis, pShared, pRuns,
-      pBest, pFirst, pLast, pIn, pOut, pCell, pSample, migNodes, routes,
-      e: e.subarray(0, ec * 2), ew: ew.subarray(0, ec), maxW, mig,
-      bestOfGroup, bestOfRun,
-      overlap: occupied ? grpSum / occupied : 0
+      nodeCount: nc,
+      edgeCount: ec,
+      px,
+      py,
+      pf,
+      pg,
+      pGrp,
+      pVis,
+      pShared,
+      pRuns,
+      pBest,
+      pFirst,
+      pLast,
+      pIn,
+      pOut,
+      pCell,
+      pSample,
+      migNodes,
+      routes,
+      e: e.subarray(0, ec * 2),
+      ew: ew.subarray(0, ec),
+      maxW,
+      mig,
+      bestOfGroup,
+      bestOfRun,
+      overlap: occupied ? grpSum / occupied : 0,
     };
     const full = 250000;
     edgeGain = ec >= 200000 ? 1 : Math.min(12, Math.sqrt(full / Math.max(ec, 1)));
@@ -615,17 +791,18 @@ export function mountStnViewer(root, cfg) {
     return M <= 5 ? PAL5[i] : hsl(i / M, 0.62, 0.66);
   }
   function groupColour(g) {
-    if (state.colourBy === "run" && DS.runs > 1) return PAL5[gRun[g] % 5];
-    const M = DS.isl, i = gIsl[g];
+    if (state.colourBy === 'run' && DS.runs > 1) return PAL5[gRun[g] % 5];
+    const M = DS.isl,
+      i = gIsl[g];
     if (M <= 5) return PAL5[i];
     return hsl(i / M, 0.62, 0.66);
   }
-  const islLabel = i => (DS.islandIds ? DS.islandIds[i] : i);
+  const islLabel = (i) => (DS.islandIds ? DS.islandIds[i] : i);
 
   /* ── GL programs ─────────────────────────────────────────────── */
   function sh(type, src, defs) {
     const s = gl.createShader(type);
-    gl.shaderSource(s, "#version 300 es\n" + (defs || "") + src);
+    gl.shaderSource(s, '#version 300 es\n' + (defs || '') + src);
     gl.compileShader(s);
     if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s));
     return s;
@@ -636,23 +813,27 @@ export function mountStnViewer(root, cfg) {
     gl.attachShader(p, sh(gl.FRAGMENT_SHADER, fs, defs));
     gl.linkProgram(p);
     if (!gl.getProgramParameter(p, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(p));
-    const u = {}, n = gl.getProgramParameter(p, gl.ACTIVE_UNIFORMS);
+    const u = {},
+      n = gl.getProgramParameter(p, gl.ACTIVE_UNIFORMS);
     for (let i = 0; i < n; i++) {
       const info = gl.getActiveUniform(p, i);
-      u[info.name.replace(/\[0\]$/, "")] = gl.getUniformLocation(p, info.name);
+      u[info.name.replace(/\[0\]$/, '')] = gl.getUniformLocation(p, info.name);
     }
     return { p, u };
   }
 
-  const hdrOK = !!gl.getExtension("EXT_color_buffer_float");
-  const HDRDEF = hdrOK ? "#define HDR 1\n" : "";
+  const hdrOK = !!gl.getExtension('EXT_color_buffer_float');
+  const HDRDEF = hdrOK ? '#define HDR 1\n' : '';
   const pPoint = prog(VS_GRAPH, FS_POINT, HDRDEF);
   const pLine = prog(VS_GRAPH, FS_LINE, HDRDEF);
   const pArc = prog(VS_ARC, FS_LINE, HDRDEF);
   const pTone = prog(VS_FULL, FS_TONE);
 
   const vaoEmpty = gl.createVertexArray();
-  let fbo = null, fboT0 = null, fboW = 0, fboH = 0;
+  let fbo = null,
+    fboT0 = null,
+    fboW = 0,
+    fboH = 0;
   function ensureFBO(W, H) {
     if (!hdrOK) return false;
     if (fbo && fboW === W && fboH === H) return true;
@@ -670,26 +851,46 @@ export function mountStnViewer(root, cfg) {
     gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, fboT0, 0);
     const ok = gl.checkFramebufferStatus(gl.FRAMEBUFFER) === gl.FRAMEBUFFER_COMPLETE;
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-    if (!ok) { fbo = null; return false; }
-    fboW = W; fboH = H;
+    if (!ok) {
+      fbo = null;
+      return false;
+    }
+    fboW = W;
+    fboH = H;
     return true;
   }
 
-  const bNode = gl.createBuffer(), bIdx = gl.createBuffer(), bArc = gl.createBuffer();
-  let vaoNodes = null, vaoArcs = null;
-  let arcVerts = 0, drawnEdges = 0;
-  let nodeData = null, lastVP = null;
+  const bNode = gl.createBuffer(),
+    bIdx = gl.createBuffer(),
+    bArc = gl.createBuffer();
+  let vaoNodes = null,
+    vaoArcs = null;
+  let arcVerts = 0,
+    drawnEdges = 0;
+  let nodeData = null,
+    lastVP = null;
 
   // xy(2) offI(2) offR(2) z(3) grp(1) size(1) shared(1) z2(3) = 15 floats.
   // z holds fitness / time / island plane, z2 holds evaluations / degree /
   // sharing: six height channels, selected by a one-hot eased in the frame.
-  const NF = 15, NST = NF * 4;
-  const NSPEC = [["aXY", 2, 0], ["aOffI", 2, 8], ["aOffR", 2, 16], ["aZ", 3, 24],
-  ["aGrp", 1, 36], ["aSize", 1, 40], ["aShared", 1, 44], ["aZ2", 3, 48]];
+  const NF = 15,
+    NST = NF * 4;
+  const NSPEC = [
+    ['aXY', 2, 0],
+    ['aOffI', 2, 8],
+    ['aOffR', 2, 16],
+    ['aZ', 3, 24],
+    ['aGrp', 1, 36],
+    ['aSize', 1, 40],
+    ['aShared', 1, 44],
+    ['aZ2', 3, 48],
+  ];
 
-  let offI = [], offR = [];
+  let offI = [],
+    offR = [];
   function computeOffsets() {
-    offI = []; offR = [];
+    offI = [];
+    offR = [];
     for (let g = 0; g < NG; g++) {
       const ai = (gIsl[g] / DS.isl) * Math.PI * 2 - Math.PI / 2;
       offI.push([Math.cos(ai) * RING_I, Math.sin(ai) * RING_I]);
@@ -703,26 +904,32 @@ export function mountStnViewer(root, cfg) {
   function buildGeometry() {
     const n = G.nodeCount;
     const v = new Float32Array(n * NF);
-    let maxVis = 1, maxDeg = 1;
+    let maxVis = 1,
+      maxDeg = 1;
     for (let i = 0; i < n; i++) {
       if (G.pVis[i] > maxVis) maxVis = G.pVis[i];
-      const dg = G.pIn[i] + G.pOut[i]; if (dg > maxDeg) maxDeg = dg;
+      const dg = G.pIn[i] + G.pOut[i];
+      if (dg > maxDeg) maxDeg = dg;
     }
     const lv = Math.log2(1 + maxVis);
     for (let i = 0; i < n; i++) {
-      const g = G.pGrp[i], o = i * NF;
-      v[o] = G.px[i]; v[o + 1] = G.py[i];
-      v[o + 2] = offI[g][0]; v[o + 3] = offI[g][1];
-      v[o + 4] = offR[g][0]; v[o + 5] = offR[g][1];
-      v[o + 6] = (DS.backend ? (state.bestFitness&&G.bestHeightAvailable?G.bestPct[i]:G.pct[i]) : fitnessPct(G.pf[i])) * 1.8 - 0.9;
+      const g = G.pGrp[i],
+        o = i * NF;
+      v[o] = G.px[i];
+      v[o + 1] = G.py[i];
+      v[o + 2] = offI[g][0];
+      v[o + 3] = offI[g][1];
+      v[o + 4] = offR[g][0];
+      v[o + 5] = offR[g][1];
+      v[o + 6] = (DS.backend ? (state.bestFitness && G.bestHeightAvailable ? G.bestPct[i] : G.pct[i]) : fitnessPct(G.pf[i])) * 1.8 - 0.9;
       v[o + 7] = (DS.backend ? G.pg[i] : G.pg[i] / gLen[g]) * 1.8 - 0.9;
       v[o + 8] = DS.backend ? G.pz[i] : (gIsl[g] - (DS.isl - 1) / 2) * PLANE_GAP;
       v[o + 9] = g;
       v[o + 10] = 1.0 + Math.log2(1 + G.pVis[i]) * 0.85;
       v[o + 11] = G.pShared[i];
-      v[o + 12] = (Math.log2(1 + G.pVis[i]) / lv) * 1.8 - 0.9;          // evaluations
-      v[o + 13] = ((G.pIn[i] + G.pOut[i]) / maxDeg) * 1.8 - 0.9;        // degree
-      v[o + 14] = G.pShared[i] * 1.8 - 0.9;                             // islands sharing
+      v[o + 12] = (Math.log2(1 + G.pVis[i]) / lv) * 1.8 - 0.9; // evaluations
+      v[o + 13] = ((G.pIn[i] + G.pOut[i]) / maxDeg) * 1.8 - 0.9; // degree
+      v[o + 14] = G.pShared[i] * 1.8 - 0.9; // islands sharing
     }
     nodeData = v;
     gl.bindBuffer(gl.ARRAY_BUFFER, bNode);
@@ -739,37 +946,67 @@ export function mountStnViewer(root, cfg) {
     }
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, bIdx);
     gl.bindVertexArray(null);
-
   }
 
   function buildMigrationGeometry() {
-    const v=nodeData;
-    const visibleMigrations=G.mig.filter(migration=>migrationVisible({
-      sourcePathVisible:state.edges&&visiblePathNodes.has(migration.a),
-      targetPathVisible:state.edges&&visiblePathNodes.has(migration.b),
-      includeHiddenPaths:state.includeHiddenPaths,
-    }));
+    const v = nodeData;
+    const visibleMigrations = G.mig.filter((migration) =>
+      migrationVisible({
+        sourcePathVisible: state.edges && visiblePathNodes.has(migration.a),
+        targetPathVisible: state.edges && visiblePathNodes.has(migration.b),
+        includeHiddenPaths: state.includeHiddenPaths,
+      })
+    );
     // migration ribbons: 10 segments, 6 verts each, 27 floats per vertex.
     // The stride must equal the floats actually written, or every following
     // vertex shifts and the ribbons shred into shards.
-    const SEG = 10, m = visibleMigrations.length, ST = 27;
+    const SEG = 10,
+      m = visibleMigrations.length,
+      ST = 27;
     const arc = new Float32Array(m * SEG * 6 * ST);
-    const quad = [[0, -1], [0, 1], [1, -1], [1, -1], [0, 1], [1, 1]];
+    const quad = [
+      [0, -1],
+      [0, 1],
+      [1, -1],
+      [1, -1],
+      [0, 1],
+      [1, 1],
+    ];
     let p = 0;
     for (let i = 0; i < m; i++) {
-      const A = visibleMigrations[i].a * NF, B = visibleMigrations[i].b * NF, rid = visibleMigrations[i].route;
+      const A = visibleMigrations[i].a * NF,
+        B = visibleMigrations[i].b * NF,
+        rid = visibleMigrations[i].route;
       for (let s = 0; s < SEG; s++) {
         for (let j = 0; j < 6; j++) {
           const t = (s + quad[j][0]) / SEG;
-          arc[p++] = v[A]; arc[p++] = v[A + 1]; arc[p++] = v[A + 2]; arc[p++] = v[A + 3];
-          arc[p++] = v[A + 4]; arc[p++] = v[A + 5];
-          arc[p++] = v[A + 6]; arc[p++] = v[A + 7]; arc[p++] = v[A + 8];
-          arc[p++] = v[A + 12]; arc[p++] = v[A + 13]; arc[p++] = v[A + 14];
-          arc[p++] = v[B]; arc[p++] = v[B + 1]; arc[p++] = v[B + 2]; arc[p++] = v[B + 3];
-          arc[p++] = v[B + 4]; arc[p++] = v[B + 5];
-          arc[p++] = v[B + 6]; arc[p++] = v[B + 7]; arc[p++] = v[B + 8];
-          arc[p++] = v[B + 12]; arc[p++] = v[B + 13]; arc[p++] = v[B + 14];
-          arc[p++] = t; arc[p++] = quad[j][1]; arc[p++] = rid;
+          arc[p++] = v[A];
+          arc[p++] = v[A + 1];
+          arc[p++] = v[A + 2];
+          arc[p++] = v[A + 3];
+          arc[p++] = v[A + 4];
+          arc[p++] = v[A + 5];
+          arc[p++] = v[A + 6];
+          arc[p++] = v[A + 7];
+          arc[p++] = v[A + 8];
+          arc[p++] = v[A + 12];
+          arc[p++] = v[A + 13];
+          arc[p++] = v[A + 14];
+          arc[p++] = v[B];
+          arc[p++] = v[B + 1];
+          arc[p++] = v[B + 2];
+          arc[p++] = v[B + 3];
+          arc[p++] = v[B + 4];
+          arc[p++] = v[B + 5];
+          arc[p++] = v[B + 6];
+          arc[p++] = v[B + 7];
+          arc[p++] = v[B + 8];
+          arc[p++] = v[B + 12];
+          arc[p++] = v[B + 13];
+          arc[p++] = v[B + 14];
+          arc[p++] = t;
+          arc[p++] = quad[j][1];
+          arc[p++] = rid;
         }
       }
     }
@@ -780,9 +1017,21 @@ export function mountStnViewer(root, cfg) {
     vaoArcs = gl.createVertexArray();
     gl.bindVertexArray(vaoArcs);
     const S = ST * 4;
-    const ASPEC = [["aA", 2, 0], ["aAI", 2, 8], ["aAR", 2, 16], ["aAZ", 3, 24], ["aAZ2", 3, 36],
-    ["aB", 2, 48], ["aBI", 2, 56], ["aBR", 2, 64], ["aBZ", 3, 72], ["aBZ2", 3, 84],
-    ["aT", 1, 96], ["aSide", 1, 100], ["aRoute", 1, 104]];
+    const ASPEC = [
+      ['aA', 2, 0],
+      ['aAI', 2, 8],
+      ['aAR', 2, 16],
+      ['aAZ', 3, 24],
+      ['aAZ2', 3, 36],
+      ['aB', 2, 48],
+      ['aBI', 2, 56],
+      ['aBR', 2, 64],
+      ['aBZ', 3, 72],
+      ['aBZ2', 3, 84],
+      ['aT', 1, 96],
+      ['aSide', 1, 100],
+      ['aRoute', 1, 104],
+    ];
     for (let i = 0; i < ASPEC.length; i++) {
       const loc = gl.getAttribLocation(pArc.p, ASPEC[i][0]);
       if (loc < 0) continue;
@@ -793,14 +1042,18 @@ export function mountStnViewer(root, cfg) {
   }
 
   function buildIndex() {
-    const e = G.e, ew = G.ew, floor = state.wt;
+    const e = G.e,
+      ew = G.ew,
+      floor = state.wt;
     const idx = new Uint32Array(G.edgeCount * 2);
     let o = 0;
-    visiblePathNodes=new Set();
+    visiblePathNodes = new Set();
     for (let i = 0; i < G.edgeCount; i++)
       if (ew[i] >= floor) {
-        idx[o++] = e[i * 2]; idx[o++] = e[i * 2 + 1];
-        visiblePathNodes.add(e[i * 2]);visiblePathNodes.add(e[i * 2 + 1]);
+        idx[o++] = e[i * 2];
+        idx[o++] = e[i * 2 + 1];
+        visiblePathNodes.add(e[i * 2]);
+        visiblePathNodes.add(e[i * 2 + 1]);
       }
     drawnEdges = o / 2;
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, bIdx);
@@ -810,88 +1063,145 @@ export function mountStnViewer(root, cfg) {
 
   /* ── state + camera ──────────────────────────────────────────── */
   const state = {
-    ds: 0, res: 2, wt: 2, ns: 100, zMode: 0, op: 180, dom: 140, exI: 0, exR: 0,
-    bestFitness: true, colourBy: "island", grpOn: [], routesOn: [],
-    contest: false, edges: true, selMark: true, bestIsl: true, bestRun: true,
+    ds: 0,
+    res: 2,
+    wt: 2,
+    ns: 100,
+    zMode: 0,
+    op: 180,
+    dom: 140,
+    exI: 0,
+    exR: 0,
+    bestFitness: true,
+    colourBy: 'island',
+    grpOn: [],
+    routesOn: [],
+    contest: false,
+    edges: true,
+    selMark: true,
+    bestIsl: true,
+    bestRun: true,
     includeHiddenPaths: MIGRATION_VISIBILITY_DEFAULTS.includeHiddenPaths,
-    group: false, exIBefore: 0, flat: false, hs: 100, hsBefore: 100
+    group: false,
+    exIBefore: 0,
+    flat: false,
+    hs: 100,
+    hsBefore: 100,
   };
   let selected = -1;
-  const cam = { az: 0.62, el: 0.30, dist: 3.15, tx: 0, ty: 0, tz: 0 };
+  const cam = { az: 0.62, el: 0.3, dist: 3.15, tx: 0, ty: 0, tz: 0 };
   const zMix = new Float32Array([1, 0, 0, 0, 0, 0]);
   let zTarget = new Float32Array([1, 0, 0, 0, 0, 0]);
-  let exIShown = 0, exRShown = 0, contestShown = 0, flatShown = 0, groupShown = 0, hsShown = 1;
-  let camGoal = null;      // eased camera move set by Group by island
-  let flyNode = -1, flyFrames = 0;
-  let regionMode=false,regionStart=null,regionFlight=null;
-  function setRegionMode(on){
-    regionMode=on;root.classList.toggle('region-mode',on);
-    if(cfg.backend){$('select-region').textContent=on?'Drag a region…':'Select region';
-      $('select-region').setAttribute('aria-pressed',String(on));canvas.classList.toggle('region-selecting',on);
-      if(!on)$('region-box').hidden=true;}
-  }
-  function regionPoint(ev){
-    const r=canvas.getBoundingClientRect();
-    return [canvas.offsetLeft+Math.max(0,Math.min(r.width,ev.clientX-r.left)),
-      canvas.offsetTop+Math.max(0,Math.min(r.height,ev.clientY-r.top))];
-  }
-  function focusRegion(end){
-    const x0=Math.min(regionStart[0],end[0]),x1=Math.max(regionStart[0],end[0]);
-    const y0=Math.min(regionStart[1],end[1]),y1=Math.max(regionStart[1],end[1]);
-    const points=[];
-    if(x1-x0>=5&&y1-y0>=5)for(let i=0;i<G.nodeCount;i++){
-      if(!grpVisible(G.pGrp[i]))continue;
-      const p=project(i);
-      if(p&&p[0]>=x0&&p[0]<=x1&&p[1]>=y0&&p[1]<=y1)points.push(worldOf(i));
+  let exIShown = 0,
+    exRShown = 0,
+    contestShown = 0,
+    flatShown = 0,
+    groupShown = 0,
+    hsShown = 1;
+  let camGoal = null; // eased camera move set by Group by island
+  let flyNode = -1,
+    flyFrames = 0;
+  let regionMode = false,
+    regionStart = null,
+    regionFlight = null;
+  function setRegionMode(on) {
+    regionMode = on;
+    root.classList.toggle('region-mode', on);
+    if (cfg.backend) {
+      $('select-region').textContent = on ? 'Drag a region…' : 'Select region';
+      $('select-region').setAttribute('aria-pressed', String(on));
+      canvas.classList.toggle('region-selecting', on);
+      if (!on) $('region-box').hidden = true;
     }
-    const target=regionCameraTarget(points,canvas.clientWidth/canvas.clientHeight,cam);
+  }
+  function regionPoint(ev) {
+    const r = canvas.getBoundingClientRect();
+    return [
+      canvas.offsetLeft + Math.max(0, Math.min(r.width, ev.clientX - r.left)),
+      canvas.offsetTop + Math.max(0, Math.min(r.height, ev.clientY - r.top)),
+    ];
+  }
+  function focusRegion(end) {
+    const x0 = Math.min(regionStart[0], end[0]),
+      x1 = Math.max(regionStart[0], end[0]);
+    const y0 = Math.min(regionStart[1], end[1]),
+      y1 = Math.max(regionStart[1], end[1]);
+    const points = [];
+    if (x1 - x0 >= 5 && y1 - y0 >= 5)
+      for (let i = 0; i < G.nodeCount; i++) {
+        if (!grpVisible(G.pGrp[i])) continue;
+        const p = project(i);
+        if (p && p[0] >= x0 && p[0] <= x1 && p[1] >= y0 && p[1] <= y1) points.push(worldOf(i));
+      }
+    const target = regionCameraTarget(points, canvas.clientWidth / canvas.clientHeight, cam);
     setRegionMode(false);
-    if(target)regionFlight={from:{...cam},target,start:performance.now()};
-    else $('select-region').textContent='No nodes — select again';
+    if (target) regionFlight = { from: { ...cam }, target, start: performance.now() };
+    else $('select-region').textContent = 'No nodes — select again';
   }
-  if(cfg.backend)$('select-region').addEventListener('click',()=>{
-    stopBestTour();flyNode=-1;camGoal=null;zoomTarget=0;regionFlight=null;setRegionMode(!regionMode);
-  });
-  let bestTour=null;
-  function stopBestTour(){
-    bestTour=null;root.classList.remove('best-tour-running');
-    if(cfg.backend){$('tour-best').textContent='Tour best nodes';$('tour-status').textContent='';}
-  }
-  function beginTourStop(now){
-    const stop=bestTour.stops[bestTour.index];
-    bestTour.started=now;bestTour.from={...cam};
-    const node=stop.overview||stop.bestArea?-1:G.nodes.findIndex(n=>n.id===stop.id);
-    select(node);
-    $('tour-status').textContent=stop.label+' · '+(bestTour.index+1)+' / '+bestTour.stops.length;
-  }
-  function stepBestTour(now){
-    if(!bestTour)return;
-    const stop=bestTour.stops[bestTour.index];
-    const node=stop.overview||stop.bestArea?-1:G.nodes.findIndex(n=>n.id===stop.id);
-    let target=stop.overview?bestTour.origin:stop.bestArea?bestTour.area:node>=0
-      ? bestTourTarget(bestTour.area,worldOf(node),bestTour.index,bestTour.area.dist):null;
-    if(node>=0&&(state.group||state.exI>0)){
-      const points=[];
-      for(let i=0;i<G.nodeCount;i++)if(G.pGrp[i]===G.pGrp[node])points.push(worldOf(i));
-      target=groupedTourTarget(bestTour.origin,worldOf(node),bestTour.index,points,canvas.clientWidth/canvas.clientHeight);
+  if (cfg.backend)
+    $('select-region').addEventListener('click', () => {
+      stopBestTour();
+      flyNode = -1;
+      camGoal = null;
+      zoomTarget = 0;
+      regionFlight = null;
+      setRegionMode(!regionMode);
+    });
+  let bestTour = null;
+  function stopBestTour() {
+    bestTour = null;
+    root.classList.remove('best-tour-running');
+    if (cfg.backend) {
+      $('tour-best').textContent = 'Tour best nodes';
+      $('tour-status').textContent = '';
     }
-    const duration=state.group||state.exI>0?2400:1800;
-    if(target)Object.assign(cam,tourCameraPose(bestTour.from,target,now-bestTour.started,duration));
-    if(now-bestTour.started>=duration+1600){
-      if(++bestTour.index>=bestTour.stops.length){stopBestTour();return;}
+  }
+  function beginTourStop(now) {
+    const stop = bestTour.stops[bestTour.index];
+    bestTour.started = now;
+    bestTour.from = { ...cam };
+    const node = stop.overview || stop.bestArea ? -1 : G.nodes.findIndex((n) => n.id === stop.id);
+    select(node);
+    $('tour-status').textContent = stop.label + ' · ' + (bestTour.index + 1) + ' / ' + bestTour.stops.length;
+  }
+  function stepBestTour(now) {
+    if (!bestTour) return;
+    const stop = bestTour.stops[bestTour.index];
+    const node = stop.overview || stop.bestArea ? -1 : G.nodes.findIndex((n) => n.id === stop.id);
+    let target = stop.overview
+      ? bestTour.origin
+      : stop.bestArea
+        ? bestTour.area
+        : node >= 0
+          ? bestTourTarget(bestTour.area, worldOf(node), bestTour.index, bestTour.area.dist)
+          : null;
+    if (node >= 0 && (state.group || state.exI > 0)) {
+      const points = [];
+      for (let i = 0; i < G.nodeCount; i++) if (G.pGrp[i] === G.pGrp[node]) points.push(worldOf(i));
+      target = groupedTourTarget(bestTour.origin, worldOf(node), bestTour.index, points, canvas.clientWidth / canvas.clientHeight);
+    }
+    const duration = state.group || state.exI > 0 ? 2400 : 1800;
+    if (target) Object.assign(cam, tourCameraPose(bestTour.from, target, now - bestTour.started, duration));
+    if (now - bestTour.started >= duration + 1600) {
+      if (++bestTour.index >= bestTour.stops.length) {
+        stopBestTour();
+        return;
+      }
       beginTourStop(now);
     }
   }
   const placed = [];
   let lastInteract = 0;
 
-  const grpVisible = g => state.grpOn[g];
-  const runAnyOn = r => {
+  const grpVisible = (g) => state.grpOn[g];
+  const runAnyOn = (r) => {
     for (let g = 0; g < NG; g++) if (gRun[g] === r && state.grpOn[g]) return true;
     return false;
   };
-  function setRun(r, on) { for (let g = 0; g < NG; g++) if (gRun[g] === r) state.grpOn[g] = on; }
-  const noneOn = () => state.grpOn.every(v => !v);
+  function setRun(r, on) {
+    for (let g = 0; g < NG; g++) if (gRun[g] === r) state.grpOn[g] = on;
+  }
+  const noneOn = () => state.grpOn.every((v) => !v);
 
   function camBasis() {
     const cz = [Math.sin(cam.az) * Math.cos(cam.el), Math.sin(cam.el), Math.cos(cam.az) * Math.cos(cam.el)];
@@ -903,45 +1213,89 @@ export function mountStnViewer(root, cfg) {
     return { fwd, right: r, up };
   }
 
-  function dpr() { return Math.min(window.devicePixelRatio || 1, 2); }
+  function dpr() {
+    return Math.min(window.devicePixelRatio || 1, 2);
+  }
   function resize() {
-    const r = canvas.getBoundingClientRect(), d = dpr();
-    const w = Math.max(1, (r.width * d) | 0), h = Math.max(1, (r.height * d) | 0);
-    if (canvas.width !== w || canvas.height !== h) { canvas.width = w; canvas.height = h; }
+    const r = canvas.getBoundingClientRect(),
+      d = dpr();
+    const w = Math.max(1, (r.width * d) | 0),
+      h = Math.max(1, (r.height * d) | 0);
+    if (canvas.width !== w || canvas.height !== h) {
+      canvas.width = w;
+      canvas.height = h;
+    }
   }
 
-  let dragging = 0, lx = 0, ly = 0, travel = 0;   // 1 = orbit, 2 = pan
-  canvas.addEventListener("contextmenu", ev => ev.preventDefault());
-  canvas.addEventListener("pointerdown", ev => {
-    regionFlight=null;stopBestTour();flyNode = -1; zoomTarget = 0; camGoal = null;
-    dragging = regionMode&&ev.button===0 ? 3 : (ev.button === 2 || ev.button === 1 || ev.shiftKey) ? 2 : 1;
-    lx = ev.clientX; ly = ev.clientY; travel = 0;
-    if(dragging===3){regionStart=regionPoint(ev);const box=$('region-box');box.style.width='0px';box.style.height='0px';box.style.left=regionStart[0]+'px';box.style.top=regionStart[1]+'px';box.hidden=false;$('hover-tip').hidden=true;}
-    canvas.classList.add("dragging");
+  let dragging = 0,
+    lx = 0,
+    ly = 0,
+    travel = 0; // 1 = orbit, 2 = pan
+  canvas.addEventListener('contextmenu', (ev) => ev.preventDefault());
+  canvas.addEventListener('pointerdown', (ev) => {
+    regionFlight = null;
+    stopBestTour();
+    flyNode = -1;
+    zoomTarget = 0;
+    camGoal = null;
+    dragging = regionMode && ev.button === 0 ? 3 : ev.button === 2 || ev.button === 1 || ev.shiftKey ? 2 : 1;
+    lx = ev.clientX;
+    ly = ev.clientY;
+    travel = 0;
+    if (dragging === 3) {
+      regionStart = regionPoint(ev);
+      const box = $('region-box');
+      box.style.width = '0px';
+      box.style.height = '0px';
+      box.style.left = regionStart[0] + 'px';
+      box.style.top = regionStart[1] + 'px';
+      box.hidden = false;
+      $('hover-tip').hidden = true;
+    }
+    canvas.classList.add('dragging');
     canvas.setPointerCapture(ev.pointerId);
     lastInteract = performance.now();
   });
   let hoverAt = 0;
   function showHover(ev) {
-    const now = performance.now(), tip = $("hover-tip");
+    const now = performance.now(),
+      tip = $('hover-tip');
     if (now - hoverAt < 60 || !G) return;
     hoverAt = now;
-    const r = canvas.getBoundingClientRect(), x = ev.clientX - r.left, y = ev.clientY - r.top, i = pickAt(x, y);
+    const r = canvas.getBoundingClientRect(),
+      x = ev.clientX - r.left,
+      y = ev.clientY - r.top,
+      i = pickAt(x, y);
     tip.hidden = i < 0;
     if (i < 0) return;
-    tip.textContent = "Island " + islLabel(gIsl[G.pGrp[i]]) + " · " + (DS.backend?"mean fitness ":"fitness ") + (DS.backend ? (Number.isFinite(G.pf[i]) ? G.pf[i].toFixed(4) : "unavailable") : ((DS.fitSign || 1) * G.pf[i]).toFixed(4)) + " · " + G.pVis[i] + (G.pVis[i] === 1 ? " visit" : " visits");
-    tip.style.transform = "translate(" + (canvas.offsetLeft + Math.max(0, Math.min(x + 14, r.width - 250))) + "px," + (canvas.offsetTop + y + 14) + "px)";
+    tip.textContent =
+      'Island ' +
+      islLabel(gIsl[G.pGrp[i]]) +
+      ' · ' +
+      (DS.backend ? 'mean fitness ' : 'fitness ') +
+      (DS.backend ? (Number.isFinite(G.pf[i]) ? G.pf[i].toFixed(4) : 'unavailable') : ((DS.fitSign || 1) * G.pf[i]).toFixed(4)) +
+      ' · ' +
+      G.pVis[i] +
+      (G.pVis[i] === 1 ? ' visit' : ' visits');
+    tip.style.transform =
+      'translate(' + (canvas.offsetLeft + Math.max(0, Math.min(x + 14, r.width - 250))) + 'px,' + (canvas.offsetTop + y + 14) + 'px)';
   }
-  canvas.addEventListener("pointerleave", () => { $("hover-tip").hidden = true; });
-  canvas.addEventListener("pointermove", ev => {
-    if (!dragging) return regionMode?undefined:showHover(ev);
-    if(dragging===3){
-      const p=regionPoint(ev),box=$('region-box');
-      box.style.left=Math.min(p[0],regionStart[0])+'px';box.style.top=Math.min(p[1],regionStart[1])+'px';
-      box.style.width=Math.abs(p[0]-regionStart[0])+'px';box.style.height=Math.abs(p[1]-regionStart[1])+'px';
+  canvas.addEventListener('pointerleave', () => {
+    $('hover-tip').hidden = true;
+  });
+  canvas.addEventListener('pointermove', (ev) => {
+    if (!dragging) return regionMode ? undefined : showHover(ev);
+    if (dragging === 3) {
+      const p = regionPoint(ev),
+        box = $('region-box');
+      box.style.left = Math.min(p[0], regionStart[0]) + 'px';
+      box.style.top = Math.min(p[1], regionStart[1]) + 'px';
+      box.style.width = Math.abs(p[0] - regionStart[0]) + 'px';
+      box.style.height = Math.abs(p[1] - regionStart[1]) + 'px';
       return;
     }
-    const dx = ev.clientX - lx, dy = ev.clientY - ly;
+    const dx = ev.clientX - lx,
+      dy = ev.clientY - ly;
     travel += Math.abs(dx) + Math.abs(dy);
     if (dragging === 1) {
       cam.az -= dx * 0.006;
@@ -953,18 +1307,32 @@ export function mountStnViewer(root, cfg) {
       cam.ty -= (b.right[1] * dx - b.up[1] * dy) * k;
       cam.tz -= (b.right[2] * dx - b.up[2] * dy) * k;
     }
-    lx = ev.clientX; ly = ev.clientY; lastInteract = performance.now();
+    lx = ev.clientX;
+    ly = ev.clientY;
+    lastInteract = performance.now();
   });
-  const endDrag = () => { dragging = 0; canvas.classList.remove("dragging"); lastInteract = performance.now(); };
-  canvas.addEventListener("pointerup", ev => {
-    if(dragging===3){focusRegion(regionPoint(ev));endDrag();return;}
-    const wasDrag = travel > 5, wasPan = dragging === 2;
+  const endDrag = () => {
+    dragging = 0;
+    canvas.classList.remove('dragging');
+    lastInteract = performance.now();
+  };
+  canvas.addEventListener('pointerup', (ev) => {
+    if (dragging === 3) {
+      focusRegion(regionPoint(ev));
+      endDrag();
+      return;
+    }
+    const wasDrag = travel > 5,
+      wasPan = dragging === 2;
     endDrag();
     if (wasDrag || wasPan) return;
     const r = canvas.getBoundingClientRect();
     select(pickAt(ev.clientX - r.left, ev.clientY - r.top));
   });
-  canvas.addEventListener("pointercancel", ()=>{endDrag();setRegionMode(false);});
+  canvas.addEventListener('pointercancel', () => {
+    endDrag();
+    setRegionMode(false);
+  });
 
   // Zoom toward the cursor, not the centre: the point under the pointer stays
   // put, so you can drive into any part of the cloud instead of only the middle.
@@ -972,9 +1340,13 @@ export function mountStnViewer(root, cfg) {
   // The wheel only sets a TARGET distance. Every frame eases toward it in log
   // space and re-anchors on the cursor, so a notched mouse wheel glides instead
   // of stepping and a trackpad's fine deltas accumulate smoothly.
-  const ZOOM_MIN = 0.0004, ZOOM_MAX = 16;
-  let zoomTarget = 0, zoomNx = 0, zoomNy = 0, zoomAspect = 1;
-  let zoomNode = -1;      // node under the cursor when the gesture began, or -1
+  const ZOOM_MIN = 0.0004,
+    ZOOM_MAX = 16;
+  let zoomTarget = 0,
+    zoomNx = 0,
+    zoomNy = 0,
+    zoomAspect = 1;
+  let zoomNode = -1; // node under the cursor when the gesture began, or -1
 
   function zoomTo(nx, ny, aspect, nd) {
     const eff = nd / cam.dist;
@@ -987,22 +1359,30 @@ export function mountStnViewer(root, cfg) {
         // node that is nearer or farther than it -- the best clusters sit at
         // the bottom of the funnel, well away from the plane.
         const P = worldOf(zoomNode);
-        const ex = cam.tx - b.fwd[0] * cam.dist, ey = cam.ty - b.fwd[1] * cam.dist, ez = cam.tz - b.fwd[2] * cam.dist;
-        const nxE = P[0] + (ex - P[0]) * eff, nyE = P[1] + (ey - P[1]) * eff, nzE = P[2] + (ez - P[2]) * eff;
-        cam.tx = nxE + b.fwd[0] * nd; cam.ty = nyE + b.fwd[1] * nd; cam.tz = nzE + b.fwd[2] * nd;
+        const ex = cam.tx - b.fwd[0] * cam.dist,
+          ey = cam.ty - b.fwd[1] * cam.dist,
+          ez = cam.tz - b.fwd[2] * cam.dist;
+        const nxE = P[0] + (ex - P[0]) * eff,
+          nyE = P[1] + (ey - P[1]) * eff,
+          nzE = P[2] + (ez - P[2]) * eff;
+        cam.tx = nxE + b.fwd[0] * nd;
+        cam.ty = nyE + b.fwd[1] * nd;
+        cam.tz = nzE + b.fwd[2] * nd;
       } else {
         const tanF = Math.tan(Math.PI / 8);
         let d = [
           b.fwd[0] + b.right[0] * nx * aspect * tanF + b.up[0] * ny * tanF,
           b.fwd[1] + b.right[1] * nx * aspect * tanF + b.up[1] * ny * tanF,
-          b.fwd[2] + b.right[2] * nx * aspect * tanF + b.up[2] * ny * tanF
+          b.fwd[2] + b.right[2] * nx * aspect * tanF + b.up[2] * ny * tanF,
         ];
         const dl = Math.hypot(d[0], d[1], d[2]) || 1;
         d = [d[0] / dl, d[1] / dl, d[2] / dl];
         const dd = d[0] * b.fwd[0] + d[1] * b.fwd[1] + d[2] * b.fwd[2];
         if (dd > 0.05) {
           const t = cam.dist / dd;
-          const ex = cam.tx - b.fwd[0] * cam.dist, ey = cam.ty - b.fwd[1] * cam.dist, ez = cam.tz - b.fwd[2] * cam.dist;
+          const ex = cam.tx - b.fwd[0] * cam.dist,
+            ey = cam.ty - b.fwd[1] * cam.dist,
+            ez = cam.tz - b.fwd[2] * cam.dist;
           const k = 1 - eff;
           cam.tx += (ex + d[0] * t - cam.tx) * k;
           cam.ty += (ey + d[1] * t - cam.ty) * k;
@@ -1013,24 +1393,31 @@ export function mountStnViewer(root, cfg) {
     cam.dist = nd;
   }
 
-  canvas.addEventListener("wheel", ev => {
-    ev.preventDefault();
-    regionFlight=null;stopBestTour();flyNode = -1; camGoal = null;
-    const r = canvas.getBoundingClientRect();
-    zoomNx = ((ev.clientX - r.left) / r.width) * 2 - 1;
-    zoomNy = 1 - ((ev.clientY - r.top) / r.height) * 2;
-    zoomAspect = r.width / r.height;
-    // Lock onto the cluster under the cursor for the whole gesture.
-    zoomNode = pickAt(ev.clientX - r.left, ev.clientY - r.top);
-    // Normalise units (lines/pages -> pixels); a pinch arrives as ctrl+wheel
-    // with much smaller deltas, so it gets a larger gain.
-    let dy = ev.deltaY * (ev.deltaMode === 1 ? 16 : ev.deltaMode === 2 ? 400 : 1);
-    dy = Math.max(-240, Math.min(240, dy));
-    const gain = ev.ctrlKey ? 0.012 : 0.0022;
-    const base = zoomTarget > 0 ? zoomTarget : cam.dist;
-    zoomTarget = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, base * Math.exp(dy * gain)));
-    lastInteract = performance.now();
-  }, { passive: false });
+  canvas.addEventListener(
+    'wheel',
+    (ev) => {
+      ev.preventDefault();
+      regionFlight = null;
+      stopBestTour();
+      flyNode = -1;
+      camGoal = null;
+      const r = canvas.getBoundingClientRect();
+      zoomNx = ((ev.clientX - r.left) / r.width) * 2 - 1;
+      zoomNy = 1 - ((ev.clientY - r.top) / r.height) * 2;
+      zoomAspect = r.width / r.height;
+      // Lock onto the cluster under the cursor for the whole gesture.
+      zoomNode = pickAt(ev.clientX - r.left, ev.clientY - r.top);
+      // Normalise units (lines/pages -> pixels); a pinch arrives as ctrl+wheel
+      // with much smaller deltas, so it gets a larger gain.
+      let dy = ev.deltaY * (ev.deltaMode === 1 ? 16 : ev.deltaMode === 2 ? 400 : 1);
+      dy = Math.max(-240, Math.min(240, dy));
+      const gain = ev.ctrlKey ? 0.012 : 0.0022;
+      const base = zoomTarget > 0 ? zoomTarget : cam.dist;
+      zoomTarget = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, base * Math.exp(dy * gain)));
+      lastInteract = performance.now();
+    },
+    { passive: false }
+  );
 
   // Advance the zoom one frame. Returns true while it is still moving.
   function stepZoom() {
@@ -1038,7 +1425,8 @@ export function mountStnViewer(root, cfg) {
     const ratio = zoomTarget / cam.dist;
     if (Math.abs(Math.log(ratio)) < 0.0008) {
       zoomTo(zoomNx, zoomNy, zoomAspect, zoomTarget);
-      zoomTarget = 0; zoomNode = -1;
+      zoomTarget = 0;
+      zoomNode = -1;
       return false;
     }
     zoomTo(zoomNx, zoomNy, zoomAspect, cam.dist * Math.pow(ratio, 0.22));
@@ -1046,8 +1434,11 @@ export function mountStnViewer(root, cfg) {
   }
 
   function nodeY(v, o) {
-    return (v[o + 6] * zMix[0] + v[o + 7] * zMix[1] + v[o + 8] * zMix[2] +
-      v[o + 12] * zMix[3] + v[o + 13] * zMix[4] + v[o + 14] * zMix[5]) * (1 - flatShown) * hsShown;
+    return (
+      (v[o + 6] * zMix[0] + v[o + 7] * zMix[1] + v[o + 8] * zMix[2] + v[o + 12] * zMix[3] + v[o + 13] * zMix[4] + v[o + 14] * zMix[5]) *
+      (1 - flatShown) *
+      hsShown
+    );
   }
   function place(bx0, bz0, oix, oiz, orx, orz) {
     const x1 = bx0 + (bx0 * SI + oix - bx0) * exIShown;
@@ -1055,11 +1446,14 @@ export function mountStnViewer(root, cfg) {
     return [x1 + (x1 * SR + orx - x1) * exRShown, z1 + (z1 * SR + orz - z1) * exRShown];
   }
   function pickAt(sx, sy) {
-    const v = nodeData, VP = lastVP;
+    const v = nodeData,
+      VP = lastVP;
     if (!v || !VP) return -1;
-    const W = canvas.clientWidth, H = canvas.clientHeight;
+    const W = canvas.clientWidth,
+      H = canvas.clientHeight;
     const R2 = 13 * 13;
-    let best = -1, bestScore = -1;
+    let best = -1,
+      bestScore = -1;
     for (let i = 0; i < G.nodeCount; i++) {
       if (!grpVisible(G.pGrp[i])) continue;
       const o = i * NF;
@@ -1069,41 +1463,56 @@ export function mountStnViewer(root, cfg) {
       if (cw <= 1e-6) continue;
       const cx = VP[0] * q[0] + VP[4] * gy + VP[8] * q[1] + VP[12];
       const cy = VP[1] * q[0] + VP[5] * gy + VP[9] * q[1] + VP[13];
-      const px = (cx / cw * 0.5 + 0.5) * W - sx, py = (1 - (cy / cw * 0.5 + 0.5)) * H - sy;
+      const px = ((cx / cw) * 0.5 + 0.5) * W - sx,
+        py = (1 - ((cy / cw) * 0.5 + 0.5)) * H - sy;
       const d2 = px * px + py * py;
       if (d2 > R2) continue;
       const score = G.pVis[i] / (1 + d2 * 0.08);
-      if (score > bestScore) { bestScore = score; best = i; }
+      if (score > bestScore) {
+        bestScore = score;
+        best = i;
+      }
     }
     return best;
   }
   function worldOf(i) {
-    const v = nodeData, o = i * NF;
+    const v = nodeData,
+      o = i * NF;
     const q = place(v[o], v[o + 1], v[o + 2], v[o + 3], v[o + 4], v[o + 5]);
     return [q[0], nodeY(v, o), q[1]];
   }
   // Fly the camera to a cluster and open it. The target is recomputed every
   // frame from the node index, so it stays locked on while explode animates.
   function jumpTo(node, grp) {
-    regionFlight=null;setRegionMode(false);stopBestTour();
+    regionFlight = null;
+    setRegionMode(false);
+    stopBestTour();
     if (node == null || node < 0 || !G || node >= G.nodeCount) return;
-    if (grp >= 0 && !state.grpOn[grp]) { state.grpOn[grp] = true; syncSelectors(); }
+    if (grp >= 0 && !state.grpOn[grp]) {
+      state.grpOn[grp] = true;
+      syncSelectors();
+    }
     select(node);
-    flyNode = node; flyFrames = 0;
+    flyNode = node;
+    flyFrames = 0;
     lastInteract = performance.now();
   }
   function project(i) {
-    const v = nodeData, VP = lastVP, o = i * NF;
+    const v = nodeData,
+      VP = lastVP,
+      o = i * NF;
     const q = place(v[o], v[o + 1], v[o + 2], v[o + 3], v[o + 4], v[o + 5]);
     const gy = nodeY(v, o);
     const cw = VP[3] * q[0] + VP[7] * gy + VP[11] * q[1] + VP[15];
-    if (cw <= 1e-6) return null;                         // behind the camera
+    if (cw <= 1e-6) return null; // behind the camera
     const cx = VP[0] * q[0] + VP[4] * gy + VP[8] * q[1] + VP[12];
     const cy = VP[1] * q[0] + VP[5] * gy + VP[9] * q[1] + VP[13];
-    const W = canvas.clientWidth, H = canvas.clientHeight;
-    const sx = (cx / cw * 0.5 + 0.5) * W, sy = (1 - (cy / cw * 0.5 + 0.5)) * H;
-    const m = 28;                                        // half a marker
-    if (sx < -m || sx > W + m || sy < -m || sy > H + m) return null;   // off-viewport
+    const W = canvas.clientWidth,
+      H = canvas.clientHeight;
+    const sx = ((cx / cw) * 0.5 + 0.5) * W,
+      sy = (1 - ((cy / cw) * 0.5 + 0.5)) * H;
+    const m = 28; // half a marker
+    if (sx < -m || sx > W + m || sy < -m || sy > H + m) return null; // off-viewport
     return [canvas.offsetLeft + sx, canvas.offsetTop + sy];
   }
 
@@ -1114,107 +1523,123 @@ export function mountStnViewer(root, cfg) {
     if (cw <= 1e-6) return null;
     const cx = VP[0] * x + VP[4] * y + VP[8] * z + VP[12];
     const cy = VP[1] * x + VP[5] * y + VP[9] * z + VP[13];
-    const W = canvas.clientWidth, H = canvas.clientHeight;
-    return [canvas.offsetLeft + (cx / cw * 0.5 + 0.5) * W, canvas.offsetTop + (1 - (cy / cw * 0.5 + 0.5)) * H];
+    const W = canvas.clientWidth,
+      H = canvas.clientHeight;
+    return [canvas.offsetLeft + ((cx / cw) * 0.5 + 0.5) * W, canvas.offsetTop + (1 - ((cy / cw) * 0.5 + 0.5)) * H];
   }
 
   /* ── UI ──────────────────────────────────────────────────────── */
-  const fmt = n => n.toLocaleString("en-US");
-  const GE = "≥";
-  const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  const fmt = (n) => n.toLocaleString('en-US');
+  const GE = '≥';
+  const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
 
   function chip(label, colour, on, onClick) {
-    const b = document.createElement("button");
-    b.className = "chip";
-    b.setAttribute("aria-pressed", String(on));
-    b.innerHTML = (colour ? '<span class="sw" style="background:' + colour + '"></span>' : "") +
-      '<span class="lb">' + esc(label) + '</span>';
-    b.addEventListener("click", onClick);
+    const b = document.createElement('button');
+    b.className = 'chip';
+    b.setAttribute('aria-pressed', String(on));
+    b.innerHTML = (colour ? '<span class="sw" style="background:' + colour + '"></span>' : '') + '<span class="lb">' + esc(label) + '</span>';
+    b.addEventListener('click', onClick);
     return b;
   }
 
   function buildSelectors() {
     // runs
-    const runWrap = $("grp-runs"), runBox = $("runs");
+    const runWrap = $('grp-runs'),
+      runBox = $('runs');
     runWrap.hidden = DS.runs < 2;
-    runBox.innerHTML = "";
+    runBox.innerHTML = '';
     for (let r = 0; r < DS.runs; r++) {
-      runBox.appendChild(chip("RUN " + r, hex(PAL5[r % 5]), runAnyOn(r), ev => {
-        if (ev.shiftKey) for (let g = 0; g < NG; g++) state.grpOn[g] = (gRun[g] === r);
-        else setRun(r, !runAnyOn(r));
-        if (noneOn()) setRun(r, true);
-        syncSelectors();
-      }));
+      runBox.appendChild(
+        chip('RUN ' + r, hex(PAL5[r % 5]), runAnyOn(r), (ev) => {
+          if (ev.shiftKey) for (let g = 0; g < NG; g++) state.grpOn[g] = gRun[g] === r;
+          else setRun(r, !runAnyOn(r));
+          if (noneOn()) setRun(r, true);
+          syncSelectors();
+        })
+      );
     }
-    $("c-run").hidden = DS.runs < 2;
-    $("grp-exr").hidden = DS.runs < 2;
+    $('c-run').hidden = DS.runs < 2;
+    $('grp-exr').hidden = DS.runs < 2;
 
     // islands
-    const islBox = $("islands"); islBox.innerHTML = "";
-    islBox.className = NG > 6 ? "chips grid" : "chips";
-    $("islands-h").textContent = DS.runs > 1 ? "Groups · run · island" : "Islands";
+    const islBox = $('islands');
+    islBox.innerHTML = '';
+    islBox.className = NG > 6 ? 'chips grid' : 'chips';
+    $('islands-h').textContent = DS.runs > 1 ? 'Groups · run · island' : 'Islands';
     for (let g = 0; g < NG; g++) {
-      const label = DS.runs > 1 ? gRun[g] + "·" + islLabel(gIsl[g]) : String(islLabel(gIsl[g]));
-      islBox.appendChild(chip(label, hex(islandHue(gIsl[g])), state.grpOn[g], ev => {
-        if (ev.shiftKey) for (let j = 0; j < NG; j++) state.grpOn[j] = (j === g);
-        else state.grpOn[g] = !state.grpOn[g];
-        if (noneOn()) state.grpOn[g] = true;
-        syncSelectors();
-      }));
+      const label = DS.runs > 1 ? gRun[g] + '·' + islLabel(gIsl[g]) : String(islLabel(gIsl[g]));
+      islBox.appendChild(
+        chip(label, hex(islandHue(gIsl[g])), state.grpOn[g], (ev) => {
+          if (ev.shiftKey) for (let j = 0; j < NG; j++) state.grpOn[j] = j === g;
+          else state.grpOn[g] = !state.grpOn[g];
+          if (noneOn()) state.grpOn[g] = true;
+          syncSelectors();
+        })
+      );
     }
 
     // migration routes
-    const rBox = $("routes"); rBox.innerHTML = "";
+    const rBox = $('routes');
+    rBox.innerHTML = '';
     G.routes.forEach((rt, k) => {
-      const label = (DS.runs > 1 ? "r" + rt.run + " " : "") + islLabel(gIsl[rt.sg]) + "→" + islLabel(gIsl[rt.dg]);
-      rBox.appendChild(chip(label, hex(islandHue(gIsl[rt.sg])), state.routesOn[k], ev => {
-        if (ev.shiftKey) {
-          const solo = state.routesOn.every((v, j) => j === k ? v : !v);
-          for (let j = 0; j < state.routesOn.length; j++) state.routesOn[j] = solo ? true : (j === k);
-        } else state.routesOn[k] = !state.routesOn[k];
-        syncSelectors();
-      }));
+      const label = (DS.runs > 1 ? 'r' + rt.run + ' ' : '') + islLabel(gIsl[rt.sg]) + '→' + islLabel(gIsl[rt.dg]);
+      rBox.appendChild(
+        chip(label, hex(islandHue(gIsl[rt.sg])), state.routesOn[k], (ev) => {
+          if (ev.shiftKey) {
+            const solo = state.routesOn.every((v, j) => (j === k ? v : !v));
+            for (let j = 0; j < state.routesOn.length; j++) state.routesOn[j] = solo ? true : j === k;
+          } else state.routesOn[k] = !state.routesOn[k];
+          syncSelectors();
+        })
+      );
     });
-    $("routes-n").textContent = G.routes.length + " routes";
+    $('routes-n').textContent = G.routes.length + ' routes';
 
     // jump-to-best buttons: one per island, one per run
-    const bBox = $("bests"); bBox.innerHTML = "";
-    bBox.className = NG > 6 ? "chips grid" : "chips";
+    const bBox = $('bests');
+    bBox.innerHTML = '';
+    bBox.className = NG > 6 ? 'chips grid' : 'chips';
     const jumpBtn = (icon, label, title, fn) => {
-      const b = document.createElement("button");
-      b.className = "chip best"; b.title = title;
+      const b = document.createElement('button');
+      b.className = 'chip best';
+      b.title = title;
       b.innerHTML = '<span class="icn ' + icon + '"></span><span class="lb">' + esc(label) + '</span>';
-      b.addEventListener("click", fn);
+      b.addEventListener('click', fn);
       return b;
     };
     for (let g = 0; g < NG; g++) {
-      const label = DS.runs > 1 ? gRun[g] + "·" + islLabel(gIsl[g]) : String(islLabel(gIsl[g]));
-      bBox.appendChild(jumpBtn("ring2", label, "Best cluster of island " + islLabel(gIsl[g]),
-        () => jumpTo(G.bestOfGroup[g], g)));
+      const label = DS.runs > 1 ? gRun[g] + '·' + islLabel(gIsl[g]) : String(islLabel(gIsl[g]));
+      bBox.appendChild(jumpBtn('ring2', label, 'Best cluster of island ' + islLabel(gIsl[g]), () => jumpTo(G.bestOfGroup[g], g)));
     }
     for (let r = 0; r < DS.runs; r++) {
-      bBox.appendChild(jumpBtn("dia", DS.runs > 1 ? "R" + r : "BEST", "Best cluster of run " + r,
-        () => { const n = G.bestOfRun[r]; jumpTo(n, n >= 0 ? G.pGrp[n] : -1); }));
+      bBox.appendChild(
+        jumpBtn('dia', DS.runs > 1 ? 'R' + r : 'BEST', 'Best cluster of run ' + r, () => {
+          const n = G.bestOfRun[r];
+          jumpTo(n, n >= 0 ? G.pGrp[n] : -1);
+        })
+      );
     }
   }
 
   function syncSelectors() {
-    $("mig-all").setAttribute("aria-pressed", String(state.routesOn.some(Boolean)));
-    Array.prototype.forEach.call($("runs").children,
-      (b, r) => b.setAttribute("aria-pressed", String(runAnyOn(r))));
-    Array.prototype.forEach.call($("islands").children,
-      (b, g) => b.setAttribute("aria-pressed", String(!!state.grpOn[g])));
-    Array.prototype.forEach.call($("routes").children,
-      (b, k) => b.setAttribute("aria-pressed", String(!!state.routesOn[k])));
+    $('mig-all').setAttribute('aria-pressed', String(state.routesOn.some(Boolean)));
+    Array.prototype.forEach.call($('runs').children, (b, r) => b.setAttribute('aria-pressed', String(runAnyOn(r))));
+    Array.prototype.forEach.call($('islands').children, (b, g) => b.setAttribute('aria-pressed', String(!!state.grpOn[g])));
+    Array.prototype.forEach.call($('routes').children, (b, k) => b.setAttribute('aria-pressed', String(!!state.routesOn[k])));
     updateLegend();
   }
 
   function updateLegend() {
-    const L = $("legend"); L.innerHTML = "";
-    const add = html => { const s = document.createElement("span"); s.innerHTML = html; L.appendChild(s); };
-    if (state.colourBy === "fitness") {
+    const L = $('legend');
+    L.innerHTML = '';
+    const add = (html) => {
+      const s = document.createElement('span');
+      s.innerHTML = html;
+      L.appendChild(s);
+    };
+    if (state.colourBy === 'fitness') {
       add('<i class="fit"></i>Best to worst fitness');
-    } else if (state.colourBy === "run" && DS.runs > 1) {
+    } else if (state.colourBy === 'run' && DS.runs > 1) {
       for (let r = 0; r < DS.runs; r++) add('<i style="border-color:' + hex(PAL5[r % 5]) + '"></i>Run ' + r);
     } else if (DS.isl <= 6) {
       for (let i = 0; i < DS.isl; i++) add('<i style="border-color:' + hex(groupColour(i)) + '"></i>Island ' + islLabel(i));
@@ -1228,196 +1653,265 @@ export function mountStnViewer(root, cfg) {
   }
 
   /* markers for island bests and run bests */
-  const markBox = $("marks");
+  const markBox = $('marks');
   let markEls = [];
-  const labelBox = $("plabels");
+  const labelBox = $('plabels');
   let labelEls = [];
   function buildMarks() {
-    labelBox.innerHTML = ""; labelEls = [];
+    labelBox.innerHTML = '';
+    labelEls = [];
     for (let g = 0; g < NG; g++) {
-      const d = document.createElement("div");
-      d.className = "plabel";
+      const d = document.createElement('div');
+      d.className = 'plabel';
       d.style.color = hex(groupColour(g));
-      d.textContent = (DS.runs > 1 ? "RUN " + gRun[g] + " \u00b7 " : "") + "ISLAND " + islLabel(gIsl[g]);
+      d.textContent = (DS.runs > 1 ? 'RUN ' + gRun[g] + ' \u00b7 ' : '') + 'ISLAND ' + islLabel(gIsl[g]);
       d.hidden = true;
       labelBox.appendChild(d);
       labelEls.push(d);
     }
-    markBox.innerHTML = ""; markEls = [];
+    markBox.innerHTML = '';
+    markEls = [];
     for (let r = 0; r < DS.runs; r++) {
-      const d = document.createElement("div");
-      d.className = "bmark br";
-      d.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 1 L23 12 L12 23 L1 12 Z"/></svg>';
-      d.title = "Run best";
+      const d = document.createElement('div');
+      d.className = 'bmark br';
+      d.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 1 L23 12 L12 23 L1 12 Z"/></svg>';
+      d.title = 'Run best';
       markBox.appendChild(d);
-      markEls.push({ el: d, kind: "run", r: r });
+      markEls.push({ el: d, kind: 'run', r: r });
     }
     for (let g = 0; g < NG; g++) {
-      const d = document.createElement("div");
-      d.className = "bmark bi";
-      d.title = "Island best";
+      const d = document.createElement('div');
+      d.className = 'bmark bi';
+      d.title = 'Island best';
       markBox.appendChild(d);
-      markEls.push({ el: d, kind: "isl", g: g });
+      markEls.push({ el: d, kind: 'isl', g: g });
     }
-    if(cfg.backend)for(const m of markEls){
-      m.leader=document.createElement('div');m.leader.className='best-leader';m.leader.hidden=true;
-      m.label=document.createElement('button');m.label.className='best-callout';m.label.hidden=true;
-      m.label.textContent=m.kind==='run'?'◆ Run best':'○ Island '+islLabel(gIsl[m.g])+' best';
-      m.label.addEventListener('click',()=>{
-        const node=m.kind==='run'?G.bestOfRun[m.r]:G.bestOfGroup[m.g];
-        jumpTo(node,node>=0?G.pGrp[node]:-1);
-      });
-      markBox.append(m.leader,m.label);
-    }
+    if (cfg.backend)
+      for (const m of markEls) {
+        m.leader = document.createElement('div');
+        m.leader.className = 'best-leader';
+        m.leader.hidden = true;
+        m.label = document.createElement('button');
+        m.label.className = 'best-callout';
+        m.label.hidden = true;
+        m.label.textContent = m.kind === 'run' ? '◆ Run best' : '○ Island ' + islLabel(gIsl[m.g]) + ' best';
+        m.label.addEventListener('click', () => {
+          const node = m.kind === 'run' ? G.bestOfRun[m.r] : G.bestOfGroup[m.g];
+          jumpTo(node, node >= 0 ? G.pGrp[node] : -1);
+        });
+        markBox.append(m.leader, m.label);
+      }
   }
 
   /* inspector */
-  const sci = v => (Math.abs(v) >= 1e4 || (v !== 0 && Math.abs(v) < 1e-3))
-    ? v.toExponential(3) : v.toFixed(4);
+  const sci = (v) => (Math.abs(v) >= 1e4 || (v !== 0 && Math.abs(v) < 1e-3) ? v.toExponential(3) : v.toFixed(4));
   function clusterHash(cell, g) {
-    const a = (Math.imul(cell, 2654435761) ^ Math.imul(g + 1, 0x9E3779B1)) >>> 0;
+    const a = (Math.imul(cell, 2654435761) ^ Math.imul(g + 1, 0x9e3779b1)) >>> 0;
     const b = (Math.imul(cell, 40503) + Math.imul(g + 1, 2246822519)) >>> 0;
-    const c = (a ^ (b >>> 7)) >>> 0, d = (b ^ (a >>> 11)) >>> 0;
-    return [a, b, c, d].map(x => x.toString(16).padStart(8, "0")).join("");
+    const c = (a ^ (b >>> 7)) >>> 0,
+      d = (b ^ (a >>> 11)) >>> 0;
+    return [a, b, c, d].map((x) => x.toString(16).padStart(8, '0')).join('');
   }
   const row = (k, v) => '<div class="ins-row"><dt>' + k + '</dt><dd>' + v + '</dd></div>';
 
   function select(i) {
     selected = i;
-    const box = $("ins-body"), title = $("ins-title"), x = $("ins-x");
+    const box = $('ins-body'),
+      title = $('ins-title'),
+      x = $('ins-x');
     if (i < 0 || !G || i >= G.nodeCount) {
       selected = -1;
-      title.textContent = "Cluster inspection";
+      title.textContent = 'Cluster inspection';
       x.hidden = true;
       box.innerHTML = '<p class="ins-empty">Select a node to inspect fitness, evaluation counts, genome hash and island membership.</p>';
       return;
     }
     if (DS.backend) {
-      const node=G.nodes[i],g=G.pGrp[i];
-      title.innerHTML='<i style="background:' + hex(groupColour(g)) + '"></i>Island ' + esc(islLabel(gIsl[g])) + ' &middot; node ' + esc(node.id);
-      x.hidden=false;
-      const value=v=>v===null||v===undefined?'Unavailable':esc(v);
-      box.innerHTML=(node.overall_best?row('best','RUN BEST'):node.island_best?row('best','ISLAND BEST'):'')+
-        row('genome_hash',value(node.genome_hash))+row('mean fitness',value(node.mean_fitness))+
-        row('best fitness',value(node.best_fitness))+row('mean fitness percentile',value(node.fitness_percentile))+
-        row('visits',value(node.visits))+row('members',value(node.members))+
-        row('eval index',value(node.first_eval)+' &rarr; '+value(node.last_eval))+
-        row('degree',value(node.in_degree)+' in / '+value(node.out_degree)+' out')+
-        row('islands here',value(node.islands_sharing)+' of '+DS.isl)+
-        row('migration',node.migration_endpoint?'endpoint of a migration':'not a migration endpoint');
+      const node = G.nodes[i],
+        g = G.pGrp[i];
+      title.innerHTML = '<i style="background:' + hex(groupColour(g)) + '"></i>Island ' + esc(islLabel(gIsl[g])) + ' &middot; node ' + esc(node.id);
+      x.hidden = false;
+      const value = (v) => (v === null || v === undefined ? 'Unavailable' : esc(v));
+      box.innerHTML =
+        (node.overall_best ? row('best', 'RUN BEST') : node.island_best ? row('best', 'ISLAND BEST') : '') +
+        row('genome_hash', value(node.genome_hash)) +
+        row('mean fitness', value(node.mean_fitness)) +
+        row('best fitness', value(node.best_fitness)) +
+        row('mean fitness percentile', value(node.fitness_percentile)) +
+        row('visits', value(node.visits)) +
+        row('members', value(node.members)) +
+        row('eval index', value(node.first_eval) + ' &rarr; ' + value(node.last_eval)) +
+        row('degree', value(node.in_degree) + ' in / ' + value(node.out_degree) + ' out') +
+        row('islands here', value(node.islands_sharing) + ' of ' + DS.isl) +
+        row('migration', node.migration_endpoint ? 'endpoint of a migration' : 'not a migration endpoint');
       return;
     }
-    const g = G.pGrp[i], isl = islLabel(gIsl[g]), run = gRun[g];
-    const sign = DS.fitSign || 1;                       // display in the log's own orientation
-    title.innerHTML = '<i style="background:' + hex(groupColour(g)) + '"></i>' +
-      (DS.runs > 1 ? "Run " + run + " &middot; " : "") + "Island " + isl + " &middot; " + i;
+    const g = G.pGrp[i],
+      isl = islLabel(gIsl[g]),
+      run = gRun[g];
+    const sign = DS.fitSign || 1; // display in the log's own orientation
+    title.innerHTML =
+      '<i style="background:' +
+      hex(groupColour(g)) +
+      '"></i>' +
+      (DS.runs > 1 ? 'Run ' + run + ' &middot; ' : '') +
+      'Island ' +
+      isl +
+      ' &middot; ' +
+      i;
     x.hidden = false;
     const isIslBest = G.bestOfGroup[g] === i;
     const isRunBest = G.bestOfRun[run] === i;
-    const badge = isRunBest ? '<span class="bdg run">RUN BEST</span>'
-      : isIslBest ? '<span class="bdg isl">ISLAND BEST</span>' : "";
+    const badge = isRunBest ? '<span class="bdg run">RUN BEST</span>' : isIslBest ? '<span class="bdg isl">ISLAND BEST</span>' : '';
     const hash = DS.hashes ? DS.hashes[G.pSample[i]] : clusterHash(G.pCell[i], g);
     box.innerHTML =
-      (badge ? '<div class="ins-row"><dt></dt><dd>' + badge + '</dd></div>' : "") +
-      row("genome_hash", '<span class="mut">' + esc(hash) + '</span>') +
-      row("genome_repr", "[" + G.px[i].toFixed(4) + ", " + G.py[i].toFixed(4) + "]") +
-      row("fitness", sci(sign * G.pf[i]) + ' <span class="mut">mean</span>') +
-      row("best", sci(sign * G.pBest[i]) + ' <span class="mut">in cluster</span>') +
-      row("percentile", (fitnessPct(G.pf[i]) * 100).toFixed(1) + '% <span class="mut">of run &middot; lower is better</span>') +
-      row("evaluations", fmt(G.pVis[i]) + ' <span class="mut">landed here</span>') +
-      row("eval_index", fmt(G.pFirst[i]) + " &rarr; " + fmt(G.pLast[i])) +
-      row("degree", G.pIn[i] + " in / " + G.pOut[i] + " out") +
-      row("groups here", Math.round(G.pShared[i] * (NG - 1)) + 1 + ' <span class="mut">of ' + NG + '</span>') +
-      (DS.runs > 1 ? row("runs here", G.pRuns[i] + ' <span class="mut">of ' + DS.runs + '</span>') : "") +
-      row("migration", G.migNodes.has(i) ? "endpoint of a migration"
-        : '<span class="mut">not a migration endpoint</span>');
+      (badge ? '<div class="ins-row"><dt></dt><dd>' + badge + '</dd></div>' : '') +
+      row('genome_hash', '<span class="mut">' + esc(hash) + '</span>') +
+      row('genome_repr', '[' + G.px[i].toFixed(4) + ', ' + G.py[i].toFixed(4) + ']') +
+      row('fitness', sci(sign * G.pf[i]) + ' <span class="mut">mean</span>') +
+      row('best', sci(sign * G.pBest[i]) + ' <span class="mut">in cluster</span>') +
+      row('percentile', (fitnessPct(G.pf[i]) * 100).toFixed(1) + '% <span class="mut">of run &middot; lower is better</span>') +
+      row('evaluations', fmt(G.pVis[i]) + ' <span class="mut">landed here</span>') +
+      row('eval_index', fmt(G.pFirst[i]) + ' &rarr; ' + fmt(G.pLast[i])) +
+      row('degree', G.pIn[i] + ' in / ' + G.pOut[i] + ' out') +
+      row('groups here', Math.round(G.pShared[i] * (NG - 1)) + 1 + ' <span class="mut">of ' + NG + '</span>') +
+      (DS.runs > 1 ? row('runs here', G.pRuns[i] + ' <span class="mut">of ' + DS.runs + '</span>') : '') +
+      row('migration', G.migNodes.has(i) ? 'endpoint of a migration' : '<span class="mut">not a migration endpoint</span>');
   }
-  $("ins-x").addEventListener("click", () => select(-1));
+  $('ins-x').addEventListener('click', () => select(-1));
 
   /* controls */
   function segment(ids, get, set) {
-    ids.forEach((id, i) => $(id).addEventListener("click", () => {
-      set(i);
-      ids.forEach((o, j) => $(o).setAttribute("aria-pressed", String(j === get())));
-    }));
+    ids.forEach((id, i) =>
+      $(id).addEventListener('click', () => {
+        set(i);
+        ids.forEach((o, j) => $(o).setAttribute('aria-pressed', String(j === get())));
+      })
+    );
   }
-  const HEIGHT_IDS = ["z-fit", "z-time", "z-isle", "z-vis", "z-deg", "z-shr"];
-  const HEIGHT_NAMES = ["fitness", "time", "island plane", "evaluations", "links", "islands sharing"];
+  const HEIGHT_IDS = ['z-fit', 'z-time', 'z-isle', 'z-vis', 'z-deg', 'z-shr'];
+  const HEIGHT_NAMES = ['fitness', 'time', 'island plane', 'evaluations', 'links', 'islands sharing'];
   // top label, bottom label: what sits high and what sits low
-  const HEIGHT_AXIS = [["WORSE", "BETTER"], ["LATER", "EARLIER"], ["", ""],
-    ["MORE EVALS", "FEWER"], ["MORE LINKS", "FEWER"], ["MORE ISLANDS", "FEWER"]];
+  const HEIGHT_AXIS = [
+    ['WORSE', 'BETTER'],
+    ['LATER', 'EARLIER'],
+    ['', ''],
+    ['MORE EVALS', 'FEWER'],
+    ['MORE LINKS', 'FEWER'],
+    ['MORE ISLANDS', 'FEWER'],
+  ];
   function syncHeight() {
-    HEIGHT_IDS.forEach((id, j) => $(id).setAttribute("aria-pressed", String(!state.flat && j === state.zMode)));
-    $("z-flat").setAttribute("aria-pressed", String(state.flat));
-    const bestHeight=DS?.backend&&state.bestFitness&&G.bestHeightAvailable;
-    if(DS?.backend){
-      $("z-fit").textContent=G.bestHeightAvailable?'BEST FITNESS':'BEST (PENDING)';
-      $("z-fit").disabled=!G.bestHeightAvailable;
-      $("z-fit").setAttribute('aria-pressed',String(!state.flat&&state.zMode===0&&bestHeight));
-      $("z-mean").setAttribute('aria-pressed',String(!state.flat&&state.zMode===0&&!bestHeight));
+    HEIGHT_IDS.forEach((id, j) => $(id).setAttribute('aria-pressed', String(!state.flat && j === state.zMode)));
+    $('z-flat').setAttribute('aria-pressed', String(state.flat));
+    const bestHeight = DS?.backend && state.bestFitness && G.bestHeightAvailable;
+    if (DS?.backend) {
+      $('z-fit').textContent = G.bestHeightAvailable ? 'BEST FITNESS' : 'BEST (PENDING)';
+      $('z-fit').disabled = !G.bestHeightAvailable;
+      $('z-fit').setAttribute('aria-pressed', String(!state.flat && state.zMode === 0 && bestHeight));
+      $('z-mean').setAttribute('aria-pressed', String(!state.flat && state.zMode === 0 && !bestHeight));
     }
-    $("v-height").textContent = state.flat ? "flat" : state.zMode===0&&DS?.backend
-      ? (bestHeight?'best fitness':'mean fitness percentile') : HEIGHT_NAMES[state.zMode];
+    $('v-height').textContent = state.flat
+      ? 'flat'
+      : state.zMode === 0 && DS?.backend
+        ? bestHeight
+          ? 'best fitness'
+          : 'mean fitness percentile'
+        : HEIGHT_NAMES[state.zMode];
     const ax = HEIGHT_AXIS[state.zMode];
-    $("ax-top").textContent = ax[0]; $("ax-bot").textContent = ax[1];
+    $('ax-top').textContent = ax[0];
+    $('ax-bot').textContent = ax[1];
   }
-  HEIGHT_IDS.forEach((id, i) => $(id).addEventListener("click", () => {
-    state.zMode = i; state.flat = false;
-    if(i===0&&DS?.backend){state.bestFitness=true;buildGeometry();}
-    zTarget = new Float32Array(6); zTarget[i] = 1;
+  HEIGHT_IDS.forEach((id, i) =>
+    $(id).addEventListener('click', () => {
+      state.zMode = i;
+      state.flat = false;
+      if (i === 0 && DS?.backend) {
+        state.bestFitness = true;
+        buildGeometry();
+      }
+      zTarget = new Float32Array(6);
+      zTarget[i] = 1;
+      syncHeight();
+    })
+  );
+  if (cfg.backend)
+    $('z-mean').addEventListener('click', () => {
+      state.bestFitness = false;
+      state.zMode = 0;
+      state.flat = false;
+      zTarget = new Float32Array([1, 0, 0, 0, 0, 0]);
+      buildGeometry();
+      syncHeight();
+    });
+  $('z-flat').addEventListener('click', () => {
+    state.flat = !state.flat;
     syncHeight();
-  }));
-  if(cfg.backend)$("z-mean").addEventListener('click',()=>{
-    state.bestFitness=false;state.zMode=0;state.flat=false;
-    zTarget=new Float32Array([1,0,0,0,0,0]);buildGeometry();syncHeight();
   });
-  $("z-flat").addEventListener("click", () => { state.flat = !state.flat; syncHeight(); });
-  segment(["c-isl", "c-run", "c-fit"], () => ["island", "run", "fitness"].indexOf(state.colourBy), i => {
-    state.colourBy = ["island", "run", "fitness"][i];
-    buildSelectors(); syncSelectors();
+  segment(
+    ['c-isl', 'c-run', 'c-fit'],
+    () => ['island', 'run', 'fitness'].indexOf(state.colourBy),
+    (i) => {
+      state.colourBy = ['island', 'run', 'fitness'][i];
+      buildSelectors();
+      syncSelectors();
+    }
+  );
+  $('s-res').addEventListener('input', (e) => {
+    applyRes(+e.target.value);
   });
-  $("s-res").addEventListener("input", e => { applyRes(+e.target.value); });
-  $("s-wt").addEventListener("input", e => {
-    state.wt = +e.target.value; $("v-wt").textContent = GE + " " + state.wt + " visits";
-    buildIndex(); updateStats();
+  $('s-wt').addEventListener('input', (e) => {
+    state.wt = +e.target.value;
+    $('v-wt').textContent = GE + ' ' + state.wt + ' visits';
+    buildIndex();
+    updateStats();
   });
-  $("s-ns").addEventListener("input", e => {
-    state.ns = +e.target.value; $("v-ns").textContent = (state.ns / 100).toFixed(2);
+  $('s-ns').addEventListener('input', (e) => {
+    state.ns = +e.target.value;
+    $('v-ns').textContent = (state.ns / 100).toFixed(2);
   });
-  $("s-op").addEventListener("input", e => {
-    state.op = +e.target.value; $("v-op").textContent = (state.op / 100).toFixed(2);
+  $('s-op').addEventListener('input', (e) => {
+    state.op = +e.target.value;
+    $('v-op').textContent = (state.op / 100).toFixed(2);
   });
-  $("s-dom").addEventListener("input", e => {
-    state.dom = +e.target.value; $("v-dom").textContent = (state.dom / 100).toFixed(2);
+  $('s-dom').addEventListener('input', (e) => {
+    state.dom = +e.target.value;
+    $('v-dom').textContent = (state.dom / 100).toFixed(2);
   });
-  $("s-exi").addEventListener("input", e => {
-    state.exI = +e.target.value; $("v-exi").textContent = (state.exI / 100).toFixed(2);
+  $('s-exi').addEventListener('input', (e) => {
+    state.exI = +e.target.value;
+    $('v-exi').textContent = (state.exI / 100).toFixed(2);
   });
-  $("s-hs").addEventListener("input", e => {
-    state.hs = +e.target.value; $("v-hs").textContent = (state.hs / 100).toFixed(2);
+  $('s-hs').addEventListener('input', (e) => {
+    state.hs = +e.target.value;
+    $('v-hs').textContent = (state.hs / 100).toFixed(2);
   });
-  $("s-exr").addEventListener("input", e => {
-    state.exR = +e.target.value; $("v-exr").textContent = (state.exR / 100).toFixed(2);
+  $('s-exr').addEventListener('input', (e) => {
+    state.exR = +e.target.value;
+    $('v-exr').textContent = (state.exR / 100).toFixed(2);
   });
-  const toggle = (id, key, after) => $(id).addEventListener("click", () => {
-    state[key] = !state[key];
-    $(id).setAttribute("aria-pressed", String(state[key]));
-    if (after) after();
+  const toggle = (id, key, after) =>
+    $(id).addEventListener('click', () => {
+      state[key] = !state[key];
+      $(id).setAttribute('aria-pressed', String(state[key]));
+      if (after) after();
+    });
+  toggle('contest', 'contest');
+  toggle('b-sel', 'selMark');
+  toggle('t-edges', 'edges', () => {
+    buildMigrationGeometry();
+    updateStats();
   });
-  toggle("contest", "contest");
-  toggle("b-sel", "selMark");
-  toggle("t-edges", "edges", () => {buildMigrationGeometry();updateStats();});
-  toggle("include-hidden-migrations", "includeHiddenPaths", () => buildMigrationGeometry());
-  toggle("b-isl", "bestIsl");
-  toggle("b-run", "bestRun");
+  toggle('include-hidden-migrations', 'includeHiddenPaths', () => buildMigrationGeometry());
+  toggle('b-isl', 'bestIsl');
+  toggle('b-run', 'bestRun');
   // Group by island: islands pulled fully apart into their own patches, laid
   // flat on the ground plane (height collapsed), migration lifted into arcs, and
   // the camera eased to look down on the layout. Turning it off restores the
   // separation the reader had.
-  $("b-group").addEventListener("click", () => {
+  $('b-group').addEventListener('click', () => {
     stopBestTour();
     state.group = !state.group;
-    $("b-group").setAttribute("aria-pressed", String(state.group));
+    $('b-group').setAttribute('aria-pressed', String(state.group));
     if (state.group) {
       state.exIBefore = state.exI;
       state.exI = 100;
@@ -1427,104 +1921,179 @@ export function mountStnViewer(root, cfg) {
     } else {
       state.exI = state.exIBefore;
       state.hs = state.hsBefore;
-      camGoal = { el: 0.30, dist: DS.runs > 1 ? 4.3 : 3.15 };
+      camGoal = { el: 0.3, dist: DS.runs > 1 ? 4.3 : 3.15 };
     }
-    $("s-exi").value = state.exI; $("v-exi").textContent = (state.exI / 100).toFixed(2);
-    $("s-hs").value = state.hs; $("v-hs").textContent = (state.hs / 100).toFixed(2);
+    $('s-exi').value = state.exI;
+    $('v-exi').textContent = (state.exI / 100).toFixed(2);
+    $('s-hs').value = state.hs;
+    $('v-hs').textContent = (state.hs / 100).toFixed(2);
     zoomTarget = 0;
   });
-  $("mig-all").addEventListener("click", () => {
-    const anyOff = state.routesOn.some(v => !v);
+  $('mig-all').addEventListener('click', () => {
+    const anyOff = state.routesOn.some((v) => !v);
     for (let i = 0; i < state.routesOn.length; i++) state.routesOn[i] = anyOff;
     syncSelectors();
   });
-  if(cfg.backend)$('tour-best').addEventListener('click',()=>{
-    regionFlight=null;setRegionMode(false);
-    if(bestTour){stopBestTour();return;}
-    const stops=[];
-    const runNode=G.bestOfRun[0];
-    if(runNode>=0&&runAnyOn(0))stops.push({id:G.nodes[runNode].id,kind:'run',r:0,label:'Run best'});
-    for(let g=0;g<NG;g++)if(grpVisible(g)&&G.bestOfGroup[g]>=0){
-      stops.push({id:G.nodes[G.bestOfGroup[g]].id,kind:'isl',g,label:'Island '+islLabel(gIsl[g])+' best'});
-    }
-    if(!stops.length)return;
-    camGoal=null;flyNode=-1;zoomTarget=0;
-    const points=stops.map(stop=>worldOf(G.nodes.findIndex(n=>n.id===stop.id)));
-    const area=regionCameraTarget(points,canvas.clientWidth/canvas.clientHeight,cam);
-    stops.unshift({bestArea:true,label:'Best nodes overview'});
-    stops.push({overview:true,label:'Return to starting view'});
-    bestTour={stops,index:0,origin:{...cam},area};root.classList.add('best-tour-running');$('tour-best').textContent='Stop tour';beginTourStop(performance.now());
-  });
-  if(cfg.backend)$("reset-settings").addEventListener('click',()=>{
-    regionFlight=null;setRegionMode(false);stopBestTour();
-    Object.assign(state,{
-      wt:1,ns:100,zMode:0,op:180,dom:140,exI:0,exR:0,bestFitness:true,
-      colourBy:'island',contest:false,edges:true,selMark:true,bestIsl:true,bestRun:true,
-      includeHiddenPaths:MIGRATION_VISIBILITY_DEFAULTS.includeHiddenPaths,
-      group:false,exIBefore:0,flat:false,hs:100,hsBefore:100,
-      grpOn:new Array(NG).fill(true),routesOn:G.routes.map(()=>true)
+  if (cfg.backend)
+    $('tour-best').addEventListener('click', () => {
+      regionFlight = null;
+      setRegionMode(false);
+      if (bestTour) {
+        stopBestTour();
+        return;
+      }
+      const stops = [];
+      const runNode = G.bestOfRun[0];
+      if (runNode >= 0 && runAnyOn(0)) stops.push({ id: G.nodes[runNode].id, kind: 'run', r: 0, label: 'Run best' });
+      for (let g = 0; g < NG; g++)
+        if (grpVisible(g) && G.bestOfGroup[g] >= 0) {
+          stops.push({ id: G.nodes[G.bestOfGroup[g]].id, kind: 'isl', g, label: 'Island ' + islLabel(gIsl[g]) + ' best' });
+        }
+      if (!stops.length) return;
+      camGoal = null;
+      flyNode = -1;
+      zoomTarget = 0;
+      const points = stops.map((stop) => worldOf(G.nodes.findIndex((n) => n.id === stop.id)));
+      const area = regionCameraTarget(points, canvas.clientWidth / canvas.clientHeight, cam);
+      stops.unshift({ bestArea: true, label: 'Best nodes overview' });
+      stops.push({ overview: true, label: 'Return to starting view' });
+      bestTour = { stops, index: 0, origin: { ...cam }, area };
+      root.classList.add('best-tour-running');
+      $('tour-best').textContent = 'Stop tour';
+      beginTourStop(performance.now());
     });
-    // Stop a pending group/best camera animation without changing its current pose.
-    camGoal=null;flyNode=-1;zoomTarget=0;
-    zTarget=new Float32Array([1,0,0,0,0,0]);
-    for(const [id,key,label] of [
-      ['wt','wt',GE+' 1 visit'],['ns','ns','1.00'],['op','op','1.80'],
-      ['dom','dom','1.40'],['exi','exI','0.00'],['exr','exR','0.00'],['hs','hs','1.00']
-    ]){$('s-'+id).value=state[key];$('v-'+id).textContent=label;}
-    for(const [id,key] of [['b-group','group'],['contest','contest'],['t-edges','edges'],
-      ['b-sel','selMark'],['b-isl','bestIsl'],['b-run','bestRun'],['include-hidden-migrations','includeHiddenPaths']]){
-      $(id).setAttribute('aria-pressed',String(state[key]));
-    }
-    ['c-isl','c-run','c-fit'].forEach((id,i)=>$(id).setAttribute('aria-pressed',String(i===0)));
-    buildGeometry();buildIndex();buildSelectors();syncSelectors();syncHeight();updateStats();
-  });
-  $("reset").addEventListener("click", () => {
-    regionFlight=null;setRegionMode(false);stopBestTour();
-    cam.az = DS.runs > 1 ? 1.14 : 0.62; cam.el = 0.30; cam.dist = DS.runs > 1 ? 4.3 : 3.15; cam.tx = cam.ty = cam.tz = 0;
-    zoomTarget = 0;camGoal=null;flyNode=-1;
+  if (cfg.backend)
+    $('reset-settings').addEventListener('click', () => {
+      regionFlight = null;
+      setRegionMode(false);
+      stopBestTour();
+      Object.assign(state, {
+        wt: 1,
+        ns: 100,
+        zMode: 0,
+        op: 180,
+        dom: 140,
+        exI: 0,
+        exR: 0,
+        bestFitness: true,
+        colourBy: 'island',
+        contest: false,
+        edges: true,
+        selMark: true,
+        bestIsl: true,
+        bestRun: true,
+        includeHiddenPaths: MIGRATION_VISIBILITY_DEFAULTS.includeHiddenPaths,
+        group: false,
+        exIBefore: 0,
+        flat: false,
+        hs: 100,
+        hsBefore: 100,
+        grpOn: new Array(NG).fill(true),
+        routesOn: G.routes.map(() => true),
+      });
+      // Stop a pending group/best camera animation without changing its current pose.
+      camGoal = null;
+      flyNode = -1;
+      zoomTarget = 0;
+      zTarget = new Float32Array([1, 0, 0, 0, 0, 0]);
+      for (const [id, key, label] of [
+        ['wt', 'wt', GE + ' 1 visit'],
+        ['ns', 'ns', '1.00'],
+        ['op', 'op', '1.80'],
+        ['dom', 'dom', '1.40'],
+        ['exi', 'exI', '0.00'],
+        ['exr', 'exR', '0.00'],
+        ['hs', 'hs', '1.00'],
+      ]) {
+        $('s-' + id).value = state[key];
+        $('v-' + id).textContent = label;
+      }
+      for (const [id, key] of [
+        ['b-group', 'group'],
+        ['contest', 'contest'],
+        ['t-edges', 'edges'],
+        ['b-sel', 'selMark'],
+        ['b-isl', 'bestIsl'],
+        ['b-run', 'bestRun'],
+        ['include-hidden-migrations', 'includeHiddenPaths'],
+      ]) {
+        $(id).setAttribute('aria-pressed', String(state[key]));
+      }
+      ['c-isl', 'c-run', 'c-fit'].forEach((id, i) => $(id).setAttribute('aria-pressed', String(i === 0)));
+      buildGeometry();
+      buildIndex();
+      buildSelectors();
+      syncSelectors();
+      syncHeight();
+      updateStats();
+    });
+  $('reset').addEventListener('click', () => {
+    regionFlight = null;
+    setRegionMode(false);
+    stopBestTour();
+    cam.az = DS.runs > 1 ? 1.14 : 0.62;
+    cam.el = 0.3;
+    cam.dist = DS.runs > 1 ? 4.3 : 3.15;
+    cam.tx = cam.ty = cam.tz = 0;
+    zoomTarget = 0;
+    camGoal = null;
+    flyNode = -1;
   });
 
   let rebuildTimer = null;
   function applyRes(res) {
     state.res = res;
-    $("s-res").value = res;
-    $("v-res").textContent = GRID_NAMES[res];
+    $('s-res').value = res;
+    $('v-res').textContent = GRID_NAMES[res];
     clearTimeout(rebuildTimer);
-    note.textContent = "RE-CLUSTERING…"; note.style.display = "grid";
+    note.textContent = 'RE-CLUSTERING…';
+    note.style.display = 'grid';
     rebuildTimer = setTimeout(() => {
       aggregate(state.res);
       const mx = Math.max(4, Math.min(24, Math.round(G.maxW * 0.25)));
-      $("s-wt").max = mx;
-      if (state.wt > mx) { state.wt = mx; $("s-wt").value = mx; $("v-wt").textContent = GE + " " + mx + " visits"; }
+      $('s-wt').max = mx;
+      if (state.wt > mx) {
+        state.wt = mx;
+        $('s-wt').value = mx;
+        $('v-wt').textContent = GE + ' ' + mx + ' visits';
+      }
       // routes depend on topology, not granularity, so a rebuild keeps them
       if (state.routesOn.length !== G.routes.length) state.routesOn = G.routes.map(() => true);
-      buildGeometry(); buildIndex(); buildSelectors(); syncSelectors();
-      updateStats(); select(-1);
-      note.style.display = "none";
+      buildGeometry();
+      buildIndex();
+      buildSelectors();
+      syncSelectors();
+      updateStats();
+      select(-1);
+      note.style.display = 'none';
     }, 30);
   }
 
   function updateStats() {
-    $("k-nodes").textContent = fmt(G.nodeCount);
-    $("k-edges").textContent = fmt(state.edges ? drawnEdges : 0);
-    const pct = G.edgeCount && state.edges ? (drawnEdges / G.edgeCount * 100) : 0;
-    $("k-pct").innerHTML = pct.toFixed(0) + '<small> %</small>';
-    $("k-share").innerHTML = G.overlap.toFixed(2) + '<small> of ' + NG + '</small>';
-    $("k-mig").textContent = fmt(DS.backend ? G.mig.reduce((sum,m)=>sum+m.count,0) : G.mig.length);
-    $("meta-run").textContent = DS.title || "";
-    const lv = $("meta-level");
-    lv.textContent = DS.levelNote || "";
-    lv.className = "lvl" + (DS.levelWarn ? " warn" : "");
-    $("meta-edges").textContent = fmt(G.edgeCount) + " unique transitions";
-    $("meta-shape").innerHTML = DS.runs > 1
-      ? DS.runs + " runs &times; " + DS.isl + " islands"
-      : DS.isl + " islands" + (DS.shapeNote ? " &middot; " + esc(DS.shapeNote) : "") +
-        (DS.cluster ? " &middot; " + fmt(G.nodeCount) + " clusters" : "");
+    $('k-nodes').textContent = fmt(G.nodeCount);
+    $('k-edges').textContent = fmt(state.edges ? drawnEdges : 0);
+    const pct = G.edgeCount && state.edges ? (drawnEdges / G.edgeCount) * 100 : 0;
+    $('k-pct').innerHTML = pct.toFixed(0) + '<small> %</small>';
+    $('k-share').innerHTML = G.overlap.toFixed(2) + '<small> of ' + NG + '</small>';
+    $('k-mig').textContent = fmt(DS.backend ? G.mig.reduce((sum, m) => sum + m.count, 0) : G.mig.length);
+    $('meta-run').textContent = DS.title || '';
+    const lv = $('meta-level');
+    lv.textContent = DS.levelNote || '';
+    lv.className = 'lvl' + (DS.levelWarn ? ' warn' : '');
+    $('meta-edges').textContent = fmt(G.edgeCount) + ' unique transitions';
+    $('meta-shape').innerHTML =
+      DS.runs > 1
+        ? DS.runs + ' runs &times; ' + DS.isl + ' islands'
+        : DS.isl +
+          ' islands' +
+          (DS.shapeNote ? ' &middot; ' + esc(DS.shapeNote) : '') +
+          (DS.cluster ? ' &middot; ' + fmt(G.nodeCount) + ' clusters' : '');
   }
 
   function loadDataset(i) {
     state.ds = i;
-    note.textContent = "LOADING …"; note.style.display = "grid";
+    note.textContent = 'LOADING …';
+    note.style.display = 'grid';
     setTimeout(() => {
       if (!alive) return;
       const entry = entries[i];
@@ -1534,64 +2103,97 @@ export function mountStnViewer(root, cfg) {
       // Multi-run opens with runs pulled apart and hue on run: three legible
       // clouds whose overlap you can then collapse. Single-run opens merged.
       const multi = DS.runs > 1;
-      state.colourBy = multi ? "run" : "island";
+      state.colourBy = multi ? 'run' : 'island';
       state.exR = multi ? 100 : 0;
       state.exI = 0;
-      cam.az = multi ? 1.14 : 0.62; cam.el = 0.30; cam.tx = cam.ty = cam.tz = 0;
+      cam.az = multi ? 1.14 : 0.62;
+      cam.el = 0.3;
+      cam.tx = cam.ty = cam.tz = 0;
       cam.dist = multi ? 4.3 : 3.15;
-      $("s-exr").defaultValue = state.exR; $("s-exr").value = state.exR; $("v-exr").textContent = (state.exR / 100).toFixed(2);
-      $("s-exi").value = 0; $("v-exi").textContent = "0.00";
-      $("c-isl").setAttribute("aria-pressed", String(!multi));
-      $("c-run").setAttribute("aria-pressed", String(multi));
-      $("c-fit").setAttribute("aria-pressed", "false");
-      $("cap").innerHTML = CAP;
+      $('s-exr').defaultValue = state.exR;
+      $('s-exr').value = state.exR;
+      $('v-exr').textContent = (state.exR / 100).toFixed(2);
+      $('s-exi').value = 0;
+      $('v-exi').textContent = '0.00';
+      $('c-isl').setAttribute('aria-pressed', String(!multi));
+      $('c-run').setAttribute('aria-pressed', String(multi));
+      $('c-fit').setAttribute('aria-pressed', 'false');
+      $('cap').innerHTML = CAP;
       computeOffsets();
       aggregate(state.res);
       state.routesOn = G.routes.map(() => true);
-      $("s-wt").max = Math.max(4, Math.min(24, Math.round(G.maxW * 0.25)));
-      state.wt = 2; $("s-wt").value = 2; $("v-wt").textContent = GE + " 2 visits";
-      buildGeometry(); buildIndex(); buildSelectors(); syncSelectors(); buildMarks();
-      $("grp-agg").hidden = !!DS.cluster;
+      $('s-wt').max = Math.max(4, Math.min(24, Math.round(G.maxW * 0.25)));
+      state.wt = 2;
+      $('s-wt').value = 2;
+      $('v-wt').textContent = GE + ' 2 visits';
+      buildGeometry();
+      buildIndex();
+      buildSelectors();
+      syncSelectors();
+      buildMarks();
+      $('grp-agg').hidden = !!DS.cluster;
       syncHeight();
-      updateStats(); select(-1);
-      note.style.display = "none";
+      updateStats();
+      select(-1);
+      note.style.display = 'none';
       startLoop();
     }, 30);
   }
 
   // Backend runs arrive as finished graphs or a sequence of SSE deltas. Rebuild
   // GPU buffers in place; retain camera, filters and selection across updates.
-  function setBackendGraph(graph, runId='', options={}) {
+  function setBackendGraph(graph, runId = '', options = {}) {
     if (!alive || !graph?.nodes?.size) return;
-    const oldGroups=DS?.backend ? new Map(DS.islandIds.map((id,i)=>[id,state.grpOn[i]])) : new Map();
-    const oldRoutes=DS?.backend ? new Map(G.routes.map((route,i)=>[
-      `${DS.islandIds[route.sg]}:${DS.islandIds[route.dg]}`,state.routesOn[i]])) : new Map();
-    const selectedId=DS?.backend&&selected>=0 ? G.nodes[selected]?.id : null;
-    const previousNodes=DS?.backend?G.nodes:[];
-    const previousFly=flyNode,previousZoom=zoomNode;
-    const first=!DS?.backend;
-    const adapted=backendViewerGraph(graph,runId,options);
-    if(previousFly>=0){flyNode=remapBackendAnchor(previousNodes,adapted.idIndex,previousFly);if(flyNode<0)flyFrames=0;}
-    if(previousZoom>=0){zoomNode=remapBackendAnchor(previousNodes,adapted.idIndex,previousZoom);if(zoomNode<0)zoomTarget=0;}
-    $('tour-best').disabled=false;
-    DS=adapted.DS;G=adapted.G;NG=DS.isl;gRun=DS.gRun;gIsl=DS.gIsl;
-    state.grpOn=DS.islandIds.map(id=>oldGroups.get(id)??true);
-    state.routesOn=G.routes.map(route=>oldRoutes.get(`${DS.islandIds[route.sg]}:${DS.islandIds[route.dg]}`)??true);
-    edgeGain=G.edgeCount>=200000?1:Math.min(12,Math.sqrt(250000/Math.max(G.edgeCount,1)));
-    nodeGain=Math.min(4,edgeGain);
-    $("grp-agg").hidden=true;
-    $("z-isle").textContent="GENOME";
-    HEIGHT_NAMES[2]="genome depth";
-    $("s-wt").max=Math.max(4,Math.min(24,Math.round(G.maxW*.25)));
-    if(first){
-      state.wt=1;$("s-wt").value=1;$("s-wt").defaultValue=1;
-      $("v-wt").textContent=GE+" 1 visit";
-      $("cap").textContent="Backend-derived evaluation clusters, trajectory edges, migration routes and genome-space positions.";
-      $("ins-body").innerHTML='<p class="ins-empty">Select a cluster to inspect fitness, visits, members and genome hash.</p>';
+    const oldGroups = DS?.backend ? new Map(DS.islandIds.map((id, i) => [id, state.grpOn[i]])) : new Map();
+    const oldRoutes = DS?.backend
+      ? new Map(G.routes.map((route, i) => [`${DS.islandIds[route.sg]}:${DS.islandIds[route.dg]}`, state.routesOn[i]]))
+      : new Map();
+    const selectedId = DS?.backend && selected >= 0 ? G.nodes[selected]?.id : null;
+    const previousNodes = DS?.backend ? G.nodes : [];
+    const previousFly = flyNode,
+      previousZoom = zoomNode;
+    const first = !DS?.backend;
+    const adapted = backendViewerGraph(graph, runId, options);
+    if (previousFly >= 0) {
+      flyNode = remapBackendAnchor(previousNodes, adapted.idIndex, previousFly);
+      if (flyNode < 0) flyFrames = 0;
     }
-    computeOffsets();buildGeometry();buildIndex();buildSelectors();syncSelectors();buildMarks();syncHeight();updateStats();
-    select(selectedId===null?-1:(adapted.idIndex.get(selectedId)??-1));
-    note.style.display="none";
+    if (previousZoom >= 0) {
+      zoomNode = remapBackendAnchor(previousNodes, adapted.idIndex, previousZoom);
+      if (zoomNode < 0) zoomTarget = 0;
+    }
+    $('tour-best').disabled = false;
+    DS = adapted.DS;
+    G = adapted.G;
+    NG = DS.isl;
+    gRun = DS.gRun;
+    gIsl = DS.gIsl;
+    state.grpOn = DS.islandIds.map((id) => oldGroups.get(id) ?? true);
+    state.routesOn = G.routes.map((route) => oldRoutes.get(`${DS.islandIds[route.sg]}:${DS.islandIds[route.dg]}`) ?? true);
+    edgeGain = G.edgeCount >= 200000 ? 1 : Math.min(12, Math.sqrt(250000 / Math.max(G.edgeCount, 1)));
+    nodeGain = Math.min(4, edgeGain);
+    $('grp-agg').hidden = true;
+    $('z-isle').textContent = 'GENOME';
+    HEIGHT_NAMES[2] = 'genome depth';
+    $('s-wt').max = Math.max(4, Math.min(24, Math.round(G.maxW * 0.25)));
+    if (first) {
+      state.wt = 1;
+      $('s-wt').value = 1;
+      $('s-wt').defaultValue = 1;
+      $('v-wt').textContent = GE + ' 1 visit';
+      $('cap').textContent = 'Backend-derived evaluation clusters, trajectory edges, migration routes and genome-space positions.';
+      $('ins-body').innerHTML = '<p class="ins-empty">Select a cluster to inspect fitness, visits, members and genome hash.</p>';
+    }
+    computeOffsets();
+    buildGeometry();
+    buildIndex();
+    buildSelectors();
+    syncSelectors();
+    buildMarks();
+    syncHeight();
+    updateStats();
+    select(selectedId === null ? -1 : (adapted.idIndex.get(selectedId) ?? -1));
+    note.style.display = 'none';
     startLoop();
   }
 
@@ -1599,46 +2201,66 @@ export function mountStnViewer(root, cfg) {
   const alphaArr = new Float32Array(MAXG);
   const colArr = new Float32Array(MAXG * 3);
   const routeArr = new Float32Array(MAXG * 2);
-  const zMix3a = new Float32Array(3), zMix3b = new Float32Array(3);
-  const routeSrc = new Float32Array(MAXG * 2 * 3), routeDst = new Float32Array(MAXG * 2 * 3);
-  const MIGC = [0.0, 0.898, 1.0];   // #00e5ff, reserved for migration
-  let fpsN = 0, fpsLast = performance.now();
+  const zMix3a = new Float32Array(3),
+    zMix3b = new Float32Array(3);
+  const routeSrc = new Float32Array(MAXG * 2 * 3),
+    routeDst = new Float32Array(MAXG * 2 * 3);
+  const MIGC = [0.0, 0.898, 1.0]; // #00e5ff, reserved for migration
+  let fpsN = 0,
+    fpsLast = performance.now();
 
   const bgHex = getComputedStyle(root).getPropertyValue('--viz-bg').trim() || '#000000';
-  const BG = [1, 3, 5].map(i => parseInt(bgHex.slice(i, i + 2), 16) / 255);
+  const BG = [1, 3, 5].map((i) => parseInt(bgHex.slice(i, i + 2), 16) / 255);
 
-  let running = false, raf = 0, wantImage = false;
-  $("save-img").addEventListener("click", () => { wantImage = true; });
-  function startLoop() { if (!running) { running = true; raf = requestAnimationFrame(frame); } }
+  let running = false,
+    raf = 0,
+    wantImage = false;
+  $('save-img').addEventListener('click', () => {
+    wantImage = true;
+  });
+  function startLoop() {
+    if (!running) {
+      running = true;
+      raf = requestAnimationFrame(frame);
+    }
+  }
 
   function frame(now) {
     if (!alive) return;
-    if (!G || !nodeData) { raf = requestAnimationFrame(frame); return; }
+    if (!G || !nodeData) {
+      raf = requestAnimationFrame(frame);
+      return;
+    }
     resize();
-    const W = canvas.width, H = canvas.height;
+    const W = canvas.width,
+      H = canvas.height;
     const useHDR = ensureFBO(W, H);
     gl.bindFramebuffer(gl.FRAMEBUFFER, useHDR ? fbo : null);
     gl.viewport(0, 0, W, H);
-    if (useHDR) gl.clearColor(0, 0, 0, 1); else gl.clearColor(BG[0], BG[1], BG[2], 1);
+    if (useHDR) gl.clearColor(0, 0, 0, 1);
+    else gl.clearColor(BG[0], BG[1], BG[2], 1);
     gl.clear(gl.COLOR_BUFFER_BIT);
     gl.disable(gl.DEPTH_TEST);
     gl.enable(gl.BLEND);
 
     for (let i = 0; i < 6; i++) zMix[i] += (zTarget[i] - zMix[i]) * 0.08;
-    exIShown += (state.exI / 100 - exIShown) * 0.10;
-    exRShown += (state.exR / 100 - exRShown) * 0.10;
+    exIShown += (state.exI / 100 - exIShown) * 0.1;
+    exRShown += (state.exR / 100 - exRShown) * 0.1;
     contestShown += ((state.contest ? 1 : 0) - contestShown) * 0.12;
     flatShown += ((state.flat ? 1 : 0) - flatShown) * 0.08;
     groupShown += ((state.group ? 1 : 0) - groupShown) * 0.08;
-    hsShown += (state.hs / 100 - hsShown) * 0.10;
+    hsShown += (state.hs / 100 - hsShown) * 0.1;
     if (camGoal) {
       cam.el += (camGoal.el - cam.el) * 0.07;
       cam.dist += (camGoal.dist - cam.dist) * 0.07;
       if (Math.abs(camGoal.el - cam.el) < 0.003 && Math.abs(camGoal.dist - cam.dist) < 0.01) camGoal = null;
     }
     if (flyNode >= 0 && flyNode < G.nodeCount && nodeData) {
-      const w = worldOf(flyNode), k = 0.14;
-      cam.tx += (w[0] - cam.tx) * k; cam.ty += (w[1] - cam.ty) * k; cam.tz += (w[2] - cam.tz) * k;
+      const w = worldOf(flyNode),
+        k = 0.14;
+      cam.tx += (w[0] - cam.tx) * k;
+      cam.ty += (w[1] - cam.ty) * k;
+      cam.tz += (w[2] - cam.tz) * k;
       cam.dist += (0.9 - cam.dist) * k;
       if (++flyFrames > 130) flyNode = -1;
     }
@@ -1646,29 +2268,48 @@ export function mountStnViewer(root, cfg) {
     if (flyNode >= 0) zoomTarget = 0;
     stepZoom();
     stepBestTour(now);
-    if(regionFlight){
-      Object.assign(cam,tourCameraPose(regionFlight.from,regionFlight.target,now-regionFlight.start,1000));
-      if(now-regionFlight.start>=1000)regionFlight=null;
+    if (regionFlight) {
+      Object.assign(cam, tourCameraPose(regionFlight.from, regionFlight.target, now - regionFlight.start, 1000));
+      if (now - regionFlight.start >= 1000) regionFlight = null;
     }
     const cz = [Math.sin(cam.az) * Math.cos(cam.el), Math.sin(cam.el), Math.cos(cam.az) * Math.cos(cam.el)];
     const eye = [cam.tx + cz[0] * cam.dist, cam.ty + cz[1] * cam.dist, cam.tz + cz[2] * cam.dist];
-    const near = Math.max(0.00002, cam.dist * 0.004), far = cam.dist * 8 + 40;
+    const near = Math.max(0.00002, cam.dist * 0.004),
+      far = cam.dist * 8 + 40;
     const VP = mul(perspective(Math.PI / 4, W / H, near, far), lookAt(eye, [cam.tx, cam.ty, cam.tz], [0, 1, 0]));
     lastVP = VP;
-    for (let i = 0; i < 3; i++) { zMix3a[i] = zMix[i]; zMix3b[i] = zMix[i + 3]; }
-    const fogN = cam.dist * 0.55, fogF = cam.dist * 1.95;
+    for (let i = 0; i < 3; i++) {
+      zMix3a[i] = zMix[i];
+      zMix3b[i] = zMix[i + 3];
+    }
+    const fogN = cam.dist * 0.55,
+      fogF = cam.dist * 1.95;
 
     for (let g = 0; g < NG && g < MAXG; g++) {
       alphaArr[g] = grpVisible(g) ? 1 : 0.045;
       const c = groupColour(g);
-      colArr[g * 3] = c[0]; colArr[g * 3 + 1] = c[1]; colArr[g * 3 + 2] = c[2];
+      colArr[g * 3] = c[0];
+      colArr[g * 3 + 1] = c[1];
+      colArr[g * 3 + 2] = c[2];
     }
     for (let k = 0; k < G.routes.length && k < MAXG * 2; k++) {
       const rt = G.routes[k];
-      routeArr[k] = migrationVisible({routeEnabled:state.routesOn[k],sourceVisible:!!grpVisible(rt.sg),targetVisible:!!grpVisible(rt.dg),includeHiddenPaths:state.includeHiddenPaths}) ? 1 : 0;
-      const cs = groupColour(rt.sg), cd = groupColour(rt.dg);
-      routeSrc[k * 3] = cs[0]; routeSrc[k * 3 + 1] = cs[1]; routeSrc[k * 3 + 2] = cs[2];
-      routeDst[k * 3] = cd[0]; routeDst[k * 3 + 1] = cd[1]; routeDst[k * 3 + 2] = cd[2];
+      routeArr[k] = migrationVisible({
+        routeEnabled: state.routesOn[k],
+        sourceVisible: !!grpVisible(rt.sg),
+        targetVisible: !!grpVisible(rt.dg),
+        includeHiddenPaths: state.includeHiddenPaths,
+      })
+        ? 1
+        : 0;
+      const cs = groupColour(rt.sg),
+        cd = groupColour(rt.dg);
+      routeSrc[k * 3] = cs[0];
+      routeSrc[k * 3 + 1] = cs[1];
+      routeSrc[k * 3 + 2] = cs[2];
+      routeDst[k * 3] = cd[0];
+      routeDst[k * 3 + 1] = cd[1];
+      routeDst[k * 3 + 2] = cd[2];
     }
 
     function setGraph(P, base, pscale, contest) {
@@ -1686,7 +2327,7 @@ export function mountStnViewer(root, cfg) {
       gl.uniform1f(P.u.uContest, contest);
       gl.uniform1f(P.u.uFlat, flatShown);
       gl.uniform1f(P.u.uHS, hsShown);
-      gl.uniform1f(P.u.uByFit, state.colourBy === "fitness" ? 1 : 0);
+      gl.uniform1f(P.u.uByFit, state.colourBy === 'fitness' ? 1 : 0);
       gl.uniform1f(P.u.uPScale, pscale);
     }
 
@@ -1698,7 +2339,7 @@ export function mountStnViewer(root, cfg) {
     }
 
     gl.blendFunc(useHDR ? gl.ONE : gl.SRC_ALPHA, gl.ONE);
-    setGraph(pPoint, (state.edges ? 0.14 : 0.42) * nodeGain, 1.35 * dpr() * state.ns / 100, contestShown);
+    setGraph(pPoint, (state.edges ? 0.14 : 0.42) * nodeGain, (1.35 * dpr() * state.ns) / 100, contestShown);
     gl.bindVertexArray(vaoNodes);
     gl.drawArrays(gl.POINTS, 0, G.nodeCount);
 
@@ -1710,7 +2351,7 @@ export function mountStnViewer(root, cfg) {
       gl.uniform3fv(pArc.u.uZMix2, zMix3b);
       gl.uniform3fv(pArc.u.uMig, MIGC);
       gl.uniform1fv(pArc.u.uRoute, routeArr);
-      gl.uniform1f(pArc.u.uBase, (state.edges ? 0.30 : 0.95) + 0.65 * groupShown);
+      gl.uniform1f(pArc.u.uBase, (state.edges ? 0.3 : 0.95) + 0.65 * groupShown);
       gl.uniform1f(pArc.u.uFlat, flatShown);
       gl.uniform1f(pArc.u.uHS, hsShown);
       gl.uniform1f(pArc.u.uLift, groupShown);
@@ -1720,7 +2361,7 @@ export function mountStnViewer(root, cfg) {
       gl.uniform1f(pArc.u.uExI, exIShown);
       gl.uniform1f(pArc.u.uExR, exRShown);
       gl.uniform1f(pArc.u.uAspect, W / H);
-      gl.uniform1f(pArc.u.uHalfW, (0.85 + 0.9 * groupShown) * dpr() / H);
+      gl.uniform1f(pArc.u.uHalfW, ((0.85 + 0.9 * groupShown) * dpr()) / H);
       gl.bindVertexArray(vaoArcs);
       gl.drawArrays(gl.TRIANGLES, 0, arcVerts);
     }
@@ -1743,84 +2384,114 @@ export function mountStnViewer(root, cfg) {
     }
 
     // selection reticle first: it claims its pixel before any best marker
-    const mk = $("selmark");
-    const selPos = (state.selMark && selected >= 0 && selected < G.nodeCount && nodeData)
-      ? project(selected) : null;
+    const mk = $('selmark');
+    const selPos = state.selMark && selected >= 0 && selected < G.nodeCount && nodeData ? project(selected) : null;
     if (selPos) {
       mk.hidden = false;
-      mk.style.transform = "translate(" + selPos[0].toFixed(1) + "px," + selPos[1].toFixed(1) + "px)";
+      mk.style.transform = 'translate(' + selPos[0].toFixed(1) + 'px,' + selPos[1].toFixed(1) + 'px)';
     } else mk.hidden = true;
 
     placed.length = 0;
-    const labelBoxes=[];
-    const labelBounds={x:canvas.offsetLeft,y:canvas.offsetTop,width:canvas.clientWidth,height:canvas.clientHeight};
+    const labelBoxes = [];
+    const labelBounds = { x: canvas.offsetLeft, y: canvas.offsetTop, width: canvas.clientWidth, height: canvas.clientHeight };
     if (selPos) placed.push(selPos[0], selPos[1]);
     for (let i = 0; i < markEls.length; i++) {
       const m = markEls[i];
-      const on = m.kind === "isl" ? (state.bestIsl && grpVisible(m.g))
-        : (state.bestRun && runAnyOn(m.r));
-      const node = m.kind === "isl" ? G.bestOfGroup[m.g] : G.bestOfRun[m.r];
-      if(m.label){m.label.hidden=true;m.leader.hidden=true;}
-      if (!on || node < 0 || !nodeData || (!cfg.backend&&state.selMark&&node===selected)) { m.el.hidden = true; continue; }
+      const on = m.kind === 'isl' ? state.bestIsl && grpVisible(m.g) : state.bestRun && runAnyOn(m.r);
+      const node = m.kind === 'isl' ? G.bestOfGroup[m.g] : G.bestOfRun[m.r];
+      if (m.label) {
+        m.label.hidden = true;
+        m.leader.hidden = true;
+      }
+      if (!on || node < 0 || !nodeData || (!cfg.backend && state.selMark && node === selected)) {
+        m.el.hidden = true;
+        continue;
+      }
       const s = project(node);
-      if (!s) { m.el.hidden = true; continue; }
-      if(m.label){
-        const stop=bestTour?.stops[bestTour.index];
-        const active=stop&&stop.kind===m.kind&&(m.kind==='run'?stop.r===m.r:stop.g===m.g);
-        if(!active){
-          m.el.hidden=false;
-          m.el.style.transform='translate('+s[0]+'px,'+s[1]+'px)';
+      if (!s) {
+        m.el.hidden = true;
+        continue;
+      }
+      if (m.label) {
+        const stop = bestTour?.stops[bestTour.index];
+        const active = stop && stop.kind === m.kind && (m.kind === 'run' ? stop.r === m.r : stop.g === m.g);
+        if (!active) {
+          m.el.hidden = false;
+          m.el.style.transform = 'translate(' + s[0] + 'px,' + s[1] + 'px)';
           continue;
         }
-        const box=placeBestLabel(s,labelBounds,labelBoxes);labelBoxes.push(box);
-        m.label.hidden=false;m.leader.hidden=false;m.el.hidden=false;
-        m.label.style.left=box.x+'px';m.label.style.top=box.y+'px';m.label.style.width=box.width+'px';
-        const endX=Math.max(box.x,Math.min(s[0],box.x+box.width));
-        const endY=Math.max(box.y,Math.min(s[1],box.y+box.height));
-        const dx=endX-s[0],dy=endY-s[1];
-        m.leader.style.transform='translate('+s[0]+'px,'+s[1]+'px) rotate('+Math.atan2(dy,dx)+'rad)';
-        m.leader.style.width=Math.hypot(dx,dy)+'px';
-        m.el.style.transform='translate('+s[0]+'px,'+s[1]+'px)';
+        const box = placeBestLabel(s, labelBounds, labelBoxes);
+        labelBoxes.push(box);
+        m.label.hidden = false;
+        m.leader.hidden = false;
+        m.el.hidden = false;
+        m.label.style.left = box.x + 'px';
+        m.label.style.top = box.y + 'px';
+        m.label.style.width = box.width + 'px';
+        const endX = Math.max(box.x, Math.min(s[0], box.x + box.width));
+        const endY = Math.max(box.y, Math.min(s[1], box.y + box.height));
+        const dx = endX - s[0],
+          dy = endY - s[1];
+        m.leader.style.transform = 'translate(' + s[0] + 'px,' + s[1] + 'px) rotate(' + Math.atan2(dy, dx) + 'rad)';
+        m.leader.style.width = Math.hypot(dx, dy) + 'px';
+        m.el.style.transform = 'translate(' + s[0] + 'px,' + s[1] + 'px)';
         continue;
       }
       let clash = false;
       for (let k = 0; k < placed.length; k += 2)
-        if (Math.abs(placed[k] - s[0]) < 9 && Math.abs(placed[k + 1] - s[1]) < 9) { clash = true; break; }
-      if (clash) { m.el.hidden = true; continue; }
+        if (Math.abs(placed[k] - s[0]) < 9 && Math.abs(placed[k + 1] - s[1]) < 9) {
+          clash = true;
+          break;
+        }
+      if (clash) {
+        m.el.hidden = true;
+        continue;
+      }
       placed.push(s[0], s[1]);
       m.el.hidden = false;
-      m.el.style.transform = "translate(" + s[0].toFixed(1) + "px," + s[1].toFixed(1) + "px)";
+      m.el.style.transform = 'translate(' + s[0].toFixed(1) + 'px,' + s[1].toFixed(1) + 'px)';
     }
 
-    $("axis").style.opacity = String((1 - zMix[2]) * (1 - flatShown));
+    $('axis').style.opacity = String((1 - zMix[2]) * (1 - flatShown));
 
     // island names, pushed just outside each patch, once the layout is grouped
     for (let g = 0; g < labelEls.length; g++) {
       const el = labelEls[g];
-      if (groupShown < 0.55 || !grpVisible(g)) { el.hidden = true; continue; }
+      if (groupShown < 0.55 || !grpVisible(g)) {
+        el.hidden = true;
+        continue;
+      }
       const q = place(0, 0, offI[g][0], offI[g][1], offR[g][0], offR[g][1]);
       const ol = Math.hypot(offI[g][0], offI[g][1]) || 1;
-      const s = projectWorld(q[0] + offI[g][0] / ol * 0.5, 0, q[1] + offI[g][1] / ol * 0.5);
-      if (!s) { el.hidden = true; continue; }
+      const s = projectWorld(q[0] + (offI[g][0] / ol) * 0.5, 0, q[1] + (offI[g][1] / ol) * 0.5);
+      if (!s) {
+        el.hidden = true;
+        continue;
+      }
       el.hidden = false;
-      el.style.left = s[0].toFixed(1) + "px"; el.style.top = s[1].toFixed(1) + "px";
+      el.style.left = s[0].toFixed(1) + 'px';
+      el.style.top = s[1].toFixed(1) + 'px';
       el.style.opacity = String(Math.min(1, (groupShown - 0.55) * 4));
     }
 
     fpsN++;
     if (now - fpsLast > 500) {
-      $("k-fps").innerHTML = (fpsN / ((now - fpsLast) / 1000)).toFixed(0) + '<small> fps</small>';
-      fpsN = 0; fpsLast = now;
+      $('k-fps').innerHTML = (fpsN / ((now - fpsLast) / 1000)).toFixed(0) + '<small> fps</small>';
+      fpsN = 0;
+      fpsLast = now;
     }
-    if (wantImage) {                                    // the drawing buffer is only readable before the frame ends
+    if (wantImage) {
+      // the drawing buffer is only readable before the frame ends
       wantImage = false;
-      const a = document.createElement("a");
-      a.download = "archipelago-view.png"; a.href = canvas.toDataURL("image/png"); a.click();
+      const a = document.createElement('a');
+      a.download = 'archipelago-view.png';
+      a.href = canvas.toDataURL('image/png');
+      a.click();
     }
     raf = requestAnimationFrame(frame);
   }
 
-  window.addEventListener("resize", resize);
+  window.addEventListener('resize', resize);
   if (!cfg.backend) setTimeout(() => loadDataset(cfg.start || 0), 40);
 
   return {
@@ -1829,8 +2500,8 @@ export function mountStnViewer(root, cfg) {
     destroy() {
       alive = false;
       cancelAnimationFrame(raf);
-      window.removeEventListener("resize", resize);
-      root.innerHTML = "";
+      window.removeEventListener('resize', resize);
+      root.innerHTML = '';
     },
   };
 }
