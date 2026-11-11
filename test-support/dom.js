@@ -13,7 +13,7 @@ export const runId='run-20261102T120000Z-aabbccdd';
 export const makeApi=(extra={})=>({baseUrl:'/backend',identity:async()=> 'http://localhost:8000',health:async()=>({status:'ok',db:true,redis:true}),presets:async()=>catalog,createRun:async body=>({run_id:runId,status:'queued',...body,error:null}),...extra});
 
 export async function compile(relative) {
-  const entry=new URL('../'+relative,import.meta.url), folder=new URL(`../.superpowers/workflow-ui/${process.pid}/`,import.meta.url);
+  const entry=new URL('../'+relative,import.meta.url), folder=new URL(`../.test-cache/workflow-ui/${process.pid}/`,import.meta.url);
   await mkdir(folder,{recursive:true});
   const output=await build({entryPoints:[fileURLToPath(entry)],bundle:true,write:false,format:'esm',packages:'external',loader:{'.css':'empty'}});
   const file=new URL(relative.replaceAll('/','-').replace('.jsx','.mjs'),folder);

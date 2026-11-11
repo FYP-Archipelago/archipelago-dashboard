@@ -4,7 +4,7 @@ dist
 .env
 .env.*
 data/
-.superpowers/
+.test-cache/
 tools/
 test-support/
 docs/

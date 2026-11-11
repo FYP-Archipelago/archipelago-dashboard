@@ -7,6 +7,6 @@ dist/
 .vscode/
 .idea/
 .vercel
-.superpowers/
+.test-cache/
 /public/local-explainability/
 __pycache__/
