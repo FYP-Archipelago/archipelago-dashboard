@@ -26,13 +26,6 @@
 }
 
 /* Everything sits on the graph at rest; detail opens one section at a time. */
-.viewer-frame {
-  position: relative;
-  flex: 1;
-  display: flex;
-  min-width: 0;
-  min-height: 0;
-}
 .views {
   position: absolute;
   z-index: 6;
@@ -41,50 +34,6 @@
   display: flex;
   gap: 6px;
   align-items: center;
-}
-.view-tabs {
-  display: flex;
-  gap: 2px;
-  padding: 3px;
-  border: 1px solid var(--line);
-  border-radius: 7px;
-  background: var(--panel);
-}
-.view-tabs button,
-.adjust {
-  padding: 5px 11px;
-  border: 0;
-  border-radius: 5px;
-  background: none;
-  color: var(--soft);
-  font-size: 13px;
-  white-space: nowrap;
-}
-.view-tabs button:hover,
-.adjust:hover {
-  background: var(--raised);
-  color: var(--ink);
-}
-.view-tabs button[aria-pressed='true'] {
-  background: var(--accent);
-  color: var(--accent-ink);
-  font-weight: 500;
-}
-.adjust {
-  padding: 7px 12px;
-  border: 1px solid var(--line);
-  background: var(--panel);
-  color: var(--ink);
-}
-.canvas-hint {
-  position: absolute;
-  z-index: 4;
-  left: calc(var(--tools-left) + 2px);
-  bottom: 50px;
-  margin: 0;
-  color: var(--faint);
-  font-size: 12px;
-  pointer-events: none;
 }
 
 @media (min-width: 901px) {
@@ -109,7 +58,6 @@
     flex-direction: row;
     gap: 2px;
   }
-  .nav-heading,
   nav button small {
     display: none;
   }
@@ -121,35 +69,9 @@
     font-size: 13px;
     white-space: nowrap;
   }
-  .runctx {
-    flex: 1;
-    min-width: 0;
-    margin: 0;
-    padding: 0;
-    border: 0;
-    flex-direction: row;
-    align-items: center;
-    justify-content: flex-end;
-    gap: 10px;
-  }
   main {
     flex: 1;
     padding: 12px 16px 12px;
-  }
-  .on-archipelago main {
-    height: calc(100vh - 55px);
-  }
-  .runctx label {
-    flex-direction: row;
-    align-items: center;
-    gap: 7px;
-    white-space: nowrap;
-  }
-  .runctx select {
-    width: auto;
-    max-width: 206px;
-    min-height: 30px;
-    padding: 3px 7px;
   }
   .run-facts {
     position: absolute;
@@ -191,22 +113,11 @@
   nav button {
     display: block;
   }
-  .runctx select {
-    max-width: 150px;
-  }
-  .canvas-hint {
-    bottom: 82px;
-  }
 }
 
 @media (min-width: 901px) and (max-width: 1120px) {
-  .brand span,
-  .runctx label {
+  .brand span {
     font-size: 0;
-  }
-  .runctx select {
-    font-size: 12px;
-    max-width: 120px;
   }
   nav button {
     padding: 7px 6px;
@@ -225,16 +136,6 @@
     flex-wrap: wrap;
     margin-bottom: 8px;
   }
-  .view-tabs {
-    flex-wrap: wrap;
-  }
-  .viewer-frame {
-    display: block;
-  }
-  .canvas-hint {
-    position: static;
-    margin: 0 0 8px;
-  }
 }
 
 /* Legend entries for islands double as show/hide switches. */
@@ -247,26 +148,4 @@
 .legend-inline span.off {
   opacity: 0.4;
   text-decoration: line-through;
-}
-
-/* Scale study: synthetic data is always labelled, and has no run to choose. */
-.study-bar {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 10px;
-  font-size: 13px;
-  color: var(--soft);
-}
-.synthetic {
-  padding: 3px 8px;
-  border: 1px solid var(--accent);
-  border-radius: 4px;
-  color: var(--accent);
-  font-size: 12px;
-  font-weight: 500;
-}
-.on-study .runctx {
-  visibility: hidden;
 }

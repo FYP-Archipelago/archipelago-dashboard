@@ -43,7 +43,7 @@ export function createBackendClient({ baseUrl = '/backend', identityUrl, fetchIm
         ...(body === undefined ? {} : { body: JSON.stringify(body) }),
       });
       text = await response.text();
-    } catch (error) {
+    } catch {
       if (signal?.aborted) throw signal.reason;
       throw new BackendError(
         timeout.aborted ? 'Backend request timed out.' : 'Cannot reach the backend. Check that it is running and the backend URL is correct.',

@@ -32,18 +32,6 @@
   font-size: 13px;
   padding: 8px 12px;
 }
-.workspace-purpose {
-  margin: 0;
-  color: var(--faint);
-  font-size: 13px;
-}
-.current-run-id {
-  margin-left: auto;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: 10px;
-}
 .workspace-shell .run-browser {
   grid-area: browser;
   position: sticky;
@@ -252,9 +240,6 @@
   font-weight: 500;
 }
 @media (max-width: 1400px) {
-  .current-run-id {
-    display: none;
-  }
   .workspace-topbar {
     gap: 18px;
   }
@@ -269,9 +254,6 @@
   }
   .workspace-shell .workspace-main {
     padding: 22px 20px;
-  }
-  .workspace-purpose {
-    font-size: 11px;
   }
 }
 @media (max-width: 650px) {
@@ -481,12 +463,6 @@
 }
 .workspace-shell .runs-home .runs-page {
   max-width: 900px;
-}
-.study-page {
-  width: 100%;
-}
-.study-host {
-  --stage-h: min(74vh, 780px);
 }
 @media (max-width: 900px) {
   .runs-home {

@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { compile, mount, click, dom } from '../../test-support/dom.js';
+import { compile, mount, click } from '../../test-support/dom.js';
 import { graphFromResult } from './graph-model.js';
 import { migrationSummary } from './migration-summary.js';
 

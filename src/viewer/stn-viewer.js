@@ -10,26 +10,15 @@ import { backendViewerGraph, remapBackendAnchor } from './backend-graph.js';
  * RGBA16F target, weighted-mean hue composite, one control rail, a cluster
  * inspector and migration arcs.
  *
- *   ingest -> aggregate (levers 1,2) -> geometry -> render (4 draws, RGBA16F)
+ *   backend graph (backend-graph.js) -> geometry -> render (4 draws, RGBA16F)
  *          -> composite (weighted-mean hue + tone map) -> DOM overlays
- *
- * A dataset is:
- *   {tag, runs, isl, rx, ry, rf, gOff, gLen, gRun, gIsl, migEvents,
- *    [parentPtr, parentIdx], [cluster, clusterCount], [islandIds], [fitSign],
- *    [hashes], [shapeNote]}
- * ``cluster`` is one pipeline cluster id per sample; when present a node is a
- * (group, cluster) pair and its position is the centroid of its members.
- * with samples laid out group-major: sample s of group g is rx[gOff[g] + s].
- * Coordinates are in [-1, 1]; fitness is oriented so LOWER IS BETTER.
  */
 
 /* ═══ 2. SHADERS ══════════════════ */
 const MAXG = 32;
 const SI = 0.3,
   SR = 0.34,
-  RING_I = 0.86,
-  RING_R = 0.95,
-  PLANE_GAP = 0.62;
+  RING_I = 0.86;
 
 const PLACE = `
 vec2 placeXY(vec2 b, vec2 oi, vec2 orr, float ei, float er){
@@ -258,17 +247,8 @@ function mul(a, b) {
 }
 
 /* ═══ 5. THE VIEWER ═════════════════════════════════════════════ */
-const GRIDS = [18, 34, 70, 150, 280];
-const GRID_NAMES = ['coarse', 'low', 'medium', 'fine', 'finest'];
-
 const TEMPLATE = `
 <div class="wrap">
-  <div class="mast-meta">
-    <span id="meta-run"></span>
-    <span id="meta-level" class="lvl"></span>
-    <span id="meta-shape">building&hellip;</span>
-    <span id="meta-edges">building&hellip;</span>
-  </div>
   <div class="viewer">
     <div class="stage">
       <canvas id="gl"></canvas>
@@ -283,20 +263,15 @@ const TEMPLATE = `
             <button class="btn-wide" id="b-group" aria-pressed="false">Group by island</button>
             <p class="hint">Each island on its own flat patch of ground, side by side, with migration lifted into arcs between them.</p>
           </div>
-          <div class="grp" id="grp-runs" hidden>
-            <div class="grp-h"><span>Runs</span></div>
-            <div class="chips" id="runs"></div>
+          <div class="grp">
+            <div class="grp-h"><span>Islands</span></div>
+            <div class="chips" id="islands"></div>
+            <p class="hint">One chip per island. Click to mute, shift-click to solo just that one.</p>
           </div>
           <div class="grp">
-            <div class="grp-h"><span id="islands-h">Islands</span></div>
-            <div class="chips" id="islands"></div>
-            <p class="hint">One chip per island &mdash; per run, when there is more than one. Click to mute, shift-click to solo just that one.</p>
-          </div>
-          <div class="grp" id="grp-colour">
             <div class="grp-h"><span>Colour by</span></div>
             <div class="seg" role="group" aria-label="Colour by">
               <button id="c-isl" aria-pressed="true">ISLAND</button>
-              <button id="c-run" aria-pressed="false">RUN</button>
               <button id="c-fit" aria-pressed="false">FITNESS</button>
             </div>
             <p class="hint">Two facets, two channels: whichever one colour carries, position carries the other.</p>
@@ -321,24 +296,15 @@ const TEMPLATE = `
 
         <details class="sec" name="controls"><summary>Filter &amp; detail</summary>
           <div class="sec-body">
-          <div class="grp" id="grp-agg">
-            <div class="grp-h"><span>Node detail</span><b id="v-res">medium</b></div>
-            <input type="range" id="s-res" min="0" max="4" step="1" value="2" aria-label="Cluster resolution">
-            <div class="ends"><span>COARSE</span><span>FINEST</span></div>
-          </div>
           <div class="grp">
-            <div class="grp-h"><span>Hide rare paths</span><b id="v-wt">&ge; 2 visits</b></div>
-            <input type="range" id="s-wt" min="1" max="12" step="1" value="2" aria-label="Minimum edge traversal count">
+            <div class="grp-h"><span>Hide rare paths</span><b id="v-wt">&ge; 1 visit</b></div>
+            <input type="range" id="s-wt" min="1" max="12" step="1" value="1" aria-label="Minimum edge traversal count">
             <div class="ends"><span>SHOW ALL</span><span>COMMON ONLY</span></div>
           </div>
           <div class="grp">
             <div class="grp-h"><span>Separate islands</span><b id="v-exi">0.00</b></div>
             <input type="range" id="s-exi" min="0" max="100" step="1" value="0" aria-label="Island separation">
             <div class="ends"><span>MERGED</span><span>SEPARATE</span></div>
-            <div id="grp-exr" hidden>
-              <div class="grp-h" style="margin-top:10px"><span>Separate runs</span><b id="v-exr">0.00</b></div>
-              <input type="range" id="s-exr" min="0" max="100" step="1" value="0" aria-label="Run separation">
-            </div>
             <p class="hint">Shared clusters separate by island membership; single-island clusters translate as a unit.</p>
           </div>
           </div>
@@ -351,7 +317,7 @@ const TEMPLATE = `
             <div class="seg" role="group" aria-label="Height axis">
               <button id="z-fit" aria-pressed="true">FITNESS</button>
               <button id="z-time" aria-pressed="false">TIME</button>
-              <button id="z-isle" aria-pressed="false">ISLAND</button>
+              <button id="z-isle" aria-pressed="false">GENOME</button>
             </div>
             <div class="seg" role="group" aria-label="More height metrics" style="margin-top:3px">
               <button id="z-vis" aria-pressed="false">EVALS</button>
@@ -428,376 +394,93 @@ const TEMPLATE = `
       <div class="stat"><span class="k">Frame</span><span class="v" id="k-fps">&mdash;</span></div>
     </div>
   </div>
-  <p class="cap" id="cap"></p>
 </div>`;
 
-const CAP =
-  'Shared genome-space projection with pooled fitness percentiles. Island separation offsets reveal shared-cluster membership. Trajectory edges encode within-island parent&rarr;child relationships.';
-
-/**
- * Mount the viewer into ``root``.
- * @param {HTMLElement} root
- * @param {{datasets: Array<object|{tag:string,load:Function}>, start?: number}} cfg
- * @returns {{destroy():void, loadDataset(i:number):void}}
- */
-export function mountStnViewer(root, cfg) {
+export function mountStnViewer(root) {
   root.innerHTML = TEMPLATE;
-  if (cfg.backend) {
-    const right = root.querySelector('#rail');
-    const left = document.createElement('div');
-    left.id = 'rail-left';
-    left.className = 'rail';
-    left.innerHTML = '<div class="rail-h"><span>View controls</span></div>';
-    const leftSections = document.createElement('div');
-    const rightSections = document.createElement('div');
-    leftSections.className = rightSections.className = 'rail-sections';
-    const sections = [...right.querySelectorAll(':scope > .sec')];
-    sections.forEach((section, index) => {
-      section.removeAttribute('name');
-      section.open = true;
-      (index < 4 ? leftSections : rightSections).append(section);
-    });
-    left.append(leftSections);
-    right.insertBefore(rightSections, right.querySelector('.rail-foot'));
-    right.querySelector('.rail-h span').textContent = 'Routes and appearance';
-    right.before(left);
-    const meanHeight = document.createElement('button');
-    meanHeight.id = 'z-mean';
-    meanHeight.textContent = 'MEAN FITNESS';
-    meanHeight.setAttribute('aria-pressed', 'false');
-    root.querySelector('#z-fit').after(meanHeight);
-    const reset = right.querySelector('#reset');
-    reset.textContent = 'Reset view';
-    reset.classList.remove('btn-wide');
-    reset.classList.add('reset-view');
-    root.querySelector('.stage').append(reset);
-    const region = document.createElement('button');
-    region.id = 'select-region';
-    region.className = 'select-region';
-    region.textContent = 'Select region';
-    region.setAttribute('aria-pressed', 'false');
-    const regionBox = document.createElement('div');
-    regionBox.id = 'region-box';
-    regionBox.className = 'region-box';
-    regionBox.hidden = true;
-    root.querySelector('.stage').append(region, regionBox);
-    const resetSettings = document.createElement('button');
-    resetSettings.id = 'reset-settings';
-    resetSettings.className = 'btn-wide';
-    resetSettings.textContent = 'Reset settings';
-    right.querySelector('.rail-foot').prepend(resetSettings);
-    const tour = document.createElement('button');
-    tour.id = 'tour-best';
-    tour.className = 'btn-wide';
-    tour.textContent = 'Tour best nodes';
-    tour.disabled = true;
-    tour.style.marginTop = '10px';
-    const tourStatus = document.createElement('div');
-    tourStatus.id = 'tour-status';
-    tourStatus.className = 'tour-status';
-    tourStatus.setAttribute('role', 'status');
-    right.querySelector('#bests').after(tour, tourStatus);
-  }
+  const right = root.querySelector('#rail');
+  const left = document.createElement('div');
+  left.id = 'rail-left';
+  left.className = 'rail';
+  left.innerHTML = '<div class="rail-h"><span>View controls</span></div>';
+  const leftSections = document.createElement('div');
+  const rightSections = document.createElement('div');
+  leftSections.className = rightSections.className = 'rail-sections';
+  const sections = [...right.querySelectorAll(':scope > .sec')];
+  sections.forEach((section, index) => {
+    section.removeAttribute('name');
+    section.open = true;
+    (index < 4 ? leftSections : rightSections).append(section);
+  });
+  left.append(leftSections);
+  right.insertBefore(rightSections, right.querySelector('.rail-foot'));
+  right.querySelector('.rail-h span').textContent = 'Routes and appearance';
+  right.before(left);
+  const meanHeight = document.createElement('button');
+  meanHeight.id = 'z-mean';
+  meanHeight.textContent = 'MEAN FITNESS';
+  meanHeight.setAttribute('aria-pressed', 'false');
+  root.querySelector('#z-fit').after(meanHeight);
+  const reset = right.querySelector('#reset');
+  reset.textContent = 'Reset view';
+  reset.classList.remove('btn-wide');
+  reset.classList.add('reset-view');
+  root.querySelector('.stage').append(reset);
+  const region = document.createElement('button');
+  region.id = 'select-region';
+  region.className = 'select-region';
+  region.textContent = 'Select region';
+  region.setAttribute('aria-pressed', 'false');
+  const regionBox = document.createElement('div');
+  regionBox.id = 'region-box';
+  regionBox.className = 'region-box';
+  regionBox.hidden = true;
+  root.querySelector('.stage').append(region, regionBox);
+  const resetSettings = document.createElement('button');
+  resetSettings.id = 'reset-settings';
+  resetSettings.className = 'btn-wide';
+  resetSettings.textContent = 'Reset settings';
+  right.querySelector('.rail-foot').prepend(resetSettings);
+  const tour = document.createElement('button');
+  tour.id = 'tour-best';
+  tour.className = 'btn-wide';
+  tour.textContent = 'Tour best nodes';
+  tour.disabled = true;
+  tour.style.marginTop = '10px';
+  const tourStatus = document.createElement('div');
+  tourStatus.id = 'tour-status';
+  tourStatus.className = 'tour-status';
+  tourStatus.setAttribute('role', 'status');
+  right.querySelector('#bests').after(tour, tourStatus);
   const $ = (id) => root.querySelector('#' + id);
   const canvas = $('gl'),
     note = $('note');
   const gl = canvas.getContext('webgl2', { antialias: false, alpha: false });
   if (!gl) {
     note.textContent = 'WEBGL2 UNAVAILABLE IN THIS BROWSER';
-    return { destroy() {}, loadDataset() {}, setBackendGraph() {} };
+    return { destroy() {}, setBackendGraph() {} };
   }
 
-  /* ── dataset-bound state ─────────────────────────────────────── */
-  const entries = cfg.datasets || [];
-  let DS = null; // the loaded dataset
+  let DS = null; // the loaded backend graph's run metadata
   let NG = 0,
-    RAW = 0;
-  let rx = null,
-    ry = null,
-    rf = null,
-    gOff = null,
-    gLen = null,
-    gRun = null,
     gIsl = null;
-  let migEvents = [],
-    fSorted = null;
   let G = null;
   let visiblePathNodes = new Set();
   let alive = true;
   // The base alphas are tuned for ~250k edges. A real run is often a
   // few thousand, so each line would accumulate almost no light. Scale the
   // density brightness by how far under that the run is; at >=200k edges the
-  // gain is exactly 1, so the full-size datasets render exactly as designed.
+  // gain is exactly 1.
   let edgeGain = 1,
     nodeGain = 1;
-
-  function adopt(d) {
-    DS = d;
-    NG = d.runs * d.isl;
-    rx = d.rx;
-    ry = d.ry;
-    rf = d.rf;
-    gOff = d.gOff;
-    gLen = d.gLen;
-    gRun = d.gRun;
-    gIsl = d.gIsl;
-    migEvents = d.migEvents || [];
-    RAW = rx.length;
-    // Pooled fitness ranking, shared by every run so heights stay comparable.
-    // Large logs are strided down to a 20,000 sample; a smaller log is
-    // ranked exactly.
-    let s;
-    if (RAW <= 20000) {
-      s = new Float32Array(rf);
-    } else {
-      s = new Float32Array(20000);
-      for (let i = 0; i < s.length; i++) s[i] = rf[(i * 19 + 7) % RAW];
-    }
-    s.sort();
-    fSorted = s;
-  }
-  function fitnessPct(v) {
-    let lo = 0,
-      hi = fSorted.length;
-    while (lo < hi) {
-      const m = (lo + hi) >> 1;
-      if (fSorted[m] < v) lo = m + 1;
-      else hi = m;
-    }
-    return lo / fSorted.length;
-  }
-
-  /* ── aggregation (levers 1 and 2) ────────────────────────────── */
-  function aggregate(gi) {
-    // With a pipeline result a node is (group, cluster); otherwise (group, grid
-    // cell). A cluster id plays the part of the cell: it is what two islands
-    // share when they visit the same region.
-    const clustered = !!DS.cluster;
-    const N = clustered ? 0 : GRIDS[gi];
-    const cells = clustered ? DS.clusterCount : N * N;
-    const map = clustered ? new Map() : new Int32Array(NG * cells).fill(-1);
-    const pxS = clustered ? new Float64Array(Math.min(RAW, NG * cells)) : null;
-    const pyS = clustered ? new Float64Array(Math.min(RAW, NG * cells)) : null;
-    const cellLast = new Int32Array(cells).fill(-1);
-    const cellGrp = new Uint8Array(cells);
-    const cellRun = new Uint8Array(cells);
-    const cap = Math.min(RAW, NG * cells);
-    const px = new Float32Array(cap),
-      py = new Float32Array(cap);
-    const pfS = new Float64Array(cap),
-      pgS = new Float64Array(cap);
-    const pGrp = new Uint8Array(cap),
-      pVis = new Float32Array(cap);
-    const pCell = new Int32Array(cap),
-      pBest = new Float32Array(cap);
-    const pFirst = new Int32Array(cap),
-      pLast = new Int32Array(cap);
-    const pIn = new Int32Array(cap),
-      pOut = new Int32Array(cap);
-    const pSample = new Int32Array(cap);
-    const maxE = Math.max(RAW, DS.parentIdx ? DS.parentIdx.length : 0);
-    const e = new Int32Array(maxE * 2),
-      ew = new Float32Array(maxE);
-    const sampleNode = new Int32Array(RAW);
-    const seen = new Map();
-    // Packing two node ids as a*1e7 + b would silently merge
-    // unrelated edges past ten million nodes. 2^25 per slot is exact in a
-    // double up to 2^28 nodes, so pooled runs cannot collide.
-    const KEY = 33554432;
-    const parentPtr = DS.parentPtr,
-      parentIdx = DS.parentIdx;
-    sampleNode.fill(-1);
-    let nc = 0,
-      ec = 0,
-      maxW = 1;
-
-    for (let g = 0; g < NG; g++) {
-      let prev = -1;
-      const base = gOff[g],
-        len = gLen[g],
-        cbase = g * cells,
-        runBit = 1 << gRun[g];
-      for (let s = 0; s < len; s++) {
-        const i = base + s;
-        let ix = 0,
-          iy = 0,
-          xy;
-        if (clustered) xy = DS.cluster[i];
-        else {
-          ix = ((rx[i] + 1) * 0.5 * N) | 0;
-          if (ix < 0) ix = 0;
-          else if (ix >= N) ix = N - 1;
-          iy = ((ry[i] + 1) * 0.5 * N) | 0;
-          if (iy < 0) iy = 0;
-          else if (iy >= N) iy = N - 1;
-          xy = iy * N + ix;
-        }
-        const cell = cbase + xy;
-        if (cellLast[xy] !== g) {
-          cellLast[xy] = g;
-          cellGrp[xy]++;
-          cellRun[xy] |= runBit;
-        }
-        let n = clustered ? (map.get(cell) ?? -1) : map[cell];
-        if (n === -1) {
-          n = nc++;
-          if (clustered) map.set(cell, n);
-          else map[cell] = n;
-          if (!clustered) {
-            px[n] = ((ix + 0.5) / N) * 2 - 1;
-            py[n] = ((iy + 0.5) / N) * 2 - 1;
-          }
-          pGrp[n] = g;
-          pCell[n] = xy;
-          pBest[n] = rf[i];
-          pFirst[n] = s;
-          pSample[n] = i;
-        }
-        pVis[n]++;
-        pfS[n] += rf[i];
-        pgS[n] += s;
-        if (clustered) {
-          pxS[n] += rx[i];
-          pyS[n] += ry[i];
-        }
-        if (rf[i] < pBest[n]) pBest[n] = rf[i];
-        pLast[n] = s;
-        sampleNode[i] = n;
-        // An edge is a transition INTO this cluster. With a lineage it comes
-        // from each parent's cluster; without one, from the previous sample.
-        const lineage = parentPtr !== undefined;
-        const nSrc = lineage ? parentPtr[i + 1] - parentPtr[i] : prev !== -1 ? 1 : 0;
-        for (let k = 0; k < nSrc; k++) {
-          const src = lineage ? sampleNode[parentIdx[parentPtr[i] + k]] : prev;
-          if (src < 0 || src === n) continue;
-          const key = src * KEY + n;
-          const idx = seen.get(key);
-          if (idx === undefined) {
-            seen.set(key, ec);
-            e[ec * 2] = src;
-            e[ec * 2 + 1] = n;
-            ew[ec] = 1;
-            ec++;
-            pOut[src]++;
-            pIn[n]++;
-          } else {
-            ew[idx]++;
-            if (ew[idx] > maxW) maxW = ew[idx];
-          }
-        }
-        prev = n;
-      }
-    }
-
-    const pf = new Float32Array(nc),
-      pg = new Float32Array(nc);
-    const pShared = new Float32Array(nc),
-      pRuns = new Uint8Array(nc);
-    const counted = new Uint8Array(cells);
-    let grpSum = 0,
-      occupied = 0;
-    const denom = Math.max(1, NG - 1);
-    for (let n = 0; n < nc; n++) {
-      pf[n] = pfS[n] / pVis[n];
-      pg[n] = pgS[n] / pVis[n];
-      if (clustered) {
-        px[n] = pxS[n] / pVis[n];
-        py[n] = pyS[n] / pVis[n];
-      }
-      const c = pCell[n];
-      pShared[n] = Math.min(1, (cellGrp[c] - 1) / denom);
-      let m = cellRun[c],
-        b = 0;
-      while (m) {
-        b += m & 1;
-        m >>= 1;
-      }
-      pRuns[n] = b;
-      if (!counted[c]) {
-        counted[c] = 1;
-        occupied++;
-        grpSum += cellGrp[c];
-      }
-    }
-
-    // migration events -> node pairs, deduplicated into routes
-    const routeKey = new Map(),
-      routes = [];
-    const mig = [];
-    for (let i = 0; i < migEvents.length; i++) {
-      const m = migEvents[i];
-      const k = m.sg * 1000 + m.dg;
-      let rid = routeKey.get(k);
-      if (rid === undefined) {
-        rid = routes.length;
-        routeKey.set(k, rid);
-        routes.push({ sg: m.sg, dg: m.dg, run: m.run, n: 0 });
-      }
-      routes[rid].n++;
-      mig.push({ a: sampleNode[m.a], b: sampleNode[m.b], sg: m.sg, dg: m.dg, run: m.run, route: rid });
-    }
-    const migNodes = new Set();
-    for (let i = 0; i < mig.length; i++) {
-      migNodes.add(mig[i].a);
-      migNodes.add(mig[i].b);
-    }
-
-    // best cluster per group, and per run
-    const bestOfGroup = new Int32Array(NG).fill(-1);
-    const bestOfRun = new Int32Array(DS.runs).fill(-1);
-    for (let n = 0; n < nc; n++) {
-      const g = pGrp[n],
-        r = gRun[g];
-      if (bestOfGroup[g] < 0 || pBest[n] < pBest[bestOfGroup[g]]) bestOfGroup[g] = n;
-      if (bestOfRun[r] < 0 || pBest[n] < pBest[bestOfRun[r]]) bestOfRun[r] = n;
-    }
-
-    G = {
-      nodeCount: nc,
-      edgeCount: ec,
-      px,
-      py,
-      pf,
-      pg,
-      pGrp,
-      pVis,
-      pShared,
-      pRuns,
-      pBest,
-      pFirst,
-      pLast,
-      pIn,
-      pOut,
-      pCell,
-      pSample,
-      migNodes,
-      routes,
-      e: e.subarray(0, ec * 2),
-      ew: ew.subarray(0, ec),
-      maxW,
-      mig,
-      bestOfGroup,
-      bestOfRun,
-      overlap: occupied ? grpSum / occupied : 0,
-    };
-    const full = 250000;
-    edgeGain = ec >= 200000 ? 1 : Math.min(12, Math.sqrt(full / Math.max(ec, 1)));
-    nodeGain = Math.min(4, edgeGain);
-  }
 
   /* ── colour ──────────────────────────────────────────────────── */
   function islandHue(i) {
     const M = DS.isl;
     return M <= 5 ? PAL5[i] : hsl(i / M, 0.62, 0.66);
   }
-  function groupColour(g) {
-    if (state.colourBy === 'run' && DS.runs > 1) return PAL5[gRun[g] % 5];
-    const M = DS.isl,
-      i = gIsl[g];
-    if (M <= 5) return PAL5[i];
-    return hsl(i / M, 0.62, 0.66);
-  }
-  const islLabel = (i) => (DS.islandIds ? DS.islandIds[i] : i);
+  const groupColour = (g) => islandHue(gIsl[g]);
+  const islLabel = (i) => DS.islandIds[i];
 
   /* ── GL programs ─────────────────────────────────────────────── */
   function sh(type, src, defs) {
@@ -886,18 +569,12 @@ export function mountStnViewer(root, cfg) {
     ['aZ2', 3, 48],
   ];
 
-  let offI = [],
-    offR = [];
+  let offI = [];
   function computeOffsets() {
     offI = [];
-    offR = [];
     for (let g = 0; g < NG; g++) {
       const ai = (gIsl[g] / DS.isl) * Math.PI * 2 - Math.PI / 2;
       offI.push([Math.cos(ai) * RING_I, Math.sin(ai) * RING_I]);
-      if (DS.runs > 1) {
-        const ar = (gRun[g] / DS.runs) * Math.PI * 2 - Math.PI / 2;
-        offR.push([Math.cos(ar) * RING_R, Math.sin(ar) * RING_R]);
-      } else offR.push([0, 0]);
     }
   }
 
@@ -919,11 +596,10 @@ export function mountStnViewer(root, cfg) {
       v[o + 1] = G.py[i];
       v[o + 2] = offI[g][0];
       v[o + 3] = offI[g][1];
-      v[o + 4] = offR[g][0];
-      v[o + 5] = offR[g][1];
-      v[o + 6] = (DS.backend ? (state.bestFitness && G.bestHeightAvailable ? G.bestPct[i] : G.pct[i]) : fitnessPct(G.pf[i])) * 1.8 - 0.9;
-      v[o + 7] = (DS.backend ? G.pg[i] : G.pg[i] / gLen[g]) * 1.8 - 0.9;
-      v[o + 8] = DS.backend ? G.pz[i] : (gIsl[g] - (DS.isl - 1) / 2) * PLANE_GAP;
+      // v[o + 4..5] is the shader's run offset (aOffR), always zero for one backend run.
+      v[o + 6] = (state.bestFitness && G.bestHeightAvailable ? G.bestPct[i] : G.pct[i]) * 1.8 - 0.9;
+      v[o + 7] = G.pg[i] * 1.8 - 0.9;
+      v[o + 8] = G.pz[i];
       v[o + 9] = g;
       v[o + 10] = 1.0 + Math.log2(1 + G.pVis[i]) * 0.85;
       v[o + 11] = G.pShared[i];
@@ -1063,15 +739,12 @@ export function mountStnViewer(root, cfg) {
 
   /* ── state + camera ──────────────────────────────────────────── */
   const state = {
-    ds: 0,
-    res: 2,
-    wt: 2,
+    wt: 1,
     ns: 100,
     zMode: 0,
     op: 180,
     dom: 140,
     exI: 0,
-    exR: 0,
     bestFitness: true,
     colourBy: 'island',
     grpOn: [],
@@ -1093,7 +766,6 @@ export function mountStnViewer(root, cfg) {
   const zMix = new Float32Array([1, 0, 0, 0, 0, 0]);
   let zTarget = new Float32Array([1, 0, 0, 0, 0, 0]);
   let exIShown = 0,
-    exRShown = 0,
     contestShown = 0,
     flatShown = 0,
     groupShown = 0,
@@ -1107,12 +779,10 @@ export function mountStnViewer(root, cfg) {
   function setRegionMode(on) {
     regionMode = on;
     root.classList.toggle('region-mode', on);
-    if (cfg.backend) {
-      $('select-region').textContent = on ? 'Drag a region…' : 'Select region';
-      $('select-region').setAttribute('aria-pressed', String(on));
-      canvas.classList.toggle('region-selecting', on);
-      if (!on) $('region-box').hidden = true;
-    }
+    $('select-region').textContent = on ? 'Drag a region…' : 'Select region';
+    $('select-region').setAttribute('aria-pressed', String(on));
+    canvas.classList.toggle('region-selecting', on);
+    if (!on) $('region-box').hidden = true;
   }
   function regionPoint(ev) {
     const r = canvas.getBoundingClientRect();
@@ -1138,23 +808,20 @@ export function mountStnViewer(root, cfg) {
     if (target) regionFlight = { from: { ...cam }, target, start: performance.now() };
     else $('select-region').textContent = 'No nodes — select again';
   }
-  if (cfg.backend)
-    $('select-region').addEventListener('click', () => {
-      stopBestTour();
-      flyNode = -1;
-      camGoal = null;
-      zoomTarget = 0;
-      regionFlight = null;
-      setRegionMode(!regionMode);
-    });
+  $('select-region').addEventListener('click', () => {
+    stopBestTour();
+    flyNode = -1;
+    camGoal = null;
+    zoomTarget = 0;
+    regionFlight = null;
+    setRegionMode(!regionMode);
+  });
   let bestTour = null;
   function stopBestTour() {
     bestTour = null;
     root.classList.remove('best-tour-running');
-    if (cfg.backend) {
-      $('tour-best').textContent = 'Tour best nodes';
-      $('tour-status').textContent = '';
-    }
+    $('tour-best').textContent = 'Tour best nodes';
+    $('tour-status').textContent = '';
   }
   function beginTourStop(now) {
     const stop = bestTour.stops[bestTour.index];
@@ -1190,18 +857,9 @@ export function mountStnViewer(root, cfg) {
       beginTourStop(now);
     }
   }
-  const placed = [];
-  let lastInteract = 0;
-
   const grpVisible = (g) => state.grpOn[g];
-  const runAnyOn = (r) => {
-    for (let g = 0; g < NG; g++) if (gRun[g] === r && state.grpOn[g]) return true;
-    return false;
-  };
-  function setRun(r, on) {
-    for (let g = 0; g < NG; g++) if (gRun[g] === r) state.grpOn[g] = on;
-  }
-  const noneOn = () => state.grpOn.every((v) => !v);
+  const anyIslandOn = () => state.grpOn.some(Boolean);
+  const noneOn = () => !anyIslandOn();
 
   function camBasis() {
     const cz = [Math.sin(cam.az) * Math.cos(cam.el), Math.sin(cam.el), Math.cos(cam.az) * Math.cos(cam.el)];
@@ -1254,7 +912,6 @@ export function mountStnViewer(root, cfg) {
     }
     canvas.classList.add('dragging');
     canvas.setPointerCapture(ev.pointerId);
-    lastInteract = performance.now();
   });
   let hoverAt = 0;
   function showHover(ev) {
@@ -1271,9 +928,8 @@ export function mountStnViewer(root, cfg) {
     tip.textContent =
       'Island ' +
       islLabel(gIsl[G.pGrp[i]]) +
-      ' · ' +
-      (DS.backend ? 'mean fitness ' : 'fitness ') +
-      (DS.backend ? (Number.isFinite(G.pf[i]) ? G.pf[i].toFixed(4) : 'unavailable') : ((DS.fitSign || 1) * G.pf[i]).toFixed(4)) +
+      ' · mean fitness ' +
+      (Number.isFinite(G.pf[i]) ? G.pf[i].toFixed(4) : 'unavailable') +
       ' · ' +
       G.pVis[i] +
       (G.pVis[i] === 1 ? ' visit' : ' visits');
@@ -1309,12 +965,10 @@ export function mountStnViewer(root, cfg) {
     }
     lx = ev.clientX;
     ly = ev.clientY;
-    lastInteract = performance.now();
   });
   const endDrag = () => {
     dragging = 0;
     canvas.classList.remove('dragging');
-    lastInteract = performance.now();
   };
   canvas.addEventListener('pointerup', (ev) => {
     if (dragging === 3) {
@@ -1414,7 +1068,6 @@ export function mountStnViewer(root, cfg) {
       const gain = ev.ctrlKey ? 0.012 : 0.0022;
       const base = zoomTarget > 0 ? zoomTarget : cam.dist;
       zoomTarget = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, base * Math.exp(dy * gain)));
-      lastInteract = performance.now();
     },
     { passive: false }
   );
@@ -1440,10 +1093,9 @@ export function mountStnViewer(root, cfg) {
       hsShown
     );
   }
-  function place(bx0, bz0, oix, oiz, orx, orz) {
-    const x1 = bx0 + (bx0 * SI + oix - bx0) * exIShown;
-    const z1 = bz0 + (bz0 * SI + oiz - bz0) * exIShown;
-    return [x1 + (x1 * SR + orx - x1) * exRShown, z1 + (z1 * SR + orz - z1) * exRShown];
+  // JS twin of the shader's placeXY, with its run term at zero.
+  function place(bx0, bz0, oix, oiz) {
+    return [bx0 + (bx0 * SI + oix - bx0) * exIShown, bz0 + (bz0 * SI + oiz - bz0) * exIShown];
   }
   function pickAt(sx, sy) {
     const v = nodeData,
@@ -1457,7 +1109,7 @@ export function mountStnViewer(root, cfg) {
     for (let i = 0; i < G.nodeCount; i++) {
       if (!grpVisible(G.pGrp[i])) continue;
       const o = i * NF;
-      const q = place(v[o], v[o + 1], v[o + 2], v[o + 3], v[o + 4], v[o + 5]);
+      const q = place(v[o], v[o + 1], v[o + 2], v[o + 3]);
       const gy = nodeY(v, o);
       const cw = VP[3] * q[0] + VP[7] * gy + VP[11] * q[1] + VP[15];
       if (cw <= 1e-6) continue;
@@ -1478,7 +1130,7 @@ export function mountStnViewer(root, cfg) {
   function worldOf(i) {
     const v = nodeData,
       o = i * NF;
-    const q = place(v[o], v[o + 1], v[o + 2], v[o + 3], v[o + 4], v[o + 5]);
+    const q = place(v[o], v[o + 1], v[o + 2], v[o + 3]);
     return [q[0], nodeY(v, o), q[1]];
   }
   // Fly the camera to a cluster and open it. The target is recomputed every
@@ -1495,13 +1147,12 @@ export function mountStnViewer(root, cfg) {
     select(node);
     flyNode = node;
     flyFrames = 0;
-    lastInteract = performance.now();
   }
   function project(i) {
     const v = nodeData,
       VP = lastVP,
       o = i * NF;
-    const q = place(v[o], v[o + 1], v[o + 2], v[o + 3], v[o + 4], v[o + 5]);
+    const q = place(v[o], v[o + 1], v[o + 2], v[o + 3]);
     const gy = nodeY(v, o);
     const cw = VP[3] * q[0] + VP[7] * gy + VP[11] * q[1] + VP[15];
     if (cw <= 1e-6) return null; // behind the camera
@@ -1543,33 +1194,13 @@ export function mountStnViewer(root, cfg) {
   }
 
   function buildSelectors() {
-    // runs
-    const runWrap = $('grp-runs'),
-      runBox = $('runs');
-    runWrap.hidden = DS.runs < 2;
-    runBox.innerHTML = '';
-    for (let r = 0; r < DS.runs; r++) {
-      runBox.appendChild(
-        chip('RUN ' + r, hex(PAL5[r % 5]), runAnyOn(r), (ev) => {
-          if (ev.shiftKey) for (let g = 0; g < NG; g++) state.grpOn[g] = gRun[g] === r;
-          else setRun(r, !runAnyOn(r));
-          if (noneOn()) setRun(r, true);
-          syncSelectors();
-        })
-      );
-    }
-    $('c-run').hidden = DS.runs < 2;
-    $('grp-exr').hidden = DS.runs < 2;
-
     // islands
     const islBox = $('islands');
     islBox.innerHTML = '';
     islBox.className = NG > 6 ? 'chips grid' : 'chips';
-    $('islands-h').textContent = DS.runs > 1 ? 'Groups · run · island' : 'Islands';
     for (let g = 0; g < NG; g++) {
-      const label = DS.runs > 1 ? gRun[g] + '·' + islLabel(gIsl[g]) : String(islLabel(gIsl[g]));
       islBox.appendChild(
-        chip(label, hex(islandHue(gIsl[g])), state.grpOn[g], (ev) => {
+        chip(String(islLabel(gIsl[g])), hex(islandHue(gIsl[g])), state.grpOn[g], (ev) => {
           if (ev.shiftKey) for (let j = 0; j < NG; j++) state.grpOn[j] = j === g;
           else state.grpOn[g] = !state.grpOn[g];
           if (noneOn()) state.grpOn[g] = true;
@@ -1582,7 +1213,7 @@ export function mountStnViewer(root, cfg) {
     const rBox = $('routes');
     rBox.innerHTML = '';
     G.routes.forEach((rt, k) => {
-      const label = (DS.runs > 1 ? 'r' + rt.run + ' ' : '') + islLabel(gIsl[rt.sg]) + '→' + islLabel(gIsl[rt.dg]);
+      const label = islLabel(gIsl[rt.sg]) + '→' + islLabel(gIsl[rt.dg]);
       rBox.appendChild(
         chip(label, hex(islandHue(gIsl[rt.sg])), state.routesOn[k], (ev) => {
           if (ev.shiftKey) {
@@ -1595,7 +1226,7 @@ export function mountStnViewer(root, cfg) {
     });
     $('routes-n').textContent = G.routes.length + ' routes';
 
-    // jump-to-best buttons: one per island, one per run
+    // jump-to-best buttons: one per island, one for the run
     const bBox = $('bests');
     bBox.innerHTML = '';
     bBox.className = NG > 6 ? 'chips grid' : 'chips';
@@ -1608,22 +1239,19 @@ export function mountStnViewer(root, cfg) {
       return b;
     };
     for (let g = 0; g < NG; g++) {
-      const label = DS.runs > 1 ? gRun[g] + '·' + islLabel(gIsl[g]) : String(islLabel(gIsl[g]));
-      bBox.appendChild(jumpBtn('ring2', label, 'Best cluster of island ' + islLabel(gIsl[g]), () => jumpTo(G.bestOfGroup[g], g)));
+      const label = String(islLabel(gIsl[g]));
+      bBox.appendChild(jumpBtn('ring2', label, 'Best cluster of island ' + label, () => jumpTo(G.bestOfGroup[g], g)));
     }
-    for (let r = 0; r < DS.runs; r++) {
-      bBox.appendChild(
-        jumpBtn('dia', DS.runs > 1 ? 'R' + r : 'BEST', 'Best cluster of run ' + r, () => {
-          const n = G.bestOfRun[r];
-          jumpTo(n, n >= 0 ? G.pGrp[n] : -1);
-        })
-      );
-    }
+    bBox.appendChild(
+      jumpBtn('dia', 'BEST', 'Best cluster of the run', () => {
+        const n = G.bestOfRun[0];
+        jumpTo(n, n >= 0 ? G.pGrp[n] : -1);
+      })
+    );
   }
 
   function syncSelectors() {
     $('mig-all').setAttribute('aria-pressed', String(state.routesOn.some(Boolean)));
-    Array.prototype.forEach.call($('runs').children, (b, r) => b.setAttribute('aria-pressed', String(runAnyOn(r))));
     Array.prototype.forEach.call($('islands').children, (b, g) => b.setAttribute('aria-pressed', String(!!state.grpOn[g])));
     Array.prototype.forEach.call($('routes').children, (b, k) => b.setAttribute('aria-pressed', String(!!state.routesOn[k])));
     updateLegend();
@@ -1639,8 +1267,6 @@ export function mountStnViewer(root, cfg) {
     };
     if (state.colourBy === 'fitness') {
       add('<i class="fit"></i>Best to worst fitness');
-    } else if (state.colourBy === 'run' && DS.runs > 1) {
-      for (let r = 0; r < DS.runs; r++) add('<i style="border-color:' + hex(PAL5[r % 5]) + '"></i>Run ' + r);
     } else if (DS.isl <= 6) {
       for (let i = 0; i < DS.isl; i++) add('<i style="border-color:' + hex(groupColour(i)) + '"></i>Island ' + islLabel(i));
     } else {
@@ -1664,21 +1290,19 @@ export function mountStnViewer(root, cfg) {
       const d = document.createElement('div');
       d.className = 'plabel';
       d.style.color = hex(groupColour(g));
-      d.textContent = (DS.runs > 1 ? 'RUN ' + gRun[g] + ' \u00b7 ' : '') + 'ISLAND ' + islLabel(gIsl[g]);
+      d.textContent = 'ISLAND ' + islLabel(gIsl[g]);
       d.hidden = true;
       labelBox.appendChild(d);
       labelEls.push(d);
     }
     markBox.innerHTML = '';
     markEls = [];
-    for (let r = 0; r < DS.runs; r++) {
-      const d = document.createElement('div');
-      d.className = 'bmark br';
-      d.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 1 L23 12 L12 23 L1 12 Z"/></svg>';
-      d.title = 'Run best';
-      markBox.appendChild(d);
-      markEls.push({ el: d, kind: 'run', r: r });
-    }
+    const runMark = document.createElement('div');
+    runMark.className = 'bmark br';
+    runMark.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 1 L23 12 L12 23 L1 12 Z"/></svg>';
+    runMark.title = 'Run best';
+    markBox.appendChild(runMark);
+    markEls.push({ el: runMark, kind: 'run' });
     for (let g = 0; g < NG; g++) {
       const d = document.createElement('div');
       d.className = 'bmark bi';
@@ -1686,32 +1310,23 @@ export function mountStnViewer(root, cfg) {
       markBox.appendChild(d);
       markEls.push({ el: d, kind: 'isl', g: g });
     }
-    if (cfg.backend)
-      for (const m of markEls) {
-        m.leader = document.createElement('div');
-        m.leader.className = 'best-leader';
-        m.leader.hidden = true;
-        m.label = document.createElement('button');
-        m.label.className = 'best-callout';
-        m.label.hidden = true;
-        m.label.textContent = m.kind === 'run' ? '◆ Run best' : '○ Island ' + islLabel(gIsl[m.g]) + ' best';
-        m.label.addEventListener('click', () => {
-          const node = m.kind === 'run' ? G.bestOfRun[m.r] : G.bestOfGroup[m.g];
-          jumpTo(node, node >= 0 ? G.pGrp[node] : -1);
-        });
-        markBox.append(m.leader, m.label);
-      }
+    for (const m of markEls) {
+      m.leader = document.createElement('div');
+      m.leader.className = 'best-leader';
+      m.leader.hidden = true;
+      m.label = document.createElement('button');
+      m.label.className = 'best-callout';
+      m.label.hidden = true;
+      m.label.textContent = m.kind === 'run' ? '◆ Run best' : '○ Island ' + islLabel(gIsl[m.g]) + ' best';
+      m.label.addEventListener('click', () => {
+        const node = m.kind === 'run' ? G.bestOfRun[0] : G.bestOfGroup[m.g];
+        jumpTo(node, node >= 0 ? G.pGrp[node] : -1);
+      });
+      markBox.append(m.leader, m.label);
+    }
   }
 
   /* inspector */
-  const sci = (v) => (Math.abs(v) >= 1e4 || (v !== 0 && Math.abs(v) < 1e-3) ? v.toExponential(3) : v.toFixed(4));
-  function clusterHash(cell, g) {
-    const a = (Math.imul(cell, 2654435761) ^ Math.imul(g + 1, 0x9e3779b1)) >>> 0;
-    const b = (Math.imul(cell, 40503) + Math.imul(g + 1, 2246822519)) >>> 0;
-    const c = (a ^ (b >>> 7)) >>> 0,
-      d = (b ^ (a >>> 11)) >>> 0;
-    return [a, b, c, d].map((x) => x.toString(16).padStart(8, '0')).join('');
-  }
   const row = (k, v) => '<div class="ins-row"><dt>' + k + '</dt><dd>' + v + '</dd></div>';
 
   function select(i) {
@@ -1726,57 +1341,23 @@ export function mountStnViewer(root, cfg) {
       box.innerHTML = '<p class="ins-empty">Select a node to inspect fitness, evaluation counts, genome hash and island membership.</p>';
       return;
     }
-    if (DS.backend) {
-      const node = G.nodes[i],
-        g = G.pGrp[i];
-      title.innerHTML = '<i style="background:' + hex(groupColour(g)) + '"></i>Island ' + esc(islLabel(gIsl[g])) + ' &middot; node ' + esc(node.id);
-      x.hidden = false;
-      const value = (v) => (v === null || v === undefined ? 'Unavailable' : esc(v));
-      box.innerHTML =
-        (node.overall_best ? row('best', 'RUN BEST') : node.island_best ? row('best', 'ISLAND BEST') : '') +
-        row('genome_hash', value(node.genome_hash)) +
-        row('mean fitness', value(node.mean_fitness)) +
-        row('best fitness', value(node.best_fitness)) +
-        row('mean fitness percentile', value(node.fitness_percentile)) +
-        row('visits', value(node.visits)) +
-        row('members', value(node.members)) +
-        row('eval index', value(node.first_eval) + ' &rarr; ' + value(node.last_eval)) +
-        row('degree', value(node.in_degree) + ' in / ' + value(node.out_degree) + ' out') +
-        row('islands here', value(node.islands_sharing) + ' of ' + DS.isl) +
-        row('migration', node.migration_endpoint ? 'endpoint of a migration' : 'not a migration endpoint');
-      return;
-    }
-    const g = G.pGrp[i],
-      isl = islLabel(gIsl[g]),
-      run = gRun[g];
-    const sign = DS.fitSign || 1; // display in the log's own orientation
-    title.innerHTML =
-      '<i style="background:' +
-      hex(groupColour(g)) +
-      '"></i>' +
-      (DS.runs > 1 ? 'Run ' + run + ' &middot; ' : '') +
-      'Island ' +
-      isl +
-      ' &middot; ' +
-      i;
+    const node = G.nodes[i],
+      g = G.pGrp[i];
+    title.innerHTML = '<i style="background:' + hex(groupColour(g)) + '"></i>Island ' + esc(islLabel(gIsl[g])) + ' &middot; node ' + esc(node.id);
     x.hidden = false;
-    const isIslBest = G.bestOfGroup[g] === i;
-    const isRunBest = G.bestOfRun[run] === i;
-    const badge = isRunBest ? '<span class="bdg run">RUN BEST</span>' : isIslBest ? '<span class="bdg isl">ISLAND BEST</span>' : '';
-    const hash = DS.hashes ? DS.hashes[G.pSample[i]] : clusterHash(G.pCell[i], g);
+    const value = (v) => (v === null || v === undefined ? 'Unavailable' : esc(v));
     box.innerHTML =
-      (badge ? '<div class="ins-row"><dt></dt><dd>' + badge + '</dd></div>' : '') +
-      row('genome_hash', '<span class="mut">' + esc(hash) + '</span>') +
-      row('genome_repr', '[' + G.px[i].toFixed(4) + ', ' + G.py[i].toFixed(4) + ']') +
-      row('fitness', sci(sign * G.pf[i]) + ' <span class="mut">mean</span>') +
-      row('best', sci(sign * G.pBest[i]) + ' <span class="mut">in cluster</span>') +
-      row('percentile', (fitnessPct(G.pf[i]) * 100).toFixed(1) + '% <span class="mut">of run &middot; lower is better</span>') +
-      row('evaluations', fmt(G.pVis[i]) + ' <span class="mut">landed here</span>') +
-      row('eval_index', fmt(G.pFirst[i]) + ' &rarr; ' + fmt(G.pLast[i])) +
-      row('degree', G.pIn[i] + ' in / ' + G.pOut[i] + ' out') +
-      row('groups here', Math.round(G.pShared[i] * (NG - 1)) + 1 + ' <span class="mut">of ' + NG + '</span>') +
-      (DS.runs > 1 ? row('runs here', G.pRuns[i] + ' <span class="mut">of ' + DS.runs + '</span>') : '') +
-      row('migration', G.migNodes.has(i) ? 'endpoint of a migration' : '<span class="mut">not a migration endpoint</span>');
+      (node.overall_best ? row('best', 'RUN BEST') : node.island_best ? row('best', 'ISLAND BEST') : '') +
+      row('genome_hash', value(node.genome_hash)) +
+      row('mean fitness', value(node.mean_fitness)) +
+      row('best fitness', value(node.best_fitness)) +
+      row('mean fitness percentile', value(node.fitness_percentile)) +
+      row('visits', value(node.visits)) +
+      row('members', value(node.members)) +
+      row('eval index', value(node.first_eval) + ' &rarr; ' + value(node.last_eval)) +
+      row('degree', value(node.in_degree) + ' in / ' + value(node.out_degree) + ' out') +
+      row('islands here', value(node.islands_sharing) + ' of ' + DS.isl) +
+      row('migration', node.migration_endpoint ? 'endpoint of a migration' : 'not a migration endpoint');
   }
   $('ins-x').addEventListener('click', () => select(-1));
 
@@ -1790,7 +1371,7 @@ export function mountStnViewer(root, cfg) {
     );
   }
   const HEIGHT_IDS = ['z-fit', 'z-time', 'z-isle', 'z-vis', 'z-deg', 'z-shr'];
-  const HEIGHT_NAMES = ['fitness', 'time', 'island plane', 'evaluations', 'links', 'islands sharing'];
+  const HEIGHT_NAMES = ['fitness', 'time', 'genome depth', 'evaluations', 'links', 'islands sharing'];
   // top label, bottom label: what sits high and what sits low
   const HEIGHT_AXIS = [
     ['WORSE', 'BETTER'],
@@ -1803,8 +1384,8 @@ export function mountStnViewer(root, cfg) {
   function syncHeight() {
     HEIGHT_IDS.forEach((id, j) => $(id).setAttribute('aria-pressed', String(!state.flat && j === state.zMode)));
     $('z-flat').setAttribute('aria-pressed', String(state.flat));
-    const bestHeight = DS?.backend && state.bestFitness && G.bestHeightAvailable;
-    if (DS?.backend) {
+    const bestHeight = G && state.bestFitness && G.bestHeightAvailable;
+    if (G) {
       $('z-fit').textContent = G.bestHeightAvailable ? 'BEST FITNESS' : 'BEST (PENDING)';
       $('z-fit').disabled = !G.bestHeightAvailable;
       $('z-fit').setAttribute('aria-pressed', String(!state.flat && state.zMode === 0 && bestHeight));
@@ -1812,7 +1393,7 @@ export function mountStnViewer(root, cfg) {
     }
     $('v-height').textContent = state.flat
       ? 'flat'
-      : state.zMode === 0 && DS?.backend
+      : state.zMode === 0 && G
         ? bestHeight
           ? 'best fitness'
           : 'mean fitness percentile'
@@ -1825,7 +1406,7 @@ export function mountStnViewer(root, cfg) {
     $(id).addEventListener('click', () => {
       state.zMode = i;
       state.flat = false;
-      if (i === 0 && DS?.backend) {
+      if (i === 0 && G) {
         state.bestFitness = true;
         buildGeometry();
       }
@@ -1834,31 +1415,27 @@ export function mountStnViewer(root, cfg) {
       syncHeight();
     })
   );
-  if (cfg.backend)
-    $('z-mean').addEventListener('click', () => {
-      state.bestFitness = false;
-      state.zMode = 0;
-      state.flat = false;
-      zTarget = new Float32Array([1, 0, 0, 0, 0, 0]);
-      buildGeometry();
-      syncHeight();
-    });
+  $('z-mean').addEventListener('click', () => {
+    state.bestFitness = false;
+    state.zMode = 0;
+    state.flat = false;
+    zTarget = new Float32Array([1, 0, 0, 0, 0, 0]);
+    buildGeometry();
+    syncHeight();
+  });
   $('z-flat').addEventListener('click', () => {
     state.flat = !state.flat;
     syncHeight();
   });
   segment(
-    ['c-isl', 'c-run', 'c-fit'],
-    () => ['island', 'run', 'fitness'].indexOf(state.colourBy),
+    ['c-isl', 'c-fit'],
+    () => ['island', 'fitness'].indexOf(state.colourBy),
     (i) => {
-      state.colourBy = ['island', 'run', 'fitness'][i];
+      state.colourBy = ['island', 'fitness'][i];
       buildSelectors();
       syncSelectors();
     }
   );
-  $('s-res').addEventListener('input', (e) => {
-    applyRes(+e.target.value);
-  });
   $('s-wt').addEventListener('input', (e) => {
     state.wt = +e.target.value;
     $('v-wt').textContent = GE + ' ' + state.wt + ' visits';
@@ -1884,10 +1461,6 @@ export function mountStnViewer(root, cfg) {
   $('s-hs').addEventListener('input', (e) => {
     state.hs = +e.target.value;
     $('v-hs').textContent = (state.hs / 100).toFixed(2);
-  });
-  $('s-exr').addEventListener('input', (e) => {
-    state.exR = +e.target.value;
-    $('v-exr').textContent = (state.exR / 100).toFixed(2);
   });
   const toggle = (id, key, after) =>
     $(id).addEventListener('click', () => {
@@ -1921,7 +1494,7 @@ export function mountStnViewer(root, cfg) {
     } else {
       state.exI = state.exIBefore;
       state.hs = state.hsBefore;
-      camGoal = { el: 0.3, dist: DS.runs > 1 ? 4.3 : 3.15 };
+      camGoal = { el: 0.3, dist: 3.15 };
     }
     $('s-exi').value = state.exI;
     $('v-exi').textContent = (state.exI / 100).toFixed(2);
@@ -1934,140 +1507,107 @@ export function mountStnViewer(root, cfg) {
     for (let i = 0; i < state.routesOn.length; i++) state.routesOn[i] = anyOff;
     syncSelectors();
   });
-  if (cfg.backend)
-    $('tour-best').addEventListener('click', () => {
-      regionFlight = null;
-      setRegionMode(false);
-      if (bestTour) {
-        stopBestTour();
-        return;
-      }
-      const stops = [];
-      const runNode = G.bestOfRun[0];
-      if (runNode >= 0 && runAnyOn(0)) stops.push({ id: G.nodes[runNode].id, kind: 'run', r: 0, label: 'Run best' });
-      for (let g = 0; g < NG; g++)
-        if (grpVisible(g) && G.bestOfGroup[g] >= 0) {
-          stops.push({ id: G.nodes[G.bestOfGroup[g]].id, kind: 'isl', g, label: 'Island ' + islLabel(gIsl[g]) + ' best' });
-        }
-      if (!stops.length) return;
-      camGoal = null;
-      flyNode = -1;
-      zoomTarget = 0;
-      const points = stops.map((stop) => worldOf(G.nodes.findIndex((n) => n.id === stop.id)));
-      const area = regionCameraTarget(points, canvas.clientWidth / canvas.clientHeight, cam);
-      stops.unshift({ bestArea: true, label: 'Best nodes overview' });
-      stops.push({ overview: true, label: 'Return to starting view' });
-      bestTour = { stops, index: 0, origin: { ...cam }, area };
-      root.classList.add('best-tour-running');
-      $('tour-best').textContent = 'Stop tour';
-      beginTourStop(performance.now());
-    });
-  if (cfg.backend)
-    $('reset-settings').addEventListener('click', () => {
-      regionFlight = null;
-      setRegionMode(false);
+  $('tour-best').addEventListener('click', () => {
+    regionFlight = null;
+    setRegionMode(false);
+    if (bestTour) {
       stopBestTour();
-      Object.assign(state, {
-        wt: 1,
-        ns: 100,
-        zMode: 0,
-        op: 180,
-        dom: 140,
-        exI: 0,
-        exR: 0,
-        bestFitness: true,
-        colourBy: 'island',
-        contest: false,
-        edges: true,
-        selMark: true,
-        bestIsl: true,
-        bestRun: true,
-        includeHiddenPaths: MIGRATION_VISIBILITY_DEFAULTS.includeHiddenPaths,
-        group: false,
-        exIBefore: 0,
-        flat: false,
-        hs: 100,
-        hsBefore: 100,
-        grpOn: new Array(NG).fill(true),
-        routesOn: G.routes.map(() => true),
-      });
-      // Stop a pending group/best camera animation without changing its current pose.
-      camGoal = null;
-      flyNode = -1;
-      zoomTarget = 0;
-      zTarget = new Float32Array([1, 0, 0, 0, 0, 0]);
-      for (const [id, key, label] of [
-        ['wt', 'wt', GE + ' 1 visit'],
-        ['ns', 'ns', '1.00'],
-        ['op', 'op', '1.80'],
-        ['dom', 'dom', '1.40'],
-        ['exi', 'exI', '0.00'],
-        ['exr', 'exR', '0.00'],
-        ['hs', 'hs', '1.00'],
-      ]) {
-        $('s-' + id).value = state[key];
-        $('v-' + id).textContent = label;
+      return;
+    }
+    const stops = [];
+    const runNode = G.bestOfRun[0];
+    if (runNode >= 0 && anyIslandOn()) stops.push({ id: G.nodes[runNode].id, kind: 'run', label: 'Run best' });
+    for (let g = 0; g < NG; g++)
+      if (grpVisible(g) && G.bestOfGroup[g] >= 0) {
+        stops.push({ id: G.nodes[G.bestOfGroup[g]].id, kind: 'isl', g, label: 'Island ' + islLabel(gIsl[g]) + ' best' });
       }
-      for (const [id, key] of [
-        ['b-group', 'group'],
-        ['contest', 'contest'],
-        ['t-edges', 'edges'],
-        ['b-sel', 'selMark'],
-        ['b-isl', 'bestIsl'],
-        ['b-run', 'bestRun'],
-        ['include-hidden-migrations', 'includeHiddenPaths'],
-      ]) {
-        $(id).setAttribute('aria-pressed', String(state[key]));
-      }
-      ['c-isl', 'c-run', 'c-fit'].forEach((id, i) => $(id).setAttribute('aria-pressed', String(i === 0)));
-      buildGeometry();
-      buildIndex();
-      buildSelectors();
-      syncSelectors();
-      syncHeight();
-      updateStats();
+    if (!stops.length) return;
+    camGoal = null;
+    flyNode = -1;
+    zoomTarget = 0;
+    const points = stops.map((stop) => worldOf(G.nodes.findIndex((n) => n.id === stop.id)));
+    const area = regionCameraTarget(points, canvas.clientWidth / canvas.clientHeight, cam);
+    stops.unshift({ bestArea: true, label: 'Best nodes overview' });
+    stops.push({ overview: true, label: 'Return to starting view' });
+    bestTour = { stops, index: 0, origin: { ...cam }, area };
+    root.classList.add('best-tour-running');
+    $('tour-best').textContent = 'Stop tour';
+    beginTourStop(performance.now());
+  });
+  $('reset-settings').addEventListener('click', () => {
+    regionFlight = null;
+    setRegionMode(false);
+    stopBestTour();
+    Object.assign(state, {
+      wt: 1,
+      ns: 100,
+      zMode: 0,
+      op: 180,
+      dom: 140,
+      exI: 0,
+      bestFitness: true,
+      colourBy: 'island',
+      contest: false,
+      edges: true,
+      selMark: true,
+      bestIsl: true,
+      bestRun: true,
+      includeHiddenPaths: MIGRATION_VISIBILITY_DEFAULTS.includeHiddenPaths,
+      group: false,
+      exIBefore: 0,
+      flat: false,
+      hs: 100,
+      hsBefore: 100,
+      grpOn: new Array(NG).fill(true),
+      routesOn: G.routes.map(() => true),
     });
+    // Stop a pending group/best camera animation without changing its current pose.
+    camGoal = null;
+    flyNode = -1;
+    zoomTarget = 0;
+    zTarget = new Float32Array([1, 0, 0, 0, 0, 0]);
+    for (const [id, key, label] of [
+      ['wt', 'wt', GE + ' 1 visit'],
+      ['ns', 'ns', '1.00'],
+      ['op', 'op', '1.80'],
+      ['dom', 'dom', '1.40'],
+      ['exi', 'exI', '0.00'],
+      ['hs', 'hs', '1.00'],
+    ]) {
+      $('s-' + id).value = state[key];
+      $('v-' + id).textContent = label;
+    }
+    for (const [id, key] of [
+      ['b-group', 'group'],
+      ['contest', 'contest'],
+      ['t-edges', 'edges'],
+      ['b-sel', 'selMark'],
+      ['b-isl', 'bestIsl'],
+      ['b-run', 'bestRun'],
+      ['include-hidden-migrations', 'includeHiddenPaths'],
+    ]) {
+      $(id).setAttribute('aria-pressed', String(state[key]));
+    }
+    ['c-isl', 'c-fit'].forEach((id, i) => $(id).setAttribute('aria-pressed', String(i === 0)));
+    buildGeometry();
+    buildIndex();
+    buildSelectors();
+    syncSelectors();
+    syncHeight();
+    updateStats();
+  });
   $('reset').addEventListener('click', () => {
     regionFlight = null;
     setRegionMode(false);
     stopBestTour();
-    cam.az = DS.runs > 1 ? 1.14 : 0.62;
+    cam.az = 0.62;
     cam.el = 0.3;
-    cam.dist = DS.runs > 1 ? 4.3 : 3.15;
+    cam.dist = 3.15;
     cam.tx = cam.ty = cam.tz = 0;
     zoomTarget = 0;
     camGoal = null;
     flyNode = -1;
   });
-
-  let rebuildTimer = null;
-  function applyRes(res) {
-    state.res = res;
-    $('s-res').value = res;
-    $('v-res').textContent = GRID_NAMES[res];
-    clearTimeout(rebuildTimer);
-    note.textContent = 'RE-CLUSTERING…';
-    note.style.display = 'grid';
-    rebuildTimer = setTimeout(() => {
-      aggregate(state.res);
-      const mx = Math.max(4, Math.min(24, Math.round(G.maxW * 0.25)));
-      $('s-wt').max = mx;
-      if (state.wt > mx) {
-        state.wt = mx;
-        $('s-wt').value = mx;
-        $('v-wt').textContent = GE + ' ' + mx + ' visits';
-      }
-      // routes depend on topology, not granularity, so a rebuild keeps them
-      if (state.routesOn.length !== G.routes.length) state.routesOn = G.routes.map(() => true);
-      buildGeometry();
-      buildIndex();
-      buildSelectors();
-      syncSelectors();
-      updateStats();
-      select(-1);
-      note.style.display = 'none';
-    }, 30);
-  }
 
   function updateStats() {
     $('k-nodes').textContent = fmt(G.nodeCount);
@@ -2075,85 +1615,20 @@ export function mountStnViewer(root, cfg) {
     const pct = G.edgeCount && state.edges ? (drawnEdges / G.edgeCount) * 100 : 0;
     $('k-pct').innerHTML = pct.toFixed(0) + '<small> %</small>';
     $('k-share').innerHTML = G.overlap.toFixed(2) + '<small> of ' + NG + '</small>';
-    $('k-mig').textContent = fmt(DS.backend ? G.mig.reduce((sum, m) => sum + m.count, 0) : G.mig.length);
-    $('meta-run').textContent = DS.title || '';
-    const lv = $('meta-level');
-    lv.textContent = DS.levelNote || '';
-    lv.className = 'lvl' + (DS.levelWarn ? ' warn' : '');
-    $('meta-edges').textContent = fmt(G.edgeCount) + ' unique transitions';
-    $('meta-shape').innerHTML =
-      DS.runs > 1
-        ? DS.runs + ' runs &times; ' + DS.isl + ' islands'
-        : DS.isl +
-          ' islands' +
-          (DS.shapeNote ? ' &middot; ' + esc(DS.shapeNote) : '') +
-          (DS.cluster ? ' &middot; ' + fmt(G.nodeCount) + ' clusters' : '');
-  }
-
-  function loadDataset(i) {
-    state.ds = i;
-    note.textContent = 'LOADING …';
-    note.style.display = 'grid';
-    setTimeout(() => {
-      if (!alive) return;
-      const entry = entries[i];
-      if (!entry._data) entry._data = entry.load ? entry.load() : entry;
-      adopt(entry._data);
-      state.grpOn = new Array(NG).fill(true);
-      // Multi-run opens with runs pulled apart and hue on run: three legible
-      // clouds whose overlap you can then collapse. Single-run opens merged.
-      const multi = DS.runs > 1;
-      state.colourBy = multi ? 'run' : 'island';
-      state.exR = multi ? 100 : 0;
-      state.exI = 0;
-      cam.az = multi ? 1.14 : 0.62;
-      cam.el = 0.3;
-      cam.tx = cam.ty = cam.tz = 0;
-      cam.dist = multi ? 4.3 : 3.15;
-      $('s-exr').defaultValue = state.exR;
-      $('s-exr').value = state.exR;
-      $('v-exr').textContent = (state.exR / 100).toFixed(2);
-      $('s-exi').value = 0;
-      $('v-exi').textContent = '0.00';
-      $('c-isl').setAttribute('aria-pressed', String(!multi));
-      $('c-run').setAttribute('aria-pressed', String(multi));
-      $('c-fit').setAttribute('aria-pressed', 'false');
-      $('cap').innerHTML = CAP;
-      computeOffsets();
-      aggregate(state.res);
-      state.routesOn = G.routes.map(() => true);
-      $('s-wt').max = Math.max(4, Math.min(24, Math.round(G.maxW * 0.25)));
-      state.wt = 2;
-      $('s-wt').value = 2;
-      $('v-wt').textContent = GE + ' 2 visits';
-      buildGeometry();
-      buildIndex();
-      buildSelectors();
-      syncSelectors();
-      buildMarks();
-      $('grp-agg').hidden = !!DS.cluster;
-      syncHeight();
-      updateStats();
-      select(-1);
-      note.style.display = 'none';
-      startLoop();
-    }, 30);
+    $('k-mig').textContent = fmt(G.mig.reduce((sum, m) => sum + m.count, 0));
   }
 
   // Backend runs arrive as finished graphs or a sequence of SSE deltas. Rebuild
   // GPU buffers in place; retain camera, filters and selection across updates.
-  function setBackendGraph(graph, runId = '', options = {}) {
+  function setBackendGraph(graph, options = {}) {
     if (!alive || !graph?.nodes?.size) return;
-    const oldGroups = DS?.backend ? new Map(DS.islandIds.map((id, i) => [id, state.grpOn[i]])) : new Map();
-    const oldRoutes = DS?.backend
-      ? new Map(G.routes.map((route, i) => [`${DS.islandIds[route.sg]}:${DS.islandIds[route.dg]}`, state.routesOn[i]]))
-      : new Map();
-    const selectedId = DS?.backend && selected >= 0 ? G.nodes[selected]?.id : null;
-    const previousNodes = DS?.backend ? G.nodes : [];
+    const oldGroups = G ? new Map(DS.islandIds.map((id, i) => [id, state.grpOn[i]])) : new Map();
+    const oldRoutes = G ? new Map(G.routes.map((route, i) => [`${DS.islandIds[route.sg]}:${DS.islandIds[route.dg]}`, state.routesOn[i]])) : new Map();
+    const selectedId = G && selected >= 0 ? G.nodes[selected]?.id : null;
+    const previousNodes = G ? G.nodes : [];
     const previousFly = flyNode,
       previousZoom = zoomNode;
-    const first = !DS?.backend;
-    const adapted = backendViewerGraph(graph, runId, options);
+    const adapted = backendViewerGraph(graph, options);
     if (previousFly >= 0) {
       flyNode = remapBackendAnchor(previousNodes, adapted.idIndex, previousFly);
       if (flyNode < 0) flyFrames = 0;
@@ -2166,24 +1641,12 @@ export function mountStnViewer(root, cfg) {
     DS = adapted.DS;
     G = adapted.G;
     NG = DS.isl;
-    gRun = DS.gRun;
     gIsl = DS.gIsl;
     state.grpOn = DS.islandIds.map((id) => oldGroups.get(id) ?? true);
     state.routesOn = G.routes.map((route) => oldRoutes.get(`${DS.islandIds[route.sg]}:${DS.islandIds[route.dg]}`) ?? true);
     edgeGain = G.edgeCount >= 200000 ? 1 : Math.min(12, Math.sqrt(250000 / Math.max(G.edgeCount, 1)));
     nodeGain = Math.min(4, edgeGain);
-    $('grp-agg').hidden = true;
-    $('z-isle').textContent = 'GENOME';
-    HEIGHT_NAMES[2] = 'genome depth';
     $('s-wt').max = Math.max(4, Math.min(24, Math.round(G.maxW * 0.25)));
-    if (first) {
-      state.wt = 1;
-      $('s-wt').value = 1;
-      $('s-wt').defaultValue = 1;
-      $('v-wt').textContent = GE + ' 1 visit';
-      $('cap').textContent = 'Backend-derived evaluation clusters, trajectory edges, migration routes and genome-space positions.';
-      $('ins-body').innerHTML = '<p class="ins-empty">Select a cluster to inspect fitness, visits, members and genome hash.</p>';
-    }
     computeOffsets();
     buildGeometry();
     buildIndex();
@@ -2245,7 +1708,6 @@ export function mountStnViewer(root, cfg) {
 
     for (let i = 0; i < 6; i++) zMix[i] += (zTarget[i] - zMix[i]) * 0.08;
     exIShown += (state.exI / 100 - exIShown) * 0.1;
-    exRShown += (state.exR / 100 - exRShown) * 0.1;
     contestShown += ((state.contest ? 1 : 0) - contestShown) * 0.12;
     flatShown += ((state.flat ? 1 : 0) - flatShown) * 0.08;
     groupShown += ((state.group ? 1 : 0) - groupShown) * 0.08;
@@ -2323,7 +1785,7 @@ export function mountStnViewer(root, cfg) {
       gl.uniform1f(P.u.uFogN, fogN);
       gl.uniform1f(P.u.uFogF, fogF);
       gl.uniform1f(P.u.uExI, exIShown);
-      gl.uniform1f(P.u.uExR, exRShown);
+      gl.uniform1f(P.u.uExR, 0);
       gl.uniform1f(P.u.uContest, contest);
       gl.uniform1f(P.u.uFlat, flatShown);
       gl.uniform1f(P.u.uHS, hsShown);
@@ -2359,7 +1821,7 @@ export function mountStnViewer(root, cfg) {
       gl.uniform3fv(pArc.u.uRSrc, routeSrc);
       gl.uniform3fv(pArc.u.uRDst, routeDst);
       gl.uniform1f(pArc.u.uExI, exIShown);
-      gl.uniform1f(pArc.u.uExR, exRShown);
+      gl.uniform1f(pArc.u.uExR, 0);
       gl.uniform1f(pArc.u.uAspect, W / H);
       gl.uniform1f(pArc.u.uHalfW, ((0.85 + 0.9 * groupShown) * dpr()) / H);
       gl.bindVertexArray(vaoArcs);
@@ -2391,19 +1853,15 @@ export function mountStnViewer(root, cfg) {
       mk.style.transform = 'translate(' + selPos[0].toFixed(1) + 'px,' + selPos[1].toFixed(1) + 'px)';
     } else mk.hidden = true;
 
-    placed.length = 0;
     const labelBoxes = [];
     const labelBounds = { x: canvas.offsetLeft, y: canvas.offsetTop, width: canvas.clientWidth, height: canvas.clientHeight };
-    if (selPos) placed.push(selPos[0], selPos[1]);
     for (let i = 0; i < markEls.length; i++) {
       const m = markEls[i];
-      const on = m.kind === 'isl' ? state.bestIsl && grpVisible(m.g) : state.bestRun && runAnyOn(m.r);
-      const node = m.kind === 'isl' ? G.bestOfGroup[m.g] : G.bestOfRun[m.r];
-      if (m.label) {
-        m.label.hidden = true;
-        m.leader.hidden = true;
-      }
-      if (!on || node < 0 || !nodeData || (!cfg.backend && state.selMark && node === selected)) {
+      const on = m.kind === 'isl' ? state.bestIsl && grpVisible(m.g) : state.bestRun && anyIslandOn();
+      const node = m.kind === 'isl' ? G.bestOfGroup[m.g] : G.bestOfRun[0];
+      m.label.hidden = true;
+      m.leader.hidden = true;
+      if (!on || node < 0 || !nodeData) {
         m.el.hidden = true;
         continue;
       }
@@ -2412,44 +1870,28 @@ export function mountStnViewer(root, cfg) {
         m.el.hidden = true;
         continue;
       }
-      if (m.label) {
-        const stop = bestTour?.stops[bestTour.index];
-        const active = stop && stop.kind === m.kind && (m.kind === 'run' ? stop.r === m.r : stop.g === m.g);
-        if (!active) {
-          m.el.hidden = false;
-          m.el.style.transform = 'translate(' + s[0] + 'px,' + s[1] + 'px)';
-          continue;
-        }
-        const box = placeBestLabel(s, labelBounds, labelBoxes);
-        labelBoxes.push(box);
-        m.label.hidden = false;
-        m.leader.hidden = false;
+      const stop = bestTour?.stops[bestTour.index];
+      const active = stop && stop.kind === m.kind && (m.kind === 'run' || stop.g === m.g);
+      if (!active) {
         m.el.hidden = false;
-        m.label.style.left = box.x + 'px';
-        m.label.style.top = box.y + 'px';
-        m.label.style.width = box.width + 'px';
-        const endX = Math.max(box.x, Math.min(s[0], box.x + box.width));
-        const endY = Math.max(box.y, Math.min(s[1], box.y + box.height));
-        const dx = endX - s[0],
-          dy = endY - s[1];
-        m.leader.style.transform = 'translate(' + s[0] + 'px,' + s[1] + 'px) rotate(' + Math.atan2(dy, dx) + 'rad)';
-        m.leader.style.width = Math.hypot(dx, dy) + 'px';
         m.el.style.transform = 'translate(' + s[0] + 'px,' + s[1] + 'px)';
         continue;
       }
-      let clash = false;
-      for (let k = 0; k < placed.length; k += 2)
-        if (Math.abs(placed[k] - s[0]) < 9 && Math.abs(placed[k + 1] - s[1]) < 9) {
-          clash = true;
-          break;
-        }
-      if (clash) {
-        m.el.hidden = true;
-        continue;
-      }
-      placed.push(s[0], s[1]);
+      const box = placeBestLabel(s, labelBounds, labelBoxes);
+      labelBoxes.push(box);
+      m.label.hidden = false;
+      m.leader.hidden = false;
       m.el.hidden = false;
-      m.el.style.transform = 'translate(' + s[0].toFixed(1) + 'px,' + s[1].toFixed(1) + 'px)';
+      m.label.style.left = box.x + 'px';
+      m.label.style.top = box.y + 'px';
+      m.label.style.width = box.width + 'px';
+      const endX = Math.max(box.x, Math.min(s[0], box.x + box.width));
+      const endY = Math.max(box.y, Math.min(s[1], box.y + box.height));
+      const dx = endX - s[0],
+        dy = endY - s[1];
+      m.leader.style.transform = 'translate(' + s[0] + 'px,' + s[1] + 'px) rotate(' + Math.atan2(dy, dx) + 'rad)';
+      m.leader.style.width = Math.hypot(dx, dy) + 'px';
+      m.el.style.transform = 'translate(' + s[0] + 'px,' + s[1] + 'px)';
     }
 
     $('axis').style.opacity = String((1 - zMix[2]) * (1 - flatShown));
@@ -2461,7 +1903,7 @@ export function mountStnViewer(root, cfg) {
         el.hidden = true;
         continue;
       }
-      const q = place(0, 0, offI[g][0], offI[g][1], offR[g][0], offR[g][1]);
+      const q = place(0, 0, offI[g][0], offI[g][1]);
       const ol = Math.hypot(offI[g][0], offI[g][1]) || 1;
       const s = projectWorld(q[0] + (offI[g][0] / ol) * 0.5, 0, q[1] + (offI[g][1] / ol) * 0.5);
       if (!s) {
@@ -2492,10 +1934,8 @@ export function mountStnViewer(root, cfg) {
   }
 
   window.addEventListener('resize', resize);
-  if (!cfg.backend) setTimeout(() => loadDataset(cfg.start || 0), 40);
 
   return {
-    loadDataset,
     setBackendGraph,
     destroy() {
       alive = false;

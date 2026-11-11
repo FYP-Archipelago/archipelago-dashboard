@@ -22,7 +22,7 @@ export default function GraphViewer({ graph, runId, canReplay = false, maximisin
     setProgress(1);
     setSlotReady(false);
     if (!host.current || !hasNodes) return;
-    viewer.current = mountViewer(host.current, { backend: true });
+    viewer.current = mountViewer(host.current);
     const foot = host.current.querySelector('.rail-foot');
     if (foot) {
       replaySlot.current ??= document.createElement('div');
@@ -36,7 +36,7 @@ export default function GraphViewer({ graph, runId, canReplay = false, maximisin
     };
   }, [runId, hasNodes, mountViewer]);
   useEffect(() => {
-    viewer.current?.setBackendGraph(shown, runId, { maximising });
+    viewer.current?.setBackendGraph(shown, { maximising });
   }, [shown, runId, maximising]);
   useEffect(() => {
     if (!playing || !replay) return;

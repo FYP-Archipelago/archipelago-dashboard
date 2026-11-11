@@ -63,7 +63,7 @@ test('backend graph keeps stable IDs, island labels, best markers and migration 
     migrations: new Map([[2, { id: 2, source: 13, target: 72, count: 9 }]]),
     overlap: 1.5,
   };
-  const { G, DS, idIndex } = backendViewerGraph(graph, 'run-abc');
+  const { G, DS, idIndex } = backendViewerGraph(graph);
   assert.deepEqual(DS.islandIds, [2, 5]);
   assert.equal(idIndex.get(72), 1);
   assert.deepEqual([...G.e], [0, 1]);
@@ -71,7 +71,6 @@ test('backend graph keeps stable IDs, island labels, best markers and migration 
   assert.ok(Math.abs(G.pct[1] - 0.25) < 1e-6);
   assert.deepEqual([...G.bestOfGroup], [0, 1]);
   assert.equal(G.bestOfRun[0], 1);
-  assert.equal(G.routes[0].n, 9);
   assert.equal(G.mig[0].count, 9);
   assert.equal(G.nodes[1].genome_hash, 'h72');
 });
@@ -88,7 +87,7 @@ test('best fitness height agrees with run best despite worse cluster mean, and p
       [1493, { id: 1493, island: 4, best_fitness: best, mean_fitness: 188.7754364814985, fitness_percentile: 0.572, island_best: true }],
       [1500, { id: 1500, island: 4, best_fitness: worse, mean_fitness: worse, fitness_percentile: 0.1 }],
     ]);
-    const { G } = backendViewerGraph({ nodes, edges: new Map(), migrations: new Map() }, '', { maximising });
+    const { G } = backendViewerGraph({ nodes, edges: new Map(), migrations: new Map() }, { maximising });
     assert.equal(G.bestHeightAvailable, true);
     assert.deepEqual([...G.bestPct], [0, 0, 1]);
     assert.ok(G.pct[0] > G.pct[2], 'Mean ordering remains available independently');
@@ -108,5 +107,5 @@ test('best height requires an explicit objective and handles equal or missing fi
     migrations: new Map(),
   };
   assert.equal(backendViewerGraph(graph).G.bestHeightAvailable, false);
-  assert.deepEqual([...backendViewerGraph(graph, '', { maximising: false }).G.bestPct], [0, 0, 0.5]);
+  assert.deepEqual([...backendViewerGraph(graph, { maximising: false }).G.bestPct], [0, 0, 0.5]);
 });

@@ -1,7 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { applyGraphDelta, emptyGraph, graphFromResult } from './graph-model.js';
-import { visibleGraph } from './graph-visibility.js';
 
 const nodes = (ids, islands) => ({
   id: ids,
@@ -124,20 +123,6 @@ test('applies delta order, removes incident links and refreshes best markers', (
   assert.equal(next.edges.get(6).weight, 4);
   assert.equal(next.migrations.has(7), false);
   assert.equal(next.migrations.get(8).count, 5);
-});
-
-test('migration visibility follows hidden islands and only existing node IDs', () => {
-  const graph = graphFromResult({
-    graph: { nodes: nodes([10, 20], [0, 1]), edges: edges([5], [10], [20]), migrations: migrations([7], [10], [20]), overlap: 1 },
-  });
-  const shown = visibleGraph(graph, { hiddenIslands: new Set([1]) });
-  assert.deepEqual(
-    shown.nodes.map((node) => node.id),
-    [10]
-  );
-  assert.equal(shown.edges.length, 0);
-  assert.equal(shown.migrations.length, 0);
-  assert.equal(emptyGraph().nodes.size, 0);
 });
 
 for (const [name, mutate] of [

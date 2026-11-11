@@ -5,7 +5,7 @@ export function remapBackendAnchor(previousNodes, nextIndex, offset) {
   return id === undefined ? -1 : (nextIndex.get(id) ?? -1);
 }
 
-export function backendViewerGraph(graph, runId = '', { maximising } = {}) {
+export function backendViewerGraph(graph, { maximising } = {}) {
   const nodes = [...graph.nodes.values()].sort((a, b) => a.id - b.id);
   const islandIds = [...new Set(nodes.map((node) => node.island))].sort((a, b) => a - b);
   const groups = new Map(islandIds.map((id, index) => [id, index]));
@@ -32,9 +32,6 @@ export function backendViewerGraph(graph, runId = '', { maximising } = {}) {
   const pGrp = new Uint8Array(n),
     pVis = new Float32Array(n),
     pShared = new Float32Array(n);
-  const pBest = new Float32Array(n),
-    pFirst = new Int32Array(n),
-    pLast = new Int32Array(n);
   const pIn = new Int32Array(n),
     pOut = new Int32Array(n);
   const bestOfGroup = new Int32Array(ng).fill(-1),
@@ -59,9 +56,6 @@ export function backendViewerGraph(graph, runId = '', { maximising } = {}) {
     pGrp[i] = g;
     pVis[i] = node.visits || 0;
     pShared[i] = ng > 1 ? Math.max(0, (node.islands_sharing - 1) / (ng - 1)) : 0;
-    pBest[i] = node.best_fitness ?? NaN;
-    pFirst[i] = node.first_eval || 0;
-    pLast[i] = node.last_eval || 0;
     pIn[i] = node.in_degree || 0;
     pOut[i] = node.out_degree || 0;
     if (node.island_best) bestOfGroup[g] = i;
@@ -79,8 +73,7 @@ export function backendViewerGraph(graph, runId = '', { maximising } = {}) {
   });
   const routes = [],
     routeIndex = new Map(),
-    mig = [],
-    migNodes = new Set();
+    mig = [];
   for (const migration of graph.migrations.values()) {
     const a = idIndex.get(migration.source),
       b = idIndex.get(migration.target);
@@ -90,14 +83,9 @@ export function backendViewerGraph(graph, runId = '', { maximising } = {}) {
       key = `${sg}:${dg}`;
     if (!routeIndex.has(key)) {
       routeIndex.set(key, routes.length);
-      routes.push({ sg, dg, run: 0, n: 0 });
+      routes.push({ sg, dg });
     }
-    const route = routeIndex.get(key),
-      count = migration.count || 0;
-    routes[route].n += count;
-    mig.push({ a, b, sg, dg, run: 0, route, count });
-    migNodes.add(a);
-    migNodes.add(b);
+    mig.push({ a, b, sg, dg, route: routeIndex.get(key), count: migration.count || 0 });
   }
   const G = {
     nodeCount: n,
@@ -111,18 +99,14 @@ export function backendViewerGraph(graph, runId = '', { maximising } = {}) {
     pGrp,
     pVis,
     pShared,
-    pBest,
     bestPct,
     bestHeightAvailable,
-    pFirst,
-    pLast,
     pIn,
     pOut,
     e,
     ew,
     maxW,
     mig,
-    migNodes,
     routes,
     bestOfGroup,
     bestOfRun,
@@ -130,15 +114,9 @@ export function backendViewerGraph(graph, runId = '', { maximising } = {}) {
     nodes,
   };
   const DS = {
-    title: runId,
-    runs: 1,
     isl: ng,
     islandIds,
-    gRun: new Uint8Array(ng),
     gIsl: Uint8Array.from(islandIds.map((_, i) => i)),
-    shapeNote: 'backend clusters',
-    cluster: true,
-    backend: true,
   };
   return { G, DS, idIndex };
 }

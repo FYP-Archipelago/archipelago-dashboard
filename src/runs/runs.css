@@ -65,9 +65,6 @@
 .runs-page [aria-invalid='true'] {
   border-color: var(--best);
 }
-.backend-run-id {
-  overflow-wrap: anywhere;
-}
 .backend-run-workspace {
   padding: 18px;
   max-width: 900px;

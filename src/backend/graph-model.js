@@ -46,7 +46,7 @@ function rows(table, fields, { nodeWeight = false, weightChanges = false } = {})
   });
 }
 
-export const NODE_FIELDS = [
+const NODE_FIELDS = [
   'island',
   'x',
   'y',

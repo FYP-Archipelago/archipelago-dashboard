@@ -72,15 +72,6 @@ nav {
   flex-direction: column;
   gap: 2px;
 }
-.nav-heading {
-  margin: 12px 10px 5px;
-  color: var(--faint);
-  font:
-    500 10px 'IBM Plex Mono',
-    monospace;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-}
 nav button {
   display: grid;
   grid-template-columns: 18px 1fr;
@@ -115,22 +106,6 @@ nav button.active {
 }
 nav button.active svg {
   color: var(--accent);
-}
-.runctx {
-  margin-top: auto;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  padding-top: 14px;
-  border-top: 1px solid var(--line);
-}
-.runctx label {
-  font-size: 11px;
-  font-weight: 500;
-  color: var(--faint);
-}
-.runctx select {
-  font-size: 12.5px;
 }
 .run-facts {
   margin: 0;
@@ -167,21 +142,6 @@ footer {
   font-size: 12px;
 }
 
-/* Archipelago fills the window, so the graph and its controls are visible together. */
-.on-archipelago main {
-  height: 100vh;
-  overflow: hidden;
-  padding-bottom: 12px;
-}
-.on-archipelago .page {
-  flex: 1;
-  min-height: 0;
-  max-width: none;
-}
-.on-archipelago footer {
-  display: none;
-}
-
 /* Page heading: name, then the one question this page answers. */
 .page-head {
   display: grid;
@@ -189,9 +149,6 @@ footer {
   align-items: baseline;
   column-gap: 18px;
   padding-bottom: 10px;
-}
-.page-head .eyebrow {
-  display: none;
 }
 .page-head h1 {
   margin: 0;
@@ -239,15 +196,6 @@ details.reading {
 }
 .reading .deck p {
   margin: 0 0 8px;
-}
-.eyebrow {
-  margin: 0;
-  color: var(--accent);
-  font:
-    500 10.5px 'IBM Plex Mono',
-    monospace;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
 }
 .caption {
   max-width: 80ch;
@@ -322,31 +270,6 @@ select {
 .primary:hover {
   filter: brightness(1.08);
 }
-.tabs {
-  display: flex;
-  border-bottom: 1px solid var(--line);
-}
-.tabs button {
-  padding: 9px 13px;
-  border: 0;
-  border-bottom: 2px solid transparent;
-  background: none;
-  color: var(--soft);
-}
-.tabs button.active {
-  border-bottom-color: var(--accent);
-  color: var(--ink);
-}
-.tab-body {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 13px;
-  padding: 17px 0;
-}
-.tab-body label {
-  width: 100%;
-}
 .stage-row {
   display: flex;
   gap: 24px;
@@ -375,12 +298,6 @@ select {
 }
 .status-dot.online {
   background: var(--accent);
-}
-.result-picker {
-  margin-bottom: 10px;
-}
-.result-picker select {
-  max-width: 580px;
 }
 
 /* Content */
@@ -414,33 +331,10 @@ hr {
 .metric:last-child {
   border-right: 0;
 }
-.metric-label {
-  color: var(--faint);
-  font-size: 12px;
-}
-.metric-value {
-  margin-top: 3px;
-  font:
-    500 21px 'IBM Plex Mono',
-    monospace;
-  letter-spacing: -0.02em;
-  font-variant-numeric: tabular-nums;
-}
-.metric-detail {
-  margin-top: 3px;
-  color: var(--best);
-  font-size: 12px;
-}
 .two {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 24px;
-}
-.two.wide-left {
-  grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
-}
-.two.wide-right {
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr);
 }
 .chart {
   overflow: hidden;
@@ -510,10 +404,6 @@ summary {
 .notice.error {
   border-color: var(--best);
 }
-.notice.success {
-  border-color: var(--accent);
-}
-.file-layout,
 pre {
   overflow: auto;
   padding: 14px;
@@ -526,48 +416,7 @@ pre {
     monospace;
   white-space: pre-wrap;
 }
-.flow {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
-  gap: 10px;
-  margin: 6px 0 8px;
-}
-.flow > div {
-  padding: 13px 15px;
-  border: 1px solid var(--line);
-  border-radius: 6px;
-  background: var(--panel);
-}
-.flow > div.built {
-  border-color: var(--accent);
-}
-.flow strong {
-  display: block;
-  color: var(--faint);
-  font-size: 13px;
-}
-.flow .built strong {
-  color: var(--accent);
-}
-.flow span {
-  display: block;
-  margin-top: 5px;
-  color: var(--soft);
-  font-size: 12.5px;
-  line-height: 1.45;
-}
-.flow small {
-  display: block;
-  margin-top: 6px;
-  color: var(--faint);
-  font:
-    500 10px 'IBM Plex Mono',
-    monospace;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-.prose,
-.body-copy {
+.prose {
   color: var(--soft);
   font-size: 14.5px;
   line-height: 1.6;
@@ -591,16 +440,9 @@ pre {
   min-height: var(--stage-h);
   min-width: 0;
 }
-.on-archipelago .viewer-host {
-  flex: 1;
-  min-height: 420px;
-  display: flex;
-}
 
 @media (max-width: 1000px) {
-  .two,
-  .two.wide-left,
-  .two.wide-right {
+  .two {
     grid-template-columns: 1fr;
   }
 }
@@ -614,16 +456,6 @@ pre {
     border-right: 0;
     border-bottom: 1px solid var(--line);
   }
-  .runctx {
-    margin-top: 0;
-  }
-  .on-archipelago main {
-    height: auto;
-    overflow: visible;
-  }
-  .on-archipelago .viewer-host {
-    display: block;
-  }
   main {
     padding: 18px 16px;
   }
@@ -636,7 +468,6 @@ pre {
     grid-template-columns: 18px auto;
   }
   nav button small,
-  .nav-heading,
   .run-facts {
     display: none;
   }

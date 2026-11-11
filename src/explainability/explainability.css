@@ -31,21 +31,6 @@
   letter-spacing: -0.03em;
   margin: 9px 0;
 }
-.ex-heading .eyebrow {
-  display: block;
-  font-size: 10px;
-}
-.ex-badge {
-  padding: 7px 11px;
-  border: 1px solid var(--line);
-  border-radius: 30px;
-  background: var(--tint);
-  font:
-    11px 'IBM Plex Mono',
-    monospace;
-  color: var(--accent);
-  white-space: nowrap;
-}
 
 .ex-run-meta {
   display: flex;
@@ -143,15 +128,6 @@
   font-weight: 500;
   letter-spacing: -0.02em;
   margin: 8px 0 12px;
-}
-.ex-kicker {
-  font:
-    10px 'IBM Plex Mono',
-    monospace;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--accent);
-  margin: 0;
 }
 .ex-description {
   font-size: 12px;
@@ -442,9 +418,6 @@
   .ex-heading {
     align-items: flex-start;
     gap: 12px;
-  }
-  .ex-badge {
-    display: none;
   }
   .ex-heading h1 {
     font-size: 23px;

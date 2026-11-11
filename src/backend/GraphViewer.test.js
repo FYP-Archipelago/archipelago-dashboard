@@ -46,7 +46,7 @@ test('saved result can be replayed from initial island nodes and returned to the
       destroy() {
         root.innerHTML = '';
       },
-      setBackendGraph(graph, runId, options) {
+      setBackendGraph(graph, options) {
         shown.push(graph);
         objectives.push(options.maximising);
       },
