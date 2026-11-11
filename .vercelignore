@@ -1,0 +1,11 @@
+node_modules
+dist
+*.log
+.env
+.env.*
+data/
+.superpowers/
+tools/
+test-support/
+docs/
+**/*.test.js
