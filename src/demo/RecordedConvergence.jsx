@@ -14,7 +14,7 @@ const number = new Intl.NumberFormat('en', { maximumSignificantDigits: 21, notat
 const show = (value) => (value == null ? '—' : number.format(value));
 
 export default function RecordedConvergence({ runId, api, result, backend = false }) {
-  const [state, setState] = useState({ runId, data: undefined, error: '' });
+  const [state, setState] = useState(null);
   const [retry, setRetry] = useState(0);
   const [selected, setSelected] = useState('all');
   const [metric, setMetric] = useState('');
@@ -33,18 +33,14 @@ export default function RecordedConvergence({ runId, api, result, backend = fals
     if (backend) return;
     let active = true;
     const controller = new AbortController();
-    setState({ runId, data: undefined, error: '' });
-    setSelected('all');
-    setMetric('');
-    setInspection(null);
     Promise.resolve()
       .then(async () => {
         const history = await api.analytics(runId, { signal: controller.signal });
         const data = history === null ? null : validateRecordedAnalytics(history, runId);
-        if (active) setState({ runId, data, error: '' });
+        if (active) setState({ runId, api, retry, data, error: '' });
       })
       .catch((error) => {
-        if (active) setState({ runId, data: undefined, error: error.message });
+        if (active) setState({ runId, api, retry, data: undefined, error: error.message });
       });
     return () => {
       active = false;
@@ -52,7 +48,8 @@ export default function RecordedConvergence({ runId, api, result, backend = fals
     };
   }, [runId, api, retry, backend]);
 
-  const data = backend ? supplied.data : state.runId === runId ? state.data : undefined;
+  const saved = state?.runId === runId && state.api === api && state.retry === retry ? state : null;
+  const data = backend ? supplied.data : saved?.data;
   if (backend && supplied.error)
     return (
       <div className="notice" role="alert">
@@ -62,10 +59,10 @@ export default function RecordedConvergence({ runId, api, result, backend = fals
   if (backend && !result) return <p role="status">Generation history is available when clustering finishes.</p>;
   if (backend && data === null) return <p className="notice">No generation history was returned for this run.</p>;
   if (backend && data && !data.chart) return <p className="notice">No fitness or diversity values were returned for these generations.</p>;
-  if (state.runId === runId && state.error)
+  if (saved?.error)
     return (
       <div className="notice" role="alert">
-        {state.error}{' '}
+        {saved.error}{' '}
         <button className="secondary" onClick={() => setRetry((value) => value + 1)}>
           Retry history
         </button>

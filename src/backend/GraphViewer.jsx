@@ -6,9 +6,8 @@ import '../viewer/stn-viewer.css';
 
 export default function GraphViewer({ graph, runId, canReplay = false, maximising, mountViewer = mountStnViewer }) {
   const host = useRef(null),
-    viewer = useRef(null),
-    replaySlot = useRef(null);
-  const [slotReady, setSlotReady] = useState(false);
+    viewer = useRef(null);
+  const [replaySlot] = useState(() => Object.assign(document.createElement('div'), { className: 'run-replay-slot' }));
   const [replay, setReplay] = useState(false),
     [playing, setPlaying] = useState(false);
   const [progress, setProgress] = useState(1),
@@ -16,43 +15,38 @@ export default function GraphViewer({ graph, runId, canReplay = false, maximisin
   const order = useMemo(() => replayOrder(graph), [graph]);
   const shown = useMemo(() => (replay ? graphAtReplayProgress(graph, order, progress) : graph), [graph, order, progress, replay]);
   const hasNodes = shown.nodes.size > 0;
+  const [seen, setSeen] = useState({ runId, hasNodes, mountViewer, canReplay });
+  if (seen.runId !== runId || seen.hasNodes !== hasNodes || seen.mountViewer !== mountViewer || seen.canReplay !== canReplay) {
+    const remounted = seen.runId !== runId || seen.hasNodes !== hasNodes || seen.mountViewer !== mountViewer;
+    setSeen({ runId, hasNodes, mountViewer, canReplay });
+    if (remounted || !canReplay) {
+      setReplay(false);
+      setPlaying(false);
+      setProgress(1);
+    }
+  }
   useEffect(() => {
-    setReplay(false);
-    setPlaying(false);
-    setProgress(1);
-    setSlotReady(false);
     if (!host.current || !hasNodes) return;
     viewer.current = mountViewer(host.current);
     const foot = host.current.querySelector('.rail-foot');
-    if (foot) {
-      replaySlot.current ??= document.createElement('div');
-      replaySlot.current.className = 'run-replay-slot';
-      foot.insertBefore(replaySlot.current, foot.querySelector('.hint'));
-      setSlotReady(true);
-    }
+    foot?.insertBefore(replaySlot, foot.querySelector('.hint'));
     return () => {
       viewer.current?.destroy();
       viewer.current = null;
     };
-  }, [runId, hasNodes, mountViewer]);
+  }, [runId, hasNodes, mountViewer, replaySlot]);
   useEffect(() => {
     viewer.current?.setBackendGraph(shown, { maximising });
   }, [shown, runId, maximising]);
   useEffect(() => {
     if (!playing || !replay) return;
-    const timer = setInterval(() => setProgress((value) => Math.min(1, value + speed / 150)), 200);
-    return () => clearInterval(timer);
-  }, [playing, replay, speed]);
-  useEffect(() => {
-    if (progress >= 1 && playing) setPlaying(false);
-  }, [progress, playing]);
-  useEffect(() => {
-    if (!canReplay) {
-      setReplay(false);
-      setPlaying(false);
-      setProgress(1);
-    }
-  }, [canReplay]);
+    const timer = setTimeout(() => {
+      const next = Math.min(1, progress + speed / 150);
+      setProgress(next);
+      if (next >= 1) setPlaying(false);
+    }, 200);
+    return () => clearTimeout(timer);
+  }, [playing, replay, speed, progress]);
   const startReplay = () => {
     setReplay(true);
     setPlaying(false);
@@ -70,8 +64,6 @@ export default function GraphViewer({ graph, runId, canReplay = false, maximisin
   return (
     <div className="backend-viz-wrap">
       {canReplay &&
-        slotReady &&
-        replaySlot.current &&
         createPortal(
           <div className={`run-replay${replay ? ' active' : ' idle'}`} aria-label="Run replay controls">
             {!replay ? (
@@ -141,7 +133,7 @@ export default function GraphViewer({ graph, runId, canReplay = false, maximisin
               </>
             )}
           </div>,
-          replaySlot.current
+          replaySlot
         )}
       <div className="backend-viz-stage">
         <div className="viewer-host backend-stn-host" ref={host} aria-label="Archipelago backend graph" />

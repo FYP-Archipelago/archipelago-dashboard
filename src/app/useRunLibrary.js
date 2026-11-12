@@ -9,13 +9,20 @@ export function browserStorage() {
   }
 }
 const CHANGED = 'archipelago:run-history';
+const NO_ENTRIES = [];
+const withEntries =
+  (entries, change = {}) =>
+  (previous) =>
+    previous && { ...previous, entries, ...change };
 
 export default function useRunLibrary({ api, storage }) {
-  const [backendKey, setBackendKey] = useState(null),
-    [entries, setEntries] = useState([]);
-  const [error, setError] = useState(''),
-    [revision, setRevision] = useState(0),
-    [loading, setLoading] = useState(true);
+  const [revision, setRevision] = useState(0);
+  const [library, setLibrary] = useState(null);
+  const current = library?.api === api && library.storage === storage && library.revision === revision ? library : null;
+  const backendKey = current?.backendKey ?? null,
+    entries = current?.entries ?? NO_ENTRIES,
+    error = current?.error ?? '',
+    loading = !current?.loaded;
   const alive = useRef(true);
   useEffect(() => {
     alive.current = true;
@@ -26,23 +33,18 @@ export default function useRunLibrary({ api, storage }) {
   useEffect(() => {
     let active = true;
     const controller = new AbortController();
-    setBackendKey(null);
-    setEntries([]);
-    setError('');
-    setLoading(true);
+    const report = (change) => {
+      if (!active) return;
+      setLibrary((previous) => ({
+        ...(previous?.api === api && previous.storage === storage && previous.revision === revision ? previous : { api, storage, revision }),
+        ...change,
+      }));
+    };
     Promise.resolve()
       .then(() => (api.identity ? api.identity({ signal: controller.signal }) : api.baseUrl))
-      .then((key) => {
-        if (!active) return;
-        setBackendKey(key);
-        setEntries(readRecentRuns(storage, key));
-      })
-      .catch((reason) => {
-        if (active) setError(reason.message);
-      })
-      .finally(() => {
-        if (active) setLoading(false);
-      });
+      .then((key) => report({ backendKey: key, entries: readRecentRuns(storage, key) }))
+      .catch((reason) => report({ error: reason.message }))
+      .finally(() => report({ loaded: true }));
     return () => {
       active = false;
       controller.abort();
@@ -51,7 +53,7 @@ export default function useRunLibrary({ api, storage }) {
   useEffect(() => {
     const sync = (event) => {
       if (event.type === 'storage' && event.key !== null && event.key !== HISTORY_KEY) return;
-      setEntries(backendKey ? readRecentRuns(storage, backendKey) : []);
+      setLibrary(withEntries(backendKey ? readRecentRuns(storage, backendKey) : []));
     };
     window.addEventListener('storage', sync);
     window.addEventListener(CHANGED, sync);
@@ -64,7 +66,7 @@ export default function useRunLibrary({ api, storage }) {
     (entry) => {
       if (!backendKey) throw new Error('This browser could not remember the run because the backend identity is unavailable. Keep its run ID.');
       const next = rememberRun(storage, backendKey, entry);
-      if (alive.current) setEntries(next);
+      if (alive.current) setLibrary(withEntries(next));
       window.dispatchEvent(new window.Event(CHANGED));
       return next;
     },
@@ -74,11 +76,10 @@ export default function useRunLibrary({ api, storage }) {
     (id) => {
       if (!backendKey) return;
       try {
-        setEntries(forgetRun(storage, backendKey, id));
-        setError('');
+        setLibrary(withEntries(forgetRun(storage, backendKey, id), { error: '' }));
         window.dispatchEvent(new window.Event(CHANGED));
       } catch (reason) {
-        setError(reason.message);
+        setLibrary((previous) => previous && { ...previous, error: reason.message });
       }
     },
     [backendKey, storage]

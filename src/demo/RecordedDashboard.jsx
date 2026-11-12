@@ -3,31 +3,31 @@ import DashboardApp from '../app/DashboardApp.jsx';
 import { recordedApi, recordingStorage } from './recorded-api.js';
 
 export default function RecordedDashboard({ api = recordedApi, Workspace }) {
-  const [state, setState] = useState({ storage: null, error: '' }),
+  const [state, setState] = useState(null),
     [retry, setRetry] = useState(0);
   useEffect(() => {
     let active = true;
     const controller = new AbortController();
-    setState({ storage: null, error: '' });
     Promise.all([api.recordings({ signal: controller.signal }), api.identity()])
       .then(([entries, identity]) => {
-        if (active) setState({ storage: recordingStorage(entries, identity), error: '' });
+        if (active) setState({ api, retry, storage: recordingStorage(entries, identity), error: '' });
       })
       .catch((error) => {
-        if (active) setState({ storage: null, error: error.message });
+        if (active) setState({ api, retry, storage: null, error: error.message });
       });
     return () => {
       active = false;
       controller.abort();
     };
   }, [api, retry]);
-  if (state.storage) return <DashboardApp api={api} storage={state.storage} Workspace={Workspace} />;
+  const loaded = state?.api === api && state.retry === retry ? state : null;
+  if (loaded?.storage) return <DashboardApp api={api} storage={loaded.storage} Workspace={Workspace} />;
   return (
     <main className="workspace-main">
       <h1>Archipelago</h1>
-      {state.error ? (
+      {loaded?.error ? (
         <div className="notice" role="alert">
-          {state.error}{' '}
+          {loaded.error}{' '}
           <button className="secondary" onClick={() => setRetry((value) => value + 1)}>
             Retry
           </button>

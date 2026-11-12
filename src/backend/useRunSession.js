@@ -109,24 +109,27 @@ function validateMetadata(value, { final = false } = {}) {
   }
 }
 
+const sameRequest = (a, b) => !!a && a.runId === b.runId && a.api === b.api && a.eventSourceFactory === b.eventSourceFactory && a.retry === b.retry;
+
 export default function useRunSession({ runId, api, eventSourceFactory = nativeEventSource }) {
-  const [state, setState] = useState(() => initial(runId));
+  const [state, setState] = useState(null);
   const [retry, setRetry] = useState(0);
   const cancelAction = useRef(null);
   useEffect(() => {
+    const request = { runId, api, eventSourceFactory, retry };
     let active = true,
       source = null,
       attempts = 0,
       timer = null,
       cancelling = false;
     const abort = new AbortController();
-    setState(initial(runId));
     let graphState = emptyGraph(),
       acceptingEvents = true,
       failedStatus = false,
       terminal = false;
     const patch = (change) => {
-      if (active) setState((current) => ({ ...current, ...change }));
+      if (active)
+        setState((tagged) => ({ request, value: { ...(sameRequest(tagged?.request, request) ? tagged.value : initial(runId)), ...change } }));
     };
     const finish = (result) => {
       if (!active) return;
@@ -352,7 +355,7 @@ export default function useRunSession({ runId, api, eventSourceFactory = nativeE
     };
   }, [runId, api, eventSourceFactory, retry]);
   return {
-    ...(state.runId === runId ? state : initial(runId)),
+    ...(sameRequest(state?.request, { runId, api, eventSourceFactory, retry }) ? state.value : initial(runId)),
     retry: () => setRetry((value) => value + 1),
     cancelRun: () => cancelAction.current?.(),
   };

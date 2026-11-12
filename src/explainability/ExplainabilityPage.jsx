@@ -307,7 +307,6 @@ export default function ExplainabilityPage({ runId, api }) {
   const [retry, setRetry] = useState(0);
 
   useEffect(() => {
-    setState(null);
     if (!runId) return;
     const controller = new AbortController();
     let active = true;

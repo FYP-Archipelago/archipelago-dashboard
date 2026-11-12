@@ -71,10 +71,12 @@ export default function RunsPage({ api = backendApi, onOpenRun, onBusyChange, ca
   const [catalog, setCatalog] = useState(null),
     [preset, setPreset] = useState(''),
     [drafts, setDrafts] = useState({});
-  const [catalogError, setCatalogError] = useState(''),
-    [loading, setLoading] = useState(true),
-    [retry, setRetry] = useState(0);
-  const [health, setHealth] = useState({ state: 'checking', message: '' });
+  const [retry, setRetry] = useState(0);
+  const [checks, setChecks] = useState(null);
+  const current = checks?.api === api && checks.retry === retry ? checks : {};
+  const health = current.health ?? { state: 'checking', message: '' },
+    loading = !current.loaded,
+    catalogError = current.catalogError ?? '';
   const [clustering, setClustering] = useState(initialClustering),
     [stream, setStream] = useState(true);
   const [busy, setBusy] = useState(false),
@@ -94,19 +96,18 @@ export default function RunsPage({ api = backendApi, onOpenRun, onBusyChange, ca
   useEffect(() => {
     let active = true;
     const controller = new AbortController();
-    setHealth({ state: 'checking', message: '' });
-    setLoading(true);
-    setCatalogError('');
+    const report = (change) => {
+      if (active) setChecks((previous) => ({ ...(previous?.api === api && previous.retry === retry ? previous : { api, retry }), ...change }));
+    };
     api
       .health({ signal: controller.signal })
       .then((value) => {
-        if (!active) return;
         const ok = value?.status === 'ok' && value?.db === true && value?.redis === true;
-        setHealth({ state: ok ? 'connected' : 'unavailable', message: ok ? '' : 'The backend reports that its database or Redis is unavailable.' });
+        report({
+          health: { state: ok ? 'connected' : 'unavailable', message: ok ? '' : 'The backend reports that its database or Redis is unavailable.' },
+        });
       })
-      .catch((error) => {
-        if (active) setHealth({ state: 'unavailable', message: error.message });
-      });
+      .catch((error) => report({ health: { state: 'unavailable', message: error.message } }));
     api
       .presets({ signal: controller.signal })
       .then(validatePresets)
@@ -115,12 +116,8 @@ export default function RunsPage({ api = backendApi, onOpenRun, onBusyChange, ca
         setCatalog(value);
         setPreset((current) => (value.presets.some((item) => item.preset === current) ? current : value.presets[0].preset));
       })
-      .catch((error) => {
-        if (active) setCatalogError(error.message);
-      })
-      .finally(() => {
-        if (active) setLoading(false);
-      });
+      .catch((error) => report({ catalogError: error.message }))
+      .finally(() => report({ loaded: true }));
     return () => {
       active = false;
       controller.abort();
