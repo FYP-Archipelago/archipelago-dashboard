@@ -3,9 +3,6 @@ dist
 *.log
 .env
 .env.*
-data/
-.superpowers/
-tools/
-test-support/
-docs/
+src/test/
 **/*.test.js
+**/*.test.jsx

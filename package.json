@@ -1,25 +1,40 @@
 {
-  "name": "archipelago-js-rewrite",
+  "name": "archipelago-dashboard",
   "version": "0.1.0",
   "private": true,
   "type": "module",
+  "packageManager": "bun@1.3.12",
   "scripts": {
     "dev": "vite --host 127.0.0.1",
     "build": "vite build",
     "preview": "vite preview",
-    "server": "node server/index.js",
-    "start": "node server/index.js",
-    "test": "node --test"
+    "test": "vitest run",
+    "format": "prettier --check .",
+    "format:fix": "prettier --write .",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "prepare": "husky"
   },
   "dependencies": {
     "react": "^19.1.1",
     "react-dom": "^19.1.1"
   },
   "devDependencies": {
+    "@eslint/js": "9.39.5",
+    "@testing-library/dom": "^10.4.2",
+    "@testing-library/react": "^16.3.3",
     "@vitejs/plugin-react": "^4.7.0",
-    "esbuild": "^0.25.12",
+    "eslint": "9.39.5",
+    "eslint-config-prettier": "10.1.8",
+    "eslint-plugin-react": "7.37.5",
+    "eslint-plugin-react-hooks": "7.1.1",
+    "eslint-plugin-unused-imports": "^4.4.1",
+    "globals": "17.14.0",
+    "husky": "^9.1.7",
     "jsdom": "^27.4.0",
-    "vite": "^6.3.5"
+    "prettier": "3.10.0",
+    "vite": "^6.3.5",
+    "vitest": "^5.1.0"
   },
-  "description": "Archipelago backend run dashboard"
+  "description": "Frontend dashboard for Archipelago: explainability platform for island-model distributed Evolutionary Algorithms"
 }
