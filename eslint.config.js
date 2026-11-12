@@ -3,6 +3,7 @@ import { defineConfig, globalIgnores } from 'eslint/config';
 import prettier from 'eslint-config-prettier';
 import react from 'eslint-plugin-react';
 import reactHooks from 'eslint-plugin-react-hooks';
+import unusedImports from 'eslint-plugin-unused-imports';
 import globals from 'globals';
 
 export default defineConfig([
@@ -10,15 +11,21 @@ export default defineConfig([
   {
     files: ['**/*.{js,jsx}'],
     extends: [js.configs.recommended],
+    plugins: { 'unused-imports': unusedImports },
     languageOptions: {
       parserOptions: {
         ecmaFeatures: { jsx: true },
       },
     },
+    rules: {
+      'no-unused-vars': 'off',
+      'unused-imports/no-unused-imports': 'error',
+      'unused-imports/no-unused-vars': 'error',
+    },
   },
   {
     files: ['src/**/*.{js,jsx}'],
-    extends: [react.configs.flat.recommended, reactHooks.configs.flat.recommended],
+    extends: [react.configs.flat.recommended, react.configs.flat['jsx-runtime'], reactHooks.configs.flat.recommended],
     languageOptions: {
       globals: globals.browser,
     },
