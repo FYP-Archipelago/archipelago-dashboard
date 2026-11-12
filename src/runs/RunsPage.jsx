@@ -171,7 +171,7 @@ export default function RunsPage({ api = backendApi, onOpenRun, onBusyChange }) 
         </div>
       )}
       {loading && <p role="status">Loading presets…</p>}
-      {catalogError && (
+      {catalogError && catalogError !== health.message && (
         <div className="notice error" role="alert">
           {catalogError}
         </div>
