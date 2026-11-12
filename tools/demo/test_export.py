@@ -43,6 +43,7 @@ def result_fixture(run_id):
                     windows=dict(from_generation=[], typical_distance=[]),
                     window_pairs=dict(window=[], a=[], b=[], mmd2=[])),
                 migration_routes=[],
+                generation_history=[],
                 explainability=dict(shapley=dict(status='unavailable', detail='No lineage in this fixture.')),
                 malformed_rows=0, warnings=[])
 
@@ -59,6 +60,16 @@ class ExportTests(unittest.TestCase):
         self.assertEqual((row['fitness'], row['t_wall'], row['parent_ids']),
                          (3.75, 1788476919.5, ['a', 'b']))
         self.assertEqual(exporter.convert_evaluation(evaluation(parent_ids=''), 1)['parent_ids'], [])
+
+    def test_csv_keeps_explicit_founders_and_migration_origins_for_attribution(self):
+        founder = exporter.convert_evaluation(evaluation(operator='init', parent_ids=''), 1)
+        self.assertEqual(founder['operator'], 'init')
+        arrival = exporter.convert_evaluation(evaluation(operator='migration_arrival', origin_island='0',
+                                                           origin_individual_id='source'), 2)
+        self.assertEqual((arrival['operator'], arrival['origin_island'], arrival['origin_individual_id']),
+                         ('migration_arrival', 0, 'source'))
+        with self.assertRaisesRegex(ValueError, 'origin_island'):
+            exporter.convert_evaluation(evaluation(origin_island='oops'), 3)
 
     def test_bad_numeric_values_fail_before_scientific_processing(self):
         for key, value in [('island_id', '1.2'), ('seq', ''), ('generation', 'NaN'),
@@ -127,6 +138,9 @@ class ExportTests(unittest.TestCase):
             validated = Result.model_validate(artifact)
             self.assertEqual(validated.run.run_id, run['run_id'])
             self.assertGreater(len(validated.graph.nodes.id), 0)
+            self.assertTrue(validated.generation_history)
+            self.assertEqual(validated.explainability.shapley.status, 'ready')
+            self.assertEqual(validated.explainability.shapley.coverage.supported, validated.clustering.counts.evaluations)
             self.assertGreater(len(validated.graph.migrations.id), 0)
             self.assertEqual(validated.malformed_rows, 0)
             self.assertEqual(validated.clustering.counts.rows_clustered, validated.clustering.counts.evaluations)

@@ -2,7 +2,13 @@
 
 Open https://archipelago-dashboard.vercel.app/#library. The public deployment is self-contained: it uses two real saved DE/Rastrigin searches, Python-clustered Results, recorded generation summaries and recorded-lineage Shapley artifacts. It does not require the backend or execute an optimiser. The persistent demonstration notice identifies this mode.
 
-## Demonstration sequence
+## Local live demonstration
+
+Start the runner, PostgreSQL, Redis, API, clustering worker and dashboard. Open the [completed PSO–Ackley run](http://127.0.0.1:5173/#convergence?run_id=run-20261111T072559Z-23e1d867) on the presentation device. It has 14,712 evaluations, 2,662 nodes, 225 generation summaries and 87 arrivals over 9 directed routes. Its best fitness improved from 18.89 to 0.062. This URL requires the local database containing that run. Open Runs to start a fresh search if you want to show execution.
+
+The local dashboard forwards `/backend/*` through Vite to the Python API. The Node server can forward those dashboard requests in a static deployment. The Python API starts runs, sends events and reads persisted results. The runner evaluates candidates and the clustering worker computes the graph and analysis.
+
+## Hosted demonstration sequence
 
 1. **Runs:** open the four-island ring recording, then repeat with the five-island fully connected recording. Both contain their actual recorded IDs, timestamps and execution settings.
 2. **Archipelago:** inspect the clustered search trajectories; demonstrate island/path filters, migration visibility, best markers, node selection, rotation and zoom. Positions, graph statistics and cluster assignments were computed in Python.
@@ -12,7 +18,7 @@ Open https://archipelago-dashboard.vercel.app/#library. The public deployment is
 6. **Explainability:** compare island and migration-route games; inspect coalition values, marginal contributions, ancestry coverage and sampling error. Switch between exact and sampled examples by changing the recording/game.
 7. **Run details / Run configuration:** identify algorithm, objective direction, topology and analysis provenance. Reload or open the direct URL to demonstrate that saved views do not depend on a live service.
 
-| Recording | Evaluations | Clusters | Graph edges | Migration routes | Generation summaries |
+| Recording | Evaluations | Clusters | Graph edges | Migration cluster links | Generation summaries |
 | --- | ---: | ---: | ---: | ---: | ---: |
 | Four-island ring | 1,786 | 1,326 | 6,012 | 21 | 73 |
 | Five-island fully connected | 3,866 | 2,313 | 8,487 | 287 | 86 |
@@ -28,6 +34,6 @@ Open https://archipelago-dashboard.vercel.app/#library. The public deployment is
 
 ## Completeness boundaries
 
-The connected implementation supports preset configuration, live/final-only runs, SSE updates, clustered graphs, persistence/reopening, cancellation, diagnostics and browser-local history. Automatic Shapley for new runs is in backend PR #3 and is used only when that review branch is running; it has not been merged to backend main.
+The connected dashboard supports preset configuration, live and batch runs, SSE graph updates, persistence and reopening, cancellation, diagnostics and browser-local history. Current final results include generation histories, aggregate route counts and module-computed Shapley attribution. Earlier saved results can lack those fields. The hosted demonstration is a separately deployed recording viewer.
 
-The hosted demonstration additionally reads saved generation histories. The current backend Result does not expose a convergence series, detailed migration timing or a server-wide run/configuration listing. Those values are not reconstructed in the browser. Existing-run uploads and Scale study are excluded. A recorded walkthrough demonstrates presentation and data interpretation; it is separate from acceptance of the live runner–Redis–worker–database path.
+Detailed migration timing remains unavailable in the result. Graph replay orders clusters by first evaluation and is illustrative. The API exposes run history and metadata, while the dashboard still uses browser-local history. Existing-run upload and Scale study are outside the agreed scope.

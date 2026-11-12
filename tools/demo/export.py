@@ -48,6 +48,15 @@ def convert_evaluation(row, line):
     if not isinstance(parents, str):
         raise ValueError(f'CSV line {line}: missing parent_ids')
     converted['parent_ids'] = [parent.strip() for parent in parents.split(';') if parent.strip()]
+    # Shapley uses explicit init records and migration origin links.
+    for field in ('operator', 'origin_individual_id'):
+        if row.get(field):
+            converted[field] = row[field]
+    if row.get('origin_island'):
+        try:
+            converted['origin_island'] = int(row['origin_island'])
+        except ValueError as error:
+            raise ValueError(f"CSV line {line}: invalid origin_island: {row['origin_island']!r}") from error
     return converted
 
 

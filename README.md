@@ -18,7 +18,7 @@ Vite serves the UI, uncached `/api/backend-config` metadata and the fixed-target
 
 ### Hosted recorded demonstration
 
-The Vercel demonstration is built from `feat/backend-integration` with `VITE_RECORDED_DEMO=true`. It preloads two published recordings and exposes the original graph controls, aggregate migrations, clustering/separation diagnostics, recorded settings, convergence histories and Shapley analysis without a backend. It is labelled as a recorded-data demonstration. Run creation and live execution require normal backend mode; the demo never submits or simulates an execution request. Detailed migration timing remains explicitly unavailable.
+The Vercel demonstration uses an earlier dashboard build with `VITE_RECORDED_DEMO=true`. The integration work is now on `main`. It preloads two published recordings and exposes the original graph controls, aggregate migrations, clustering/separation diagnostics, recorded settings, convergence histories and Shapley analysis without a backend. It is labelled as a recorded-data demonstration. Run creation and live execution require normal backend mode; the demo never submits or simulates an execution request. Detailed migration timing remains explicitly unavailable.
 
 `public/recorded-runs` contains final Results computed offline by the current Python module; `public/recorded-analytics` contains genuine saved generation summaries and Python-prepared chart geometry. Raw CSV, genomes, local host diagnostics and private logs are not served or uploaded. To regenerate graph/history artifacts, use the backend's Python environment from this dashboard directory:
 
@@ -28,7 +28,7 @@ The Vercel demonstration is built from `feat/backend-integration` with `VITE_REC
 ../archipelago-shapley-backend/.venv/Scripts/python.exe -m unittest discover -s tools/demo -p 'test_*.py'
 ```
 
-For a local demo build, set `VITE_RECORDED_DEMO=true` before `npm run build`, then run `npm start`. Leave the flag unset for real backend integration. The hosted project currently uses explicit CLI production deployments from the integration branch; Vercel Git connection requires repository access in Vercel and is not configured. Production deployment does not change main.
+For a local demo build, set `VITE_RECORDED_DEMO=true` before `npm run build`, then run `npm start`. Leave the flag unset for real backend integration. The hosted project has been published using explicit Vercel CLI deployments. Its deployed assets may differ from `main`.
 
 See [the faculty demo guide](docs/faculty-demo-guide.md) for the walkthrough and validity/completeness review points.
 
@@ -44,11 +44,11 @@ When a run is complete, **Replay run** starts from the earliest cluster on each 
 
 Run creation is not automatically retried if its response is lost, because the backend may already have accepted the run. Save the returned `run_id` when testing.
 
-Active runs expose **Cancel run**. Cancellation uses the backend's acknowledged status, including completion races, and remains available if the event stream disconnects. **Run details** includes live/final layout method and retained-variance diagnostics. See [the integration status report](docs/integration-status-2026-11-04.md) for verified scope, real-stack acceptance checks and remaining backend capabilities.
+Active runs expose **Cancel run**. Cancellation uses the backend's acknowledged status, including completion races, and remains available if the event stream disconnects. **Run details** includes live/final layout method and retained-variance diagnostics. See [the faculty demo guide](docs/faculty-demo-guide.md) for the current walkthrough and research limitations.
 
 ## Removed legacy paths
 
-Local file imports, CSV decoding, PCA/projection, per-evaluation aggregation for backend runs, local metrics and the retired clustering API are removed from the backend-run workflow and Node server. The browser performs no scientific analysis.
+Local file imports, CSV decoding, PCA/projection, per-evaluation aggregation for backend runs, local metrics and the retired clustering API are removed from the backend-run workflow and Node server. The Python module computes clustering, generation statistics, separation and Shapley attribution. The browser formats results, lays out the charts, and groups supplied route counts for display.
 
 Existing-run upload is excluded from the current product scope. The dashboard has no upload tab or import workflow.
 
@@ -58,7 +58,7 @@ The Node server only serves static files, `/api/status`, `/api/backend-config`, 
 
 `src/backend/useRunSession.js` consumes backend SSE status/update/final/error events and loads the saved result. `src/backend/graph-model.js` applies deltas by stable backend IDs. `src/viewer/backend-graph.js` maps that graph into the original `src/viewer/stn-viewer.js` WebGL renderer without invoking its legacy per-evaluation aggregation. The viewer preserves its camera, island and route filters, and selected backend node across live updates.
 
-There is no backend run-list or run-status route. Status comes from events, final graphs from `/runs/{id}/result`. The viewer uses backend node IDs, coordinates, percentiles, island assignments, best markers, links and migrations directly.
+The Python API exposes run history at `GET /runs` and run metadata at `GET /runs/{id}`. The dashboard still uses browser-local history, SSE for active status, and `/runs/{id}/result` for saved results. The Node proxy forwards the endpoints currently used by the dashboard. The viewer uses backend node IDs, coordinates, percentiles, island assignments, best markers, links and migrations directly.
 
 | View | Backend contract / remaining data |
 |---|---|

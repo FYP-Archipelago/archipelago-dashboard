@@ -1,5 +1,7 @@
 # Integration readiness — 4 November 2026
 
+> Historical snapshot from 4 November. See the [faculty demo guide](faculty-demo-guide.md) for the current workflow and limitations.
+
 ## Delivery and scope
 
 Frontend source branch: `feat/backend-run-workflow`; integration target: `feat/backend-integration`, through [dashboard PR #10](https://github.com/FYP-Archipelago/archipelago-dashboard/pull/10). Person 2's `gk/backend-live-viz` at `95a20d7` is included through PR #11; the latest fetch contained no further changes. The original STN renderer is retained. Main and the separate deployed demo are outside this delivery.
@@ -58,4 +60,4 @@ node node_modules/vite/bin/vite.js --host 127.0.0.1 --port 5180 --strictPort
 node test-support/run-contract-smoke.js
 ```
 
-The smoke script checks the fixture marker before creating runs. Stop these two test servers afterwards. See [the Shapley guide](local-explainability.md) for attribution semantics and analysis limits.
+The smoke script checks the fixture marker before creating runs. Stop these two test servers afterwards. See the [faculty demo guide](faculty-demo-guide.md) for attribution semantics and analysis limits.
