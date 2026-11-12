@@ -9,12 +9,8 @@ const OLDER_RESULT = 'This result was computed before the clustering module coun
 // The summary to show, or the notice explaining why there is none.
 function summaryFor(result) {
   if (!result) return { summary: null, notice: 'Waiting for the final migration summary…' };
-  try {
-    const summary = migrationSummary(result);
-    return summary ? { summary, notice: '' } : { summary: null, notice: OLDER_RESULT };
-  } catch (error) {
-    return { summary: null, notice: error.message };
-  }
+  const summary = migrationSummary(result);
+  return summary ? { summary, notice: '' } : { summary: null, notice: OLDER_RESULT };
 }
 
 export default function MigrationOverview({ session }) {

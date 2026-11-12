@@ -1,8 +1,3 @@
-const isCount = (value) => Number.isSafeInteger(value) && value >= 0;
-
-const isRoute = (route) =>
-  route !== null && typeof route === 'object' && isCount(route.source) && isCount(route.destination) && isCount(route.migrants);
-
 const percentOf = (value, total) => (total > 0 ? (100 * value) / total : 0);
 
 // The island-by-island summary the Migration view shows, built from the module's per-route migrant counts.
@@ -11,12 +6,7 @@ export function migrationSummary(result) {
   const routes = result?.migration_routes;
   if (routes === undefined) return null;
 
-  const runIslands = result.run?.islands;
-  if (!Array.isArray(routes) || !routes.every(isRoute) || !Array.isArray(runIslands) || !runIslands.every(isCount)) {
-    throw new Error('The run result has malformed migration routes.');
-  }
-
-  const islands = [...new Set([...runIslands, ...routes.flatMap((route) => [route.source, route.destination])])].sort((a, b) => a - b);
+  const islands = [...new Set([...result.run.islands, ...routes.flatMap((route) => [route.source, route.destination])])].sort((a, b) => a - b);
   const migrants = new Map(routes.map((route) => [`${route.source}-${route.destination}`, route.migrants]));
   const between = (source, destination) => migrants.get(`${source}-${destination}`) ?? 0;
 

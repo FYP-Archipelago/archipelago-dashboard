@@ -11,7 +11,6 @@ export const runValueLabel = (value) =>
     .replaceAll('_', ' ')
     .replace(/\b[a-z]/g, (letter) => letter.toUpperCase());
 
-const object = (value) => value !== null && typeof value === 'object' && !Array.isArray(value);
 export const CLUSTER_FIELDS = {
   detail: { label: 'Clustering detail', min: 0.5, max: 2, default: 1, step: 0.1 },
   birch_threshold: { label: 'BIRCH threshold', positive: true, auto: true, stage: 'birch', step: 'any' },
@@ -28,42 +27,6 @@ export const initialClustering = () => ({
   denstream: true,
   ...Object.fromEntries(Object.entries(CLUSTER_FIELDS).map(([key, rule]) => [key, rule.auto ? null : rule.default])),
 });
-
-export function validatePresets(value) {
-  if (!object(value) || !object(value.overrides) || !Array.isArray(value.presets) || !value.presets.length)
-    throw new Error('Backend returned no usable presets. Retry when the runner is available.');
-  for (const [key, rule] of Object.entries(value.overrides)) {
-    if (!object(rule) || !['int', 'bool', 'choice'].includes(rule.type)) throw new Error(`Unsupported override type for ${key}.`);
-    if (rule.type === 'choice' && (!Array.isArray(rule.choices) || !rule.choices.length || !rule.choices.every((item) => typeof item === 'string')))
-      throw new Error(`Invalid override choices for ${key}.`);
-    if (
-      ['min', 'max'].some((bound) => rule[bound] !== undefined && !Number.isSafeInteger(rule[bound])) ||
-      (rule.min !== undefined && rule.max !== undefined && rule.min > rule.max)
-    )
-      throw new Error(`Invalid override bounds for ${key}.`);
-  }
-  const names = new Set();
-  for (const preset of value.presets) {
-    if (
-      !object(preset) ||
-      !['preset', 'algorithm', 'benchmark', 'description'].every((key) => typeof preset[key] === 'string') ||
-      !preset.preset ||
-      names.has(preset.preset) ||
-      !object(preset.defaults)
-    )
-      throw new Error('Backend returned malformed preset metadata.');
-    names.add(preset.preset);
-    for (const [key, rule] of Object.entries(value.overrides)) {
-      if (rule.optional && preset.defaults[key] == null) continue;
-      try {
-        parseValue(key, preset.defaults[key], rule);
-      } catch {
-        throw new Error(`Invalid preset default for ${key}.`);
-      }
-    }
-  }
-  return value;
-}
 
 function parseValue(label, value, rule) {
   if (rule.type === 'bool') {

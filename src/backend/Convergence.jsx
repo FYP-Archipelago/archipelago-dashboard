@@ -17,22 +17,7 @@ export default function Convergence({ result }) {
   const [metric, setMetric] = useState('');
   const [inspection, setInspection] = useState(null);
 
-  const history = useMemo(() => {
-    if (!result) return {};
-    try {
-      return { data: convergenceHistory(result) };
-    } catch (error) {
-      return { error: error.message };
-    }
-  }, [result]);
-
-  const data = history.data;
-  if (history.error)
-    return (
-      <div className="notice" role="alert">
-        {history.error}
-      </div>
-    );
+  const data = useMemo(() => result && convergenceHistory(result), [result]);
   if (!result) return <p role="status">Generation history is available when clustering finishes.</p>;
   if (data === null) return <p className="notice">No generation history was returned for this run.</p>;
   if (!data.chart) return <p className="notice">No fitness or diversity values were returned for these generations.</p>;

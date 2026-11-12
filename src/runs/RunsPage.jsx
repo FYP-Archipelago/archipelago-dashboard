@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { backendApi } from '../backend/api.js';
 import ClusteringControls from './ClusteringControls.jsx';
-import { buildRunRequest, initialClustering, runValueLabel, validatePresets } from './run-form.js';
+import { buildRunRequest, initialClustering, runValueLabel } from './run-form.js';
 import './runs.css';
 
 const LABELS = {
@@ -110,8 +110,8 @@ export default function RunsPage({ api = backendApi, onOpenRun, onBusyChange }) 
       .catch((error) => report({ health: { state: 'unavailable', message: error.message } }));
     api
       .presets({ signal: controller.signal })
-      .then(validatePresets)
       .then((value) => {
+        if (!value.presets.length) throw new Error('Backend returned no usable presets. Retry when the runner is available.');
         if (!active) return;
         setCatalog(value);
         setPreset((current) => (value.presets.some((item) => item.preset === current) ? current : value.presets[0].preset));

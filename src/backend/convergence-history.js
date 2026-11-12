@@ -1,6 +1,5 @@
 // Presentation only: retain module statistics and map their values to SVG coordinates.
 const finite = (value) => typeof value === 'number' && Number.isFinite(value);
-const count = (value) => Number.isSafeInteger(value) && value >= 0;
 const fields = {
   best_fitness: 'best_fitness',
   best_so_far_fitness: 'best_so_far_fitness',
@@ -11,19 +10,12 @@ const fields = {
 };
 export function convergenceHistory(result) {
   const history = result?.generation_history;
-  if (history == null || (Array.isArray(history) && !history.length)) return null;
-  if (!Array.isArray(history)) throw Error('The run result has malformed generation history.');
+  if (!history?.length) return null;
   const grouped = new Map();
   for (const sample of history) {
-    if (!count(sample?.island_id) || !count(sample.generation)) throw Error('The run result has malformed generation history.');
     const series = grouped.get(sample.island_id) || [];
     const row = { generation: sample.generation };
-    for (const [target, source] of Object.entries(fields)) {
-      const value = sample[source];
-      if (value != null && !(source === 'evaluations_total' ? count(value) : finite(value)))
-        throw Error('The run result has malformed generation metrics.');
-      row[target] = value ?? null;
-    }
+    for (const [target, source] of Object.entries(fields)) row[target] = sample[source] ?? null;
     row.diversity_metric = sample.diversity_metric;
     row.diversity_sample_size = sample.diversity_sample_size;
     series.push(row);
@@ -32,8 +24,6 @@ export function convergenceHistory(result) {
   const islands = [...grouped]
     .sort(([a], [b]) => a - b)
     .map(([island_id, series]) => ({ island_id, series: series.sort((a, b) => a.generation - b.generation) }));
-  if (islands.some((island) => island.series.some((row, i) => i > 0 && row.generation === island.series[i - 1].generation)))
-    throw Error('The run result has duplicate generation summaries.');
   const samples = islands.flatMap((island) => island.series);
   const charts = {};
   for (const metric of ['best_so_far_fitness', 'best_fitness', 'mean_fitness', 'diversity']) {
