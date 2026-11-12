@@ -7,7 +7,7 @@ import unusedImports from 'eslint-plugin-unused-imports';
 import globals from 'globals';
 
 export default defineConfig([
-  globalIgnores(['dist/**', '.vercel/**']),
+  globalIgnores(['dist/**', '.vercel/**', 'local/**', 'data/**']),
   {
     files: ['**/*.{js,jsx}'],
     extends: [js.configs.recommended],
