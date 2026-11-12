@@ -1,4 +1,3 @@
-import React from 'react';
 import { test, expect, vi } from 'vitest';
 import { render, click, button, runId, act } from '../test/test-utils.js';
 import Page from './ExplainabilityPage.jsx';

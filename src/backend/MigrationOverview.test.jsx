@@ -1,4 +1,3 @@
-import React from 'react';
 import { test, expect } from 'vitest';
 import { render, click } from '../test/test-utils.js';
 import { result as base, nodeTable, links } from '../test/fixtures/backend.js';

@@ -1,4 +1,3 @@
-import React from 'react';
 import { test, expect } from 'vitest';
 import { render, runId, click, button, input } from '../test/test-utils.js';
 import { emptyGraph } from './graph-model.js';

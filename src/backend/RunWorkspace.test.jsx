@@ -1,4 +1,3 @@
-import React from 'react';
 import { test, expect, vi } from 'vitest';
 import { render, act, runId, click, button, input } from '../test/test-utils.js';
 import { nodeTable, links, result, delta } from '../test/fixtures/backend.js';

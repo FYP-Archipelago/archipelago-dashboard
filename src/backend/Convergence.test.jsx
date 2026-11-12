@@ -1,4 +1,3 @@
-import React from 'react';
 import { test, expect } from 'vitest';
 import { fireEvent } from '@testing-library/react';
 import { render, click, button } from '../test/test-utils.js';

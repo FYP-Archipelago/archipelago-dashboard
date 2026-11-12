@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import './convergence.css';
 import { convergenceHistory } from './convergence-history.js';
 

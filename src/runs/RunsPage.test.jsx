@@ -1,4 +1,3 @@
-import React from 'react';
 import { test, expect } from 'vitest';
 import { render, makeApi, runId, input, click, button, submit, find, act, catalog } from '../test/test-utils.js';
 import RunsPage from './RunsPage.jsx';

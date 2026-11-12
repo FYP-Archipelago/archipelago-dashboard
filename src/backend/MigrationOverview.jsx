@@ -1,4 +1,3 @@
-import React from 'react';
 import { migrationSummary } from './migration-summary.js';
 import './migration.css';
 

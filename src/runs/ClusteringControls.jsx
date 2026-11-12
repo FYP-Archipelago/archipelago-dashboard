@@ -1,4 +1,3 @@
-import React from 'react';
 import { CLUSTER_FIELDS } from './run-form.js';
 
 const STAGES = [

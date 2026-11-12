@@ -1,4 +1,3 @@
-import React from 'react';
 import { runValueLabel } from '../runs/run-form.js';
 
 const display = (value) =>

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { mountStnViewer } from '../viewer/stn-viewer.js';
 import { graphAtReplayProgress, replayOrder } from './graph-replay.js';

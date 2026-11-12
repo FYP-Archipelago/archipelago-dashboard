@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { isRunId } from '../runs/recent-runs.js';
 
 export default function RunBrowserSidebar({ library, selectedId, onOpenRun, onNewRun, busy = false }) {

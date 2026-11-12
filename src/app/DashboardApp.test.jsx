@@ -1,4 +1,3 @@
-import React from 'react';
 import { test, expect } from 'vitest';
 import { render, makeApi, runId, input, click, button, submit, find, act } from '../test/test-utils.js';
 import { rememberRun, readRecentRuns } from '../runs/recent-runs.js';

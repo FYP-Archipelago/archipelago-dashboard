@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { backendApi } from '../backend/api.js';
 import ClusteringControls from './ClusteringControls.jsx';
 import { buildRunRequest, initialClustering, runValueLabel } from './run-form.js';
