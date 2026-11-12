@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { HISTORY_KEY, readRecentRuns, rememberRun, forgetRun } from '../runs/recent-runs.js';
 
 export function browserStorage() {
@@ -9,51 +9,20 @@ export function browserStorage() {
   }
 }
 const CHANGED = 'archipelago:run-history';
-const NO_ENTRIES = [];
+const load = (backendKey, storage) => ({ backendKey, storage, entries: readRecentRuns(storage, backendKey), error: '' });
 const withEntries =
   (entries, change = {}) =>
-  (previous) =>
-    previous && { ...previous, entries, ...change };
+  (previous) => ({ ...previous, entries, ...change });
 
 export default function useRunLibrary({ api, storage }) {
-  const [revision, setRevision] = useState(0);
-  const [library, setLibrary] = useState(null);
-  const current = library?.api === api && library.storage === storage && library.revision === revision ? library : null;
-  const backendKey = current?.backendKey ?? null,
-    entries = current?.entries ?? NO_ENTRIES,
-    error = current?.error ?? '',
-    loading = !current?.loaded;
-  const alive = useRef(true);
-  useEffect(() => {
-    alive.current = true;
-    return () => {
-      alive.current = false;
-    };
-  }, []);
-  useEffect(() => {
-    let active = true;
-    const controller = new AbortController();
-    const report = (change) => {
-      if (!active) return;
-      setLibrary((previous) => ({
-        ...(previous?.api === api && previous.storage === storage && previous.revision === revision ? previous : { api, storage, revision }),
-        ...change,
-      }));
-    };
-    Promise.resolve()
-      .then(() => (api.identity ? api.identity({ signal: controller.signal }) : api.baseUrl))
-      .then((key) => report({ backendKey: key, entries: readRecentRuns(storage, key) }))
-      .catch((reason) => report({ error: reason.message }))
-      .finally(() => report({ loaded: true }));
-    return () => {
-      active = false;
-      controller.abort();
-    };
-  }, [api, storage, revision]);
+  const backendKey = api.baseUrl;
+  const [stored, setStored] = useState(() => load(backendKey, storage));
+  const library = stored.backendKey === backendKey && stored.storage === storage ? stored : load(backendKey, storage);
+  if (library !== stored) setStored(library);
   useEffect(() => {
     const sync = (event) => {
       if (event.type === 'storage' && event.key !== null && event.key !== HISTORY_KEY) return;
-      setLibrary(withEntries(backendKey ? readRecentRuns(storage, backendKey) : []));
+      setStored(withEntries(readRecentRuns(storage, backendKey)));
     };
     window.addEventListener('storage', sync);
     window.addEventListener(CHANGED, sync);
@@ -64,9 +33,8 @@ export default function useRunLibrary({ api, storage }) {
   }, [backendKey, storage]);
   const remember = useCallback(
     (entry) => {
-      if (!backendKey) throw new Error('This browser could not remember the run because the backend identity is unavailable. Keep its run ID.');
       const next = rememberRun(storage, backendKey, entry);
-      if (alive.current) setLibrary(withEntries(next));
+      setStored(withEntries(next));
       window.dispatchEvent(new window.Event(CHANGED));
       return next;
     },
@@ -74,15 +42,14 @@ export default function useRunLibrary({ api, storage }) {
   );
   const remove = useCallback(
     (id) => {
-      if (!backendKey) return;
       try {
-        setLibrary(withEntries(forgetRun(storage, backendKey, id), { error: '' }));
+        setStored(withEntries(forgetRun(storage, backendKey, id), { error: '' }));
         window.dispatchEvent(new window.Event(CHANGED));
       } catch (reason) {
-        setLibrary((previous) => previous && { ...previous, error: reason.message });
+        setStored((previous) => ({ ...previous, error: reason.message }));
       }
     },
     [backendKey, storage]
   );
-  return { backendKey, entries, error, loading, remember, remove, retry: () => setRevision((value) => value + 1) };
+  return { backendKey, entries: library.entries, error: library.error, remember, remove };
 }

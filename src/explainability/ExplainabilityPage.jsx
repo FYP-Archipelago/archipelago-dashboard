@@ -381,7 +381,7 @@ export default function ExplainabilityPage({ runId, api }) {
         <p className="ex-run-meta">
           <code>{data.run_id}</code>
           <span>
-            {api.isDemo ? 'Recorded demonstration' : 'Backend analysis'} · {data.algorithm} · {data.benchmark} · {data.topology ?? 'no migration'}
+            Backend analysis · {data.algorithm} · {data.benchmark} · {data.topology ?? 'no migration'}
           </span>
         </p>
         {data.warnings.map((message) => (

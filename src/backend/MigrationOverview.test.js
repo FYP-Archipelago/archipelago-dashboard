@@ -1,12 +1,27 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
 import { compile, mount, click } from '../../test-support/dom.js';
+import { result as base, nodeTable, links } from '../../test-support/backend-fixture.js';
 import { graphFromResult } from './graph-model.js';
 import { migrationSummary } from './migration-summary.js';
 
 const Page = await compile('src/backend/MigrationOverview.jsx');
-const result = JSON.parse(readFileSync(new URL('../../public/recorded-runs/run-20260903T230838Z-4891f68f.json', import.meta.url), 'utf8'));
+const result = {
+  ...base,
+  run: { ...base.run, islands: [0, 1, 2, 3] },
+  graph: {
+    nodes: nodeTable([10, 20, 30, 40]),
+    edges: links([], [], [], 'weight'),
+    migrations: links([1, 2, 3, 4], [10, 20, 30, 40], [20, 30, 40, 10], 'count'),
+    overlap: 1,
+  },
+  migration_routes: [
+    { source: 0, destination: 1, migrants: 5 },
+    { source: 1, destination: 2, migrants: 3 },
+    { source: 2, destination: 3, migrants: 2 },
+    { source: 3, destination: 0, migrants: 1 },
+  ],
+};
 const summary = migrationSummary(result);
 
 test('migration matrix keeps directions, island totals and closed route details accessible', async () => {

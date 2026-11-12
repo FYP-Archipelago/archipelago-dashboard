@@ -1,6 +1,5 @@
 node_modules/
 dist/
-/data/
 .env
 *.log
 .DS_Store
@@ -8,4 +7,3 @@ dist/
 .idea/
 .vercel
 .test-cache/
-__pycache__/

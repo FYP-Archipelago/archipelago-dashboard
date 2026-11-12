@@ -8,7 +8,6 @@ import useRunLibrary, { browserStorage } from './useRunLibrary.js';
 import RunBrowserSidebar from './RunBrowserSidebar.jsx';
 import AboutPage from './AboutPage.jsx';
 import ExplainabilityPage from '../explainability/ExplainabilityPage.jsx';
-import RecordedRunsPage from '../demo/RecordedRunsPage.jsx';
 import './workspace.css';
 
 export default function DashboardApp({ api = backendApi, storage = browserStorage(), Workspace = RunWorkspace }) {
@@ -34,15 +33,6 @@ export default function DashboardApp({ api = backendApi, storage = browserStorag
     };
   }, []);
   const openRun = (id, { run } = {}) => {
-    if (api.isDemo) {
-      if (!library.entries.some((entry) => entry.run_id === id)) {
-        setWarning('This run is not included in this demonstration. Select a published recording.');
-        return;
-      }
-      setWarning('');
-      navigate(runHash(id, RUN_VIEWS.some(([page]) => page === route.page) ? route.page : 'archipelago'));
-      return;
-    }
     let notice = '';
     const configuration = acceptedConfiguration(run);
     if (configuration) setAccepted({ backendKey: library.backendKey, runId: id, configuration });
@@ -56,7 +46,7 @@ export default function DashboardApp({ api = backendApi, storage = browserStorag
   };
   const configuration =
     library.entries.find((entry) => entry.run_id === route.runId)?.configuration ||
-    (library.backendKey && accepted?.backendKey === library.backendKey && accepted?.runId === route.runId ? accepted.configuration : undefined);
+    (accepted?.backendKey === library.backendKey && accepted?.runId === route.runId ? accepted.configuration : undefined);
   const selectedRunId = route.runId || library.entries[0]?.run_id || null;
   const newRun = () => {
     setWarning('');
@@ -109,23 +99,14 @@ export default function DashboardApp({ api = backendApi, storage = browserStorag
         </label>
       </header>
       <main className="workspace-main">
-        {api.isDemo && (
-          <div className="notice" role="status">
-            <strong>Recorded-data demonstration.</strong> Saved search results and Python-computed analysis; no backend is connected.
-          </div>
-        )}
         {warning && (
           <div className="notice" role="status">
             {warning}
           </div>
         )}
         <div hidden={route.page !== 'library'} className="runs-home">
-          {api.isDemo ? (
-            <RecordedRunsPage entries={library.entries} onOpenRun={openRun} />
-          ) : (
-            <RunsPage api={api} onOpenRun={openRun} onBusyChange={setBusy} canStart={!!library.backendKey && !library.loading} />
-          )}
-          <RunBrowserSidebar library={library} selectedId={route.runId} onOpenRun={openRun} onNewRun={newRun} busy={busy} recorded={api.isDemo} />
+          <RunsPage api={api} onOpenRun={openRun} onBusyChange={setBusy} />
+          <RunBrowserSidebar library={library} selectedId={route.runId} onOpenRun={openRun} onNewRun={newRun} busy={busy} />
         </div>
         {route.page === 'about' && <AboutPage />}
         {route.page === 'explainability' && <ExplainabilityPage runId={route.runId} api={api} />}

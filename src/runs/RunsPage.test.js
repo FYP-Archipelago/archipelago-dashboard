@@ -83,7 +83,7 @@ test('pending creation cannot submit a second run', async () => {
     await view.close();
   }
 });
-test('catalog retry preserves form values and exposes no unsupported upload or local paths', async () => {
+test('catalog retry preserves form values', async () => {
   let calls = 0;
   const view = await render(
     makeApi({
@@ -99,7 +99,6 @@ test('catalog retry preserves form values and exposes no unsupported upload or l
     await input('evaluation_budget', '3000');
     await click(button('Retry connection'));
     assert.equal(find('evaluation_budget').value, '3000');
-    assert.doesNotMatch(document.body.textContent, /Upload an existing run|Local file library/);
   } finally {
     await view.close();
   }

@@ -26,7 +26,7 @@ function Fields({ values, prefix = '' }) {
   });
 }
 
-export default function RunConfiguration({ configuration, recorded = false }) {
+export default function RunConfiguration({ configuration }) {
   const mainKeys = [
     'lsh',
     'birch',
@@ -46,7 +46,7 @@ export default function RunConfiguration({ configuration, recorded = false }) {
         <>
           <dl className="configuration-summary">
             <div>
-              <dt>{recorded ? 'Recording' : 'Preset'}</dt>
+              <dt>Preset</dt>
               <dd>{configuration.preset}</dd>
             </div>
             <div>
@@ -56,7 +56,7 @@ export default function RunConfiguration({ configuration, recorded = false }) {
           </dl>
           <div className="configuration-columns">
             <section>
-              <h3>{recorded ? 'Offline clustering' : 'Clustering settings'}</h3>
+              <h3>Clustering settings</h3>
               <dl className="configuration-fields">
                 <Fields values={primary} />
               </dl>
@@ -70,7 +70,7 @@ export default function RunConfiguration({ configuration, recorded = false }) {
               )}
             </section>
             <section>
-              <h3>{recorded ? 'Recorded runner settings' : 'Runner overrides'}</h3>
+              <h3>Runner overrides</h3>
               {Object.keys(configuration.overrides).length ? (
                 <dl className="configuration-fields">
                   <Fields values={configuration.overrides} />
@@ -80,7 +80,6 @@ export default function RunConfiguration({ configuration, recorded = false }) {
               )}
             </section>
           </div>
-          {recorded && <p className="configuration-note">Clustering settings apply to the Python export of this recording.</p>}
         </>
       )}
     </section>

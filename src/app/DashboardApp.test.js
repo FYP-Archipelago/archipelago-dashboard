@@ -12,16 +12,12 @@ const Workspace = ({ runId, configuration }) =>
     React.createElement(Configuration, { configuration })
   );
 
-test('dashboard retains run browser and About without retired Scale study or upload controls', async () => {
+test('dashboard shows the run browser, About and disabled run tabs before a run is selected', async () => {
   const view = await mount(Dashboard, { api: makeApi(), Workspace });
   try {
     assert.ok(document.querySelector('aside[aria-label="Run browser"]'));
     assert.match(document.body.textContent, /Start a new run/);
-    assert.equal(button('Scale study'), undefined);
-    assert.equal(button('Run configuration'), undefined);
-    assert.equal(button('Run details'), undefined);
     assert.ok(button('About'));
-    assert.doesNotMatch(document.body.textContent, /Upload an existing run|Local file library/);
     for (const label of ['Migration', 'Convergence', 'Clustering', 'Run configurations']) assert.ok(button(label).disabled);
     assert.equal(find('preset').value, 'de_rastrigin');
   } finally {
@@ -127,18 +123,17 @@ test('manual ID validation and storage failures retain an accepted run handoff',
   }
 });
 
-test('sidebar history is isolated when actual backend identity changes and handles native storage events', async () => {
-  let target = 'http://first:8000';
-  const api = makeApi({ identity: async () => target });
-  const view = await mount(Dashboard, { api, Workspace }, () =>
-    rememberRun(window.localStorage, target, { run_id: runId, preset: 'first', source: 'new' })
+test('sidebar history is isolated per backend and handles native storage events', async () => {
+  const first = 'http://first:8000',
+    second = 'http://second:8000';
+  const view = await mount(Dashboard, { api: makeApi({ baseUrl: first }), Workspace }, () =>
+    rememberRun(window.localStorage, first, { run_id: runId, preset: 'first', source: 'new' })
   );
   try {
     assert.ok(document.querySelector(`[data-run-id="${runId}"]`));
-    target = 'http://second:8000';
-    await click(button('Retry run browser'));
+    await view.rerender({ api: makeApi({ baseUrl: second }) });
     assert.equal(document.querySelector(`[data-run-id="${runId}"]`), null);
-    rememberRun(window.localStorage, target, { run_id: runId, preset: 'second', source: 'new' });
+    rememberRun(window.localStorage, second, { run_id: runId, preset: 'second', source: 'new' });
     await act(async () => window.dispatchEvent(new dom.window.StorageEvent('storage', { key: 'archipelago.backend-runs.v1' })));
     assert.ok(document.querySelector(`[data-run-id="${runId}"]`));
   } finally {
@@ -146,55 +141,14 @@ test('sidebar history is isolated when actual backend identity changes and handl
   }
 });
 
-test('creation waits for backend identity so accepted settings cannot be lost during loading', async () => {
-  let identify,
-    creates = 0;
-  const identity = new Promise((resolve) => (identify = resolve));
-  const view = await mount(Dashboard, {
-    api: makeApi({
-      identity: () => identity,
-      createRun: async (body) => {
-        creates++;
-        return { run_id: runId, status: 'queued', ...body };
-      },
-    }),
-    Workspace,
-  });
+test('accepted settings are remembered with the run and shown in its configuration', async () => {
+  const view = await mount(Dashboard, { api: makeApi(), Workspace });
   try {
-    assert.ok(button('Start run').disabled);
-    await submit();
-    assert.equal(creates, 0);
-    await act(async () => identify('http://localhost:8000'));
-    assert.equal(button('Start run').disabled, false);
     await input('evaluation_budget', '3000');
     await submit();
-    assert.equal(creates, 1);
     assert.equal(readRecentRuns(window.localStorage, 'http://localhost:8000')[0].configuration.overrides.evaluation_budget, 3000);
     await click(button('Run configurations'));
     assert.match(document.body.textContent, /3000/);
-  } finally {
-    await view.close();
-  }
-});
-
-test('identity retry enables creation only after a stable backend target is available', async () => {
-  let attempts = 0;
-  const view = await mount(Dashboard, {
-    api: makeApi({
-      identity: async () => {
-        if (!attempts++) throw Error('Backend identity unavailable.');
-        return 'http://localhost:8000';
-      },
-    }),
-    Workspace,
-  });
-  try {
-    assert.ok(button('Start run').disabled);
-    assert.match(document.body.textContent, /Backend identity unavailable/);
-    await click(button('Retry run browser'));
-    assert.equal(button('Start run').disabled, false);
-    await submit();
-    assert.equal(readRecentRuns(window.localStorage, 'http://localhost:8000')[0].run_id, runId);
   } finally {
     await view.close();
   }

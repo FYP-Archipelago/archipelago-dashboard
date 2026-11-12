@@ -11,8 +11,7 @@ Object.assign(globalThis, { window: dom.window, document: dom.window.document, H
 const { createRoot } = await import('react-dom/client');
 export const runId = 'run-20261102T120000Z-aabbccdd';
 export const makeApi = (extra = {}) => ({
-  baseUrl: '/backend',
-  identity: async () => 'http://localhost:8000',
+  baseUrl: 'http://localhost:8000',
   health: async () => ({ status: 'ok', db: true, redis: true }),
   presets: async () => catalog,
   createRun: async (body) => ({ run_id: runId, status: 'queued', ...body, error: null }),

@@ -69,7 +69,6 @@ test('saved result can be replayed from initial island nodes and returned to the
     const footer = document.querySelector('.rail-foot');
     assert.ok(footer.contains(button('Replay run')));
     assert.ok(footer.lastElementChild.contains(button('Replay run')));
-    assert.equal(document.querySelector('.view-tabs'), null);
     await click(button('Replay run'));
     assert.ok(document.querySelector('.run-replay').classList.contains('active'));
     assert.deepEqual([...shown.at(-1).nodes.keys()], [1, 2]);

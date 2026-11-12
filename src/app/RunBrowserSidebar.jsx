@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { isRunId } from '../runs/recent-runs.js';
 
-export default function RunBrowserSidebar({ library, selectedId, onOpenRun, onNewRun, busy = false, recorded = false }) {
+export default function RunBrowserSidebar({ library, selectedId, onOpenRun, onNewRun, busy = false }) {
   const [id, setId] = useState(''),
     [error, setError] = useState('');
   const open = (event) => {
@@ -18,17 +18,11 @@ export default function RunBrowserSidebar({ library, selectedId, onOpenRun, onNe
     <aside className="run-browser" aria-label="Run browser">
       <div className="browser-heading">
         <h2>Run browser</h2>
-        {!recorded && (
-          <button className="primary" type="button" onClick={onNewRun} disabled={busy}>
-            New run
-          </button>
-        )}
+        <button className="primary" type="button" onClick={onNewRun} disabled={busy}>
+          New run
+        </button>
       </div>
-      <p className="caption">
-        {recorded
-          ? 'Published recordings. All recordings are restored when the page reloads.'
-          : 'Browser-local run history for the selected backend; server-wide history is unavailable.'}
-      </p>
+      <p className="caption">Browser-local run history for the selected backend; server-wide history is unavailable.</p>
       <form className="open-run-form" onSubmit={open} noValidate>
         <label>
           Open by run ID
@@ -49,17 +43,12 @@ export default function RunBrowserSidebar({ library, selectedId, onOpenRun, onNe
           Open run
         </button>
       </form>
-      {library.loading && (
-        <p className="caption" role="status">
-          Loading remembered runs…
-        </p>
-      )}
       {library.error && (
         <p className="notice error" role="alert">
           {library.error}
         </p>
       )}
-      {!library.loading && !library.entries.length && <p className="caption">No runs remembered for this backend yet.</p>}
+      {!library.entries.length && <p className="caption">No runs remembered for this backend yet.</p>}
       <ul className="browser-runs">
         {library.entries.map((entry) => (
           <li key={entry.run_id} className={entry.run_id === selectedId ? 'selected' : ''}>
@@ -78,28 +67,22 @@ export default function RunBrowserSidebar({ library, selectedId, onOpenRun, onNe
               )}
               <small>{new Date(entry.at).toLocaleString()}</small>
             </button>
-            {!recorded && (
-              <button
-                className="forget-run"
-                type="button"
-                aria-label={`Forget ${entry.run_id}`}
-                disabled={busy}
-                onClick={() => library.remove(entry.run_id)}
-              >
-                Forget
-              </button>
-            )}
+            <button
+              className="forget-run"
+              type="button"
+              aria-label={`Forget ${entry.run_id}`}
+              disabled={busy}
+              onClick={() => library.remove(entry.run_id)}
+            >
+              Forget
+            </button>
           </li>
         ))}
       </ul>
       <div className="browser-backend">
-        <span>{recorded ? 'Data source' : 'Backend'}</span>
-        <code>{library.backendKey || apiLabel(library.loading)}</code>
-        <button className="text-button" type="button" onClick={library.retry} disabled={busy}>
-          Retry run browser
-        </button>
+        <span>Backend</span>
+        <code>{library.backendKey}</code>
       </div>
     </aside>
   );
 }
-const apiLabel = (loading) => (loading ? 'Checking…' : 'Unavailable');

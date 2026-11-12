@@ -2,7 +2,7 @@ import React from 'react';
 import useRunSession from './useRunSession.js';
 import GraphViewer from './GraphViewer.jsx';
 import MigrationOverview from './MigrationOverview.jsx';
-import RecordedConvergence from '../demo/RecordedConvergence.jsx';
+import Convergence from './Convergence.jsx';
 import RunConfiguration from '../app/RunConfiguration.jsx';
 import { runValueLabel } from '../runs/run-form.js';
 import './run-workspace.css';
@@ -331,7 +331,7 @@ function Diagnostics({ session }) {
   );
 }
 
-function RunDetails({ session, configuration, recorded }) {
+function RunDetails({ session, configuration }) {
   const run = session.result?.run;
   const layout = session.layout;
   const counts = session.clustering?.counts;
@@ -388,7 +388,7 @@ function RunDetails({ session, configuration, recorded }) {
           </dd>
         </div>
       </dl>
-      <RunConfiguration configuration={configuration} recorded={recorded} />
+      <RunConfiguration configuration={configuration} />
       <details className="run-technical">
         <summary>
           Diagnostics <span>{session.warnings.length} warnings</span>
@@ -469,7 +469,7 @@ export default function RunWorkspace({ runId, api, onBack, warning = '', view = 
         <h1>{titles[view] || 'Archipelago'}</h1>
         {view !== 'archipelago' && (
           <p className="question">
-            {api.isDemo ? 'Recorded run' : 'Backend run'} <code>{runId}</code>
+            Backend run <code>{runId}</code>
           </p>
         )}
         {view === 'diagnostics' && (
@@ -498,8 +498,8 @@ export default function RunWorkspace({ runId, api, onBack, warning = '', view = 
         )}
         <div className="run-status" role="status">
           <strong>Status: {session.status.replaceAll('_', ' ')}</strong>
-          <span>{api.isDemo ? 'Source: saved result' : `Events: ${session.connection}`}</span>
-          {session.result && <span>{api.isDemo ? 'Recorded result loaded' : 'Final result loaded'}</span>}
+          <span>Events: {session.connection}</span>
+          {session.result && <span>Final result loaded</span>}
           {session.status === 'done' && !session.result && session.connection === 'loading result' && <span>Loading final result…</span>}
           {['queued', 'running', 'clustering', 'warming_up', 'live'].includes(session.status) && (
             <button className="secondary" type="button" disabled={session.cancelPending} onClick={session.cancelRun}>
@@ -535,9 +535,9 @@ export default function RunWorkspace({ runId, api, onBack, warning = '', view = 
         <GraphViewer graph={session.graph} runId={runId} maximising={run?.maximising} canReplay={session.status === 'done'} />
       )}
       {view === 'migration' && <MigrationOverview session={session} />}
-      {view === 'convergence' && <RecordedConvergence key={runId} runId={runId} api={api} backend={!api.isDemo} result={session.result} />}
+      {view === 'convergence' && <Convergence key={runId} result={session.result} />}
       {view === 'diagnostics' && <Diagnostics session={session} />}
-      {view === 'run' && <RunDetails session={session} configuration={configuration} recorded={api.isDemo} />}
+      {view === 'run' && <RunDetails session={session} configuration={configuration} />}
     </section>
   );
 }

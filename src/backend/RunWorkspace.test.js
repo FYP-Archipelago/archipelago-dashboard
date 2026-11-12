@@ -859,7 +859,7 @@ test('the final event carries migration routes, so completion needs no second re
   }
 });
 
-test('real convergence uses final module history without consulting local archives', async () => {
+test('real convergence uses final module history', async () => {
   const final = structuredClone(result);
   final.generation_history = [
     {
@@ -885,21 +885,9 @@ test('real convergence uses final module history without consulting local archiv
       diversity_metric: 'euclidean',
     },
   ];
-  let archives = 0;
-  const view = await mount(Workspace, {
-    runId,
-    api: {
-      result: async () => final,
-      analytics: async () => {
-        archives++;
-        throw Error('archive called');
-      },
-    },
-    view: 'convergence',
-  });
+  const view = await mount(Workspace, { runId, api: { result: async () => final }, view: 'convergence' });
   try {
     assert.match(document.body.textContent, /Fitness history/);
-    assert.equal(archives, 0);
     assert.equal(document.querySelectorAll('tbody tr').length, 2);
     assert.equal(document.querySelector('.history-point-value strong').textContent, '0.00000149109');
     assert.equal(document.querySelector('.history-data').open, false);
@@ -911,7 +899,7 @@ test('real convergence handles older runs without history', async () => {
   const view = await mount(Workspace, { runId, api: { result: async () => result }, view: 'convergence' });
   try {
     assert.match(document.body.textContent, /No generation history/);
-    assert.equal(document.querySelector('.recorded-chart'), null);
+    assert.equal(document.querySelector('.convergence-chart'), null);
   } finally {
     await view.close();
   }

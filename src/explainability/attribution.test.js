@@ -1,6 +1,5 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFile } from 'node:fs/promises';
 import { readAttribution } from './attribution.js';
 
 const runId = 'run-20261102T120000Z-aabbccdd';
@@ -115,17 +114,5 @@ test('wrong runs and malformed attribution are errors', () => {
     const value = result();
     mutate(value);
     assert.throws(() => readAttribution(value, runId), /malformed|another run/);
-  }
-});
-
-test('published recordings carry attribution whose contributions reconcile', async () => {
-  for (const id of ['run-20260903T230838Z-4891f68f', 'run-20260903T230942Z-c7f38cc1']) {
-    const recording = JSON.parse(await readFile(new URL(`../../public/recorded-runs/${id}.json`, import.meta.url), 'utf8'));
-    const { status, data } = readAttribution(recording, id);
-    assert.equal(status, 'ready');
-    for (const game of Object.values(data.games)) {
-      const total = game.players.reduce((sum, p) => sum + p.value, 0);
-      assert.ok(Math.abs(total - game.allocated_gain) < 1e-8);
-    }
   }
 });

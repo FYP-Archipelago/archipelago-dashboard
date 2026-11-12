@@ -1,5 +1,5 @@
 const fixtureRunId = 'run-20261102T120000Z-aabbccdd';
-// Current backend contract fixture. Used only by tests and the opt-in smoke server.
+// Current backend contract fixture. Used only by tests.
 export const nodeTable = (ids) => ({
   id: ids,
   island: ids.map((_, i) => i),

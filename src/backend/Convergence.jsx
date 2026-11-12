@@ -1,7 +1,6 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { validateRecordedAnalytics } from './recorded-api.js';
-import './recorded.css';
-import { convergenceHistory } from '../backend/convergence-history.js';
+import React, { useMemo, useState } from 'react';
+import './convergence.css';
+import { convergenceHistory } from './convergence-history.js';
 
 const COLORS = ['#7ec8ff', '#f2615c', '#18a37a', '#f4d64f', '#c07ae8', '#e79039'];
 const LABELS = {
@@ -13,73 +12,32 @@ const LABELS = {
 const number = new Intl.NumberFormat('en', { maximumSignificantDigits: 21, notation: 'standard' });
 const show = (value) => (value == null ? '—' : number.format(value));
 
-export default function RecordedConvergence({ runId, api, result, backend = false }) {
-  const [state, setState] = useState(null);
-  const [retry, setRetry] = useState(0);
+export default function Convergence({ result }) {
   const [selected, setSelected] = useState('all');
   const [metric, setMetric] = useState('');
   const [inspection, setInspection] = useState(null);
 
-  const supplied = useMemo(() => {
-    if (!backend || !result) return {};
+  const history = useMemo(() => {
+    if (!result) return {};
     try {
       return { data: convergenceHistory(result) };
     } catch (error) {
       return { error: error.message };
     }
-  }, [backend, result]);
+  }, [result]);
 
-  useEffect(() => {
-    if (backend) return;
-    let active = true;
-    const controller = new AbortController();
-    Promise.resolve()
-      .then(async () => {
-        const history = await api.analytics(runId, { signal: controller.signal });
-        const data = history === null ? null : validateRecordedAnalytics(history, runId);
-        if (active) setState({ runId, api, retry, data, error: '' });
-      })
-      .catch((error) => {
-        if (active) setState({ runId, api, retry, data: undefined, error: error.message });
-      });
-    return () => {
-      active = false;
-      controller.abort();
-    };
-  }, [runId, api, retry, backend]);
-
-  const saved = state?.runId === runId && state.api === api && state.retry === retry ? state : null;
-  const data = backend ? supplied.data : saved?.data;
-  if (backend && supplied.error)
+  const data = history.data;
+  if (history.error)
     return (
       <div className="notice" role="alert">
-        {supplied.error}
+        {history.error}
       </div>
     );
-  if (backend && !result) return <p role="status">Generation history is available when clustering finishes.</p>;
-  if (backend && data === null) return <p className="notice">No generation history was returned for this run.</p>;
-  if (backend && data && !data.chart) return <p className="notice">No fitness or diversity values were returned for these generations.</p>;
-  if (saved?.error)
-    return (
-      <div className="notice" role="alert">
-        {saved.error}{' '}
-        <button className="secondary" onClick={() => setRetry((value) => value + 1)}>
-          Retry history
-        </button>
-      </div>
-    );
-  if (data === undefined) return <p role="status">Loading generation history…</p>;
-  if (data === null)
-    return (
-      <div className="notice">
-        No generation history was archived locally for this run.{' '}
-        <button className="secondary" onClick={() => setRetry((value) => value + 1)}>
-          Retry history
-        </button>
-      </div>
-    );
+  if (!result) return <p role="status">Generation history is available when clustering finishes.</p>;
+  if (data === null) return <p className="notice">No generation history was returned for this run.</p>;
+  if (!data.chart) return <p className="notice">No fitness or diversity values were returned for these generations.</p>;
 
-  const charts = data.charts || { [data.chart.metric]: data.chart };
+  const charts = data.charts;
   const chart = charts[metric] || data.chart;
   const visible = (island) => selected === 'all' || String(island.island_id) === selected;
   const inspectedIsland = data.islands.find((island) => island.island_id === inspection?.island) || data.islands[0];
@@ -95,7 +53,7 @@ export default function RecordedConvergence({ runId, api, result, backend = fals
   };
 
   return (
-    <section className="recorded-history">
+    <section className="convergence">
       <div className="history-toolbar">
         <h2>Fitness history</h2>
         <label>
@@ -125,7 +83,7 @@ export default function RecordedConvergence({ runId, api, result, backend = fals
           </button>
         ))}
       </div>
-      <figure className="recorded-chart">
+      <figure className="convergence-chart">
         <div className="history-axis-label">{chart.metric === 'diversity' ? 'Diversity' : 'Fitness'}</div>
         <svg viewBox={`0 0 ${chart.width} ${chart.height}`} role="img" aria-label={`${LABELS[chart.metric]} by generation`}>
           <title>{LABELS[chart.metric]} by island and generation</title>
@@ -234,7 +192,7 @@ export default function RecordedConvergence({ runId, api, result, backend = fals
         <summary>Generation data</summary>
         <div className="run-table-wrap">
           <table>
-            <caption>{backend ? 'Generation summaries' : 'Saved generation summaries'}</caption>
+            <caption>Generation summaries</caption>
             <thead>
               <tr>
                 <th>Island</th>

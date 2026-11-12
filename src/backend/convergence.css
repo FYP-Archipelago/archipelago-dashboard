@@ -1,4 +1,4 @@
-.recorded-history {
+.convergence {
   max-width: 1200px;
   margin-top: 18px;
   border: 1px solid var(--line);
@@ -25,7 +25,7 @@
   margin-left: auto;
 }
 
-.recorded-history label {
+.convergence label {
   display: flex;
   flex-direction: row;
   align-items: center;
@@ -34,7 +34,7 @@
   font-size: 12px;
 }
 
-.recorded-history select {
+.convergence select {
   width: auto;
   min-width: 115px;
   padding: 7px 10px;
@@ -78,7 +78,7 @@
   border-radius: 50%;
 }
 
-.recorded-chart {
+.convergence-chart {
   margin: 0;
   padding: 18px 20px 12px;
   overflow-x: auto;
@@ -89,7 +89,7 @@
   font-size: 11px;
 }
 
-.recorded-chart svg {
+.convergence-chart svg {
   display: block;
   width: 100%;
   min-width: 900px;
@@ -97,19 +97,19 @@
   overflow: visible;
 }
 
-.recorded-chart svg line {
+.convergence-chart svg line {
   stroke: var(--line);
   stroke-width: 0.6;
   stroke-dasharray: 3 5;
 }
 
-.recorded-chart svg text {
+.convergence-chart svg text {
   fill: var(--soft);
   font-size: 12px;
   font-variant-numeric: tabular-nums;
 }
 
-.recorded-chart figcaption {
+.convergence-chart figcaption {
   color: var(--soft);
   text-align: center;
   font-size: 11px;
@@ -208,7 +208,7 @@
     padding: 12px 14px 0;
   }
 
-  .recorded-chart {
+  .convergence-chart {
     padding: 14px;
   }
 

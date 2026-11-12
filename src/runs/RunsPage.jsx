@@ -67,7 +67,7 @@ function OverrideField({ name, rule, value, onChange, error }) {
   );
 }
 
-export default function RunsPage({ api = backendApi, onOpenRun, onBusyChange, canStart = true }) {
+export default function RunsPage({ api = backendApi, onOpenRun, onBusyChange }) {
   const [catalog, setCatalog] = useState(null),
     [preset, setPreset] = useState(''),
     [drafts, setDrafts] = useState({});
@@ -128,7 +128,7 @@ export default function RunsPage({ api = backendApi, onOpenRun, onBusyChange, ca
   const changeValue = (key, value) => setDrafts((current) => ({ ...current, [preset]: { ...current[preset], [key]: value } }));
   const submit = async (event) => {
     event.preventDefault();
-    if (submitting.current || loading || health.state !== 'connected' || catalogError || !canStart) return;
+    if (submitting.current || loading || health.state !== 'connected' || catalogError) return;
     setErrors({});
     setSubmitError('');
     let body;
@@ -258,12 +258,7 @@ export default function RunsPage({ api = backendApi, onOpenRun, onBusyChange, ca
                   {submitError}
                 </div>
               )}
-              {!canStart && (
-                <p className="caption" role="status">
-                  Waiting for the run browser to identify this backend. Use “Retry run browser” if it is unavailable.
-                </p>
-              )}
-              <button className="primary" type="submit" disabled={busy || health.state !== 'connected' || loading || !!catalogError || !canStart}>
+              <button className="primary" type="submit" disabled={busy || health.state !== 'connected' || loading || !!catalogError}>
                 {busy ? 'Starting…' : 'Start run'}
               </button>
             </fieldset>
