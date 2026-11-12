@@ -6,4 +6,3 @@ dist/
 .vscode/
 .idea/
 .vercel
-.test-cache/

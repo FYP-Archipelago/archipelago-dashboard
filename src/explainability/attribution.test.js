@@ -1,5 +1,4 @@
-import test from 'node:test';
-import assert from 'node:assert/strict';
+import { test, expect } from 'vitest';
 import { readAttribution } from './attribution.js';
 
 const runId = 'run-20261102T120000Z-aabbccdd';
@@ -53,43 +52,31 @@ function result() {
 
 test('derives labels, shares, bar widths, coalition percentages and marginal contributions', () => {
   const { status, data } = readAttribution(result(), runId);
-  assert.equal(status, 'ready');
-  assert.deepEqual(data.coverage, { total: 8, supported: 6, excluded: 2, percent: 75 });
+  expect(status).toBe('ready');
+  expect(data.coverage).toStrictEqual({ total: 8, supported: 6, excluded: 2, percent: 75 });
 
   const islands = data.games.islands;
-  assert.equal(islands.allocated_gain, 8);
-  assert.deepEqual(
-    islands.players.map((p) => [p.id, p.label, p.share_percent, p.bar_percent]),
-    [
-      ['1', 'Island 1', 75, 100],
-      ['0', 'Island 0', 25, 100 / 3],
-    ]
-  );
-  assert.deepEqual(
-    islands.coalitions.map((c) => c.value_percent),
-    [20, 20, 40, 100]
-  );
-  assert.deepEqual(
-    islands.orders[0].steps.map((s) => s.marginal),
-    [0, 8]
-  );
+  expect(islands.allocated_gain).toBe(8);
+  expect(islands.players.map((p) => [p.id, p.label, p.share_percent, p.bar_percent])).toStrictEqual([
+    ['1', 'Island 1', 75, 100],
+    ['0', 'Island 0', 25, 100 / 3],
+  ]);
+  expect(islands.coalitions.map((c) => c.value_percent)).toStrictEqual([20, 20, 40, 100]);
+  expect(islands.orders[0].steps.map((s) => s.marginal)).toStrictEqual([0, 8]);
 
   const routes = data.games.routes;
-  assert.equal(routes.sampled, true);
-  assert.deepEqual(
-    routes.players.map((p) => [p.id, p.label]),
-    [['0-1', '0 → 1']]
-  );
+  expect(routes.sampled).toBe(true);
+  expect(routes.players.map((p) => [p.id, p.label])).toStrictEqual([['0-1', '0 → 1']]);
 });
 
 test('older results and module-unavailable attribution are reported as unavailable', () => {
   const older = result();
   delete older.explainability;
-  assert.match(readAttribution(older, runId).detail, /computed before/);
+  expect(readAttribution(older, runId).detail).toMatch(/computed before/);
 
   const off = result();
   off.explainability.shapley = { status: 'unavailable', detail: 'No founders.' };
-  assert.deepEqual(readAttribution(off, runId), { status: 'unavailable', detail: 'No founders.' });
+  expect(readAttribution(off, runId)).toStrictEqual({ status: 'unavailable', detail: 'No founders.' });
 });
 
 test('wrong runs and malformed attribution are errors', () => {
@@ -113,6 +100,6 @@ test('wrong runs and malformed attribution are errors', () => {
   for (const mutate of mutations) {
     const value = result();
     mutate(value);
-    assert.throws(() => readAttribution(value, runId), /malformed|another run/);
+    expect(() => readAttribution(value, runId)).toThrow(/malformed|another run/);
   }
 });

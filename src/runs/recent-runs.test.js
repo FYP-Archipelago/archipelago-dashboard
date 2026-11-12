@@ -1,5 +1,4 @@
-import test from 'node:test';
-import assert from 'node:assert/strict';
+import { test, expect } from 'vitest';
 import { readRecentRuns, rememberRun, forgetRun, HISTORY_KEY } from './recent-runs.js';
 const memory = () => {
   const entries = new Map();
@@ -17,21 +16,21 @@ test('history survives reads and deduplicates by backend and ID, with at most 30
   rememberRun(storage, '/backend/', entry(1));
   rememberRun(storage, '/backend', entry(1));
   rememberRun(storage, 'http://other:8000', entry(1));
-  assert.equal(readRecentRuns(storage, '/backend').length, 1);
+  expect(readRecentRuns(storage, '/backend').length).toBe(1);
   for (let i = 2; i <= 32; i++) rememberRun(storage, '/backend', entry(i));
   const list = readRecentRuns(storage, '/backend');
-  assert.equal(list.length, 30);
-  assert.equal(list[0].run_id, entry(32).run_id);
+  expect(list.length).toBe(30);
+  expect(list[0].run_id).toBe(entry(32).run_id);
   forgetRun(storage, '/backend', entry(32).run_id);
-  assert.equal(readRecentRuns(storage, '/backend').length, 29);
-  assert.equal(readRecentRuns(storage, 'http://other:8000').length, 1);
+  expect(readRecentRuns(storage, '/backend').length).toBe(29);
+  expect(readRecentRuns(storage, 'http://other:8000').length).toBe(1);
 });
 
 test('malformed, versionless and disabled storage never crash reading', () => {
   const storage = memory();
   for (const data of ['oops', 'null', '{}', JSON.stringify([entry(1), null, { run_id: 'bogus' }])]) {
     storage.setItem(HISTORY_KEY, data);
-    assert.deepEqual(readRecentRuns(storage, '/backend'), []);
+    expect(readRecentRuns(storage, '/backend')).toStrictEqual([]);
   }
   const disabled = {
     getItem: () => {
@@ -41,9 +40,9 @@ test('malformed, versionless and disabled storage never crash reading', () => {
       throw Error('quota');
     },
   };
-  assert.deepEqual(readRecentRuns(disabled, '/backend'), []);
-  assert.throws(() => rememberRun(disabled, '/backend', entry(1)), /remember/);
-  assert.throws(() => rememberRun(storage, '/backend', { run_id: 'bogus' }), /run ID/);
+  expect(readRecentRuns(disabled, '/backend')).toStrictEqual([]);
+  expect(() => rememberRun(disabled, '/backend', entry(1))).toThrow(/remember/);
+  expect(() => rememberRun(storage, '/backend', { run_id: 'bogus' })).toThrow(/run ID/);
 });
 
 test('accepted configuration survives refresh and manual reopen without inferred status', () => {
@@ -52,10 +51,10 @@ test('accepted configuration survives refresh and manual reopen without inferred
   rememberRun(storage, 'http://localhost:8000', { ...entry(1), configuration, status: 'queued' });
   rememberRun(storage, 'http://localhost:8000', { run_id: entry(1).run_id, source: 'manual' });
   const saved = readRecentRuns(storage, 'http://localhost:8000')[0];
-  assert.deepEqual(saved.configuration, configuration);
-  assert.equal(saved.preset, 'de_rastrigin');
-  assert.equal(saved.status, undefined);
-  assert.equal(saved.source, 'new');
+  expect(saved.configuration).toStrictEqual(configuration);
+  expect(saved.preset).toBe('de_rastrigin');
+  expect(saved.status).toBe(undefined);
+  expect(saved.source).toBe('new');
 });
 
 test('corrupted remembered metadata is discarded without losing its valid run ID', () => {
@@ -75,7 +74,7 @@ test('corrupted remembered metadata is discarded without losing its valid run ID
     })
   );
   const saved = readRecentRuns(storage, '/backend')[0];
-  assert.equal(saved.run_id, entry(1).run_id);
-  assert.equal(saved.preset, '');
-  assert.equal(saved.configuration, undefined);
+  expect(saved.run_id).toBe(entry(1).run_id);
+  expect(saved.preset).toBe('');
+  expect(saved.configuration).toBe(undefined);
 });

@@ -1,13 +1,12 @@
-import test from 'node:test';
-import assert from 'node:assert/strict';
+import { test, expect } from 'vitest';
 import { migrationVisible, MIGRATION_VISIBILITY_DEFAULTS } from './visibility.js';
 test('migrations for hidden islands or filtered paths are hidden by default', () => {
-  assert.equal(MIGRATION_VISIBILITY_DEFAULTS.includeHiddenPaths, false);
-  assert.equal(migrationVisible({}), true);
+  expect(MIGRATION_VISIBILITY_DEFAULTS.includeHiddenPaths).toBe(false);
+  expect(migrationVisible({})).toBe(true);
   for (const flag of ['sourceVisible', 'targetVisible', 'sourcePathVisible', 'targetPathVisible'])
-    assert.equal(migrationVisible({ [flag]: false }), false);
+    expect(migrationVisible({ [flag]: false })).toBe(false);
 });
 test('explicit hidden-path opt-in preserves route switches', () => {
-  assert.equal(migrationVisible({ sourceVisible: false, targetPathVisible: false, includeHiddenPaths: true }), true);
-  assert.equal(migrationVisible({ routeEnabled: false, includeHiddenPaths: true }), false);
+  expect(migrationVisible({ sourceVisible: false, targetPathVisible: false, includeHiddenPaths: true })).toBe(true);
+  expect(migrationVisible({ routeEnabled: false, includeHiddenPaths: true })).toBe(false);
 });

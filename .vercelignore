@@ -3,6 +3,6 @@ dist
 *.log
 .env
 .env.*
-.test-cache/
-test-support/
+src/test/
 **/*.test.js
+**/*.test.jsx

@@ -1,14 +1,13 @@
-import test from 'node:test';
-import assert from 'node:assert/strict';
+import { test, expect } from 'vitest';
 import { validatePresets, buildRunRequest, initialClustering, FormError } from './run-form.js';
 
-import { catalog } from '../../test-support/presets.js';
+import { catalog } from '../test/fixtures/presets.js';
 
 const build = (extra = {}) =>
   buildRunRequest({ catalog, preset: 'de_rastrigin', values: {}, clustering: initialClustering(), stream: true, ...extra });
 
 test('real catalog accepts published rules and rejects malformed/unsupported metadata', () => {
-  assert.equal(validatePresets(catalog), catalog);
+  expect(validatePresets(catalog)).toBe(catalog);
   for (const data of [
     null,
     [],
@@ -17,17 +16,17 @@ test('real catalog accepts published rules and rejects malformed/unsupported met
     { ...catalog, overrides: { seed: { type: 'float' } } },
     { ...catalog, overrides: { x: { type: 'choice', choices: [] } } },
   ])
-    assert.throws(() => validatePresets(data), /preset|override/i);
+    expect(() => validatePresets(data)).toThrow(/preset|override/i);
 });
 
 test('untouched defaults are omitted; dotted keys, bools and optional zero seed keep JSON types', () => {
-  assert.deepEqual(build(), { preset: 'de_rastrigin', overrides: {}, stream: true, clustering: initialClustering() });
-  assert.deepEqual(build({ values: { num_islands: '6', 'migration.enabled': false, seed: '0' } }).overrides, {
+  expect(build()).toStrictEqual({ preset: 'de_rastrigin', overrides: {}, stream: true, clustering: initialClustering() });
+  expect(build({ values: { num_islands: '6', 'migration.enabled': false, seed: '0' } }).overrides).toStrictEqual({
     num_islands: 6,
     'migration.enabled': false,
     seed: 0,
   });
-  assert.deepEqual(build({ values: { num_islands: '5', seed: '' } }).overrides, {});
+  expect(build({ values: { num_islands: '5', seed: '' } }).overrides).toStrictEqual({});
 });
 
 test('runner validation rejects blanks, fractional/out-of-range values, choices and unknown overrides', () => {
@@ -42,21 +41,21 @@ test('runner validation rejects blanks, fractional/out-of-range values, choices 
     { 'migration.topology': 'bad' },
     { population_size: 100 },
   ])
-    assert.throws(() => build({ values }), FormError);
-  assert.throws(() => build({ preset: 'missing' }), /Choose a preset/);
+    expect(() => build({ values })).toThrow(FormError);
+  expect(() => build({ preset: 'missing' })).toThrow(/Choose a preset/);
 });
 
 test('known cross-field constraints use effective defaults and migration disabled bypasses them', () => {
-  assert.throws(() => build({ values: { 'migration.topology': 'torus' } }), /6 islands/);
-  assert.throws(() => build({ values: { target_generations: '10' } }), /interval/);
-  assert.equal(build({ values: { target_generations: '10', 'migration.enabled': false } }).overrides['migration.enabled'], false);
+  expect(() => build({ values: { 'migration.topology': 'torus' } })).toThrow(/6 islands/);
+  expect(() => build({ values: { target_generations: '10' } })).toThrow(/interval/);
+  expect(build({ values: { target_generations: '10', 'migration.enabled': false } }).overrides['migration.enabled']).toBe(false);
 });
 
 test('current clustering allows auto nulls and manual positive values, with a mandatory stage', () => {
   const auto = initialClustering();
-  assert.equal(build().clustering.birch_threshold, null);
-  assert.equal(build({ clustering: { ...auto, birch_threshold: '0.25', denstream_half_life: null } }).clustering.birch_threshold, 0.25);
-  assert.equal(build({ clustering: { ...auto, denstream: false, denstream_half_life: '' } }).clustering.denstream_half_life, null);
+  expect(build().clustering.birch_threshold).toBe(null);
+  expect(build({ clustering: { ...auto, birch_threshold: '0.25', denstream_half_life: null } }).clustering.birch_threshold).toBe(0.25);
+  expect(build({ clustering: { ...auto, denstream: false, denstream_half_life: '' } }).clustering.denstream_half_life).toBe(null);
   for (const settings of [
     { lsh: false, birch: false, denstream: false },
     { detail: '0.4' },
@@ -70,6 +69,6 @@ test('current clustering allows auto nulls and manual positive values, with a ma
     { seed: '1.5' },
     { birch_branching_factor: 50 },
   ])
-    assert.throws(() => build({ clustering: { ...auto, ...settings } }), FormError);
-  assert.equal(build({ stream: false }).stream, false);
+    expect(() => build({ clustering: { ...auto, ...settings } })).toThrow(FormError);
+  expect(build({ stream: false }).stream).toBe(false);
 });

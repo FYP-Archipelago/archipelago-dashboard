@@ -6,7 +6,7 @@ import reactHooks from 'eslint-plugin-react-hooks';
 import globals from 'globals';
 
 export default defineConfig([
-  globalIgnores(['dist/**', '.test-cache/**', '.vercel/**']),
+  globalIgnores(['dist/**', '.vercel/**']),
   {
     files: ['**/*.{js,jsx}'],
     extends: [js.configs.recommended],
@@ -30,15 +30,9 @@ export default defineConfig([
     },
   },
   {
-    files: ['*.config.js', 'test-support/**/*.js'],
+    files: ['*.config.js'],
     languageOptions: {
       globals: globals.node,
-    },
-  },
-  {
-    files: ['src/**/*.test.js', 'test-support/**/*.js'],
-    languageOptions: {
-      globals: { ...globals.browser, ...globals.node },
     },
   },
   prettier,

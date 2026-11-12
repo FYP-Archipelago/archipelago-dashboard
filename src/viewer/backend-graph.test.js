@@ -1,5 +1,4 @@
-import test from 'node:test';
-import assert from 'node:assert/strict';
+import { test, expect } from 'vitest';
 import { backendViewerGraph, remapBackendAnchor } from './backend-graph.js';
 
 test('camera anchors retain stable backend IDs when preceding nodes disappear', () => {
@@ -8,10 +7,10 @@ test('camera anchors retain stable backend IDs when preceding nodes disappear', 
     [20, 0],
     [30, 1],
   ]);
-  assert.equal(remapBackendAnchor(old, next, 2), 1);
-  assert.equal(remapBackendAnchor(old, next, 1), 0);
-  assert.equal(remapBackendAnchor(old, next, 0), -1);
-  assert.equal(remapBackendAnchor(old, next, -1), -1);
+  expect(remapBackendAnchor(old, next, 2)).toBe(1);
+  expect(remapBackendAnchor(old, next, 1)).toBe(0);
+  expect(remapBackendAnchor(old, next, 0)).toBe(-1);
+  expect(remapBackendAnchor(old, next, -1)).toBe(-1);
 });
 
 test('backend graph keeps stable IDs, island labels, best markers and migration counts', () => {
@@ -64,15 +63,15 @@ test('backend graph keeps stable IDs, island labels, best markers and migration 
     overlap: 1.5,
   };
   const { G, DS, idIndex } = backendViewerGraph(graph);
-  assert.deepEqual(DS.islandIds, [2, 5]);
-  assert.equal(idIndex.get(72), 1);
-  assert.deepEqual([...G.e], [0, 1]);
-  assert.ok(Math.abs(G.pz[1] - 0.4) < 1e-6);
-  assert.ok(Math.abs(G.pct[1] - 0.25) < 1e-6);
-  assert.deepEqual([...G.bestOfGroup], [0, 1]);
-  assert.equal(G.bestOfRun[0], 1);
-  assert.equal(G.mig[0].count, 9);
-  assert.equal(G.nodes[1].genome_hash, 'h72');
+  expect(DS.islandIds).toStrictEqual([2, 5]);
+  expect(idIndex.get(72)).toBe(1);
+  expect([...G.e]).toStrictEqual([0, 1]);
+  expect(Math.abs(G.pz[1] - 0.4) < 1e-6).toBeTruthy();
+  expect(Math.abs(G.pct[1] - 0.25) < 1e-6).toBeTruthy();
+  expect([...G.bestOfGroup]).toStrictEqual([0, 1]);
+  expect(G.bestOfRun[0]).toBe(1);
+  expect(G.mig[0].count).toBe(9);
+  expect(G.nodes[1].genome_hash).toBe('h72');
 });
 
 test('best fitness height agrees with run best despite worse cluster mean, and preserves ties', () => {
@@ -88,11 +87,11 @@ test('best fitness height agrees with run best despite worse cluster mean, and p
       [1500, { id: 1500, island: 4, best_fitness: worse, mean_fitness: worse, fitness_percentile: 0.1 }],
     ]);
     const { G } = backendViewerGraph({ nodes, edges: new Map(), migrations: new Map() }, { maximising });
-    assert.equal(G.bestHeightAvailable, true);
-    assert.deepEqual([...G.bestPct], [0, 0, 1]);
-    assert.ok(G.pct[0] > G.pct[2], 'Mean ordering remains available independently');
-    assert.equal(G.bestOfRun[0], 0);
-    assert.equal(G.nodes[0].best_fitness, best, 'Display does not alter supplied fitness');
+    expect(G.bestHeightAvailable).toBe(true);
+    expect([...G.bestPct]).toStrictEqual([0, 0, 1]);
+    expect(G.pct[0] > G.pct[2], 'Mean ordering remains available independently').toBeTruthy();
+    expect(G.bestOfRun[0]).toBe(0);
+    expect(G.nodes[0].best_fitness, 'Display does not alter supplied fitness').toBe(best);
   }
 });
 
@@ -106,6 +105,6 @@ test('best height requires an explicit objective and handles equal or missing fi
     edges: new Map(),
     migrations: new Map(),
   };
-  assert.equal(backendViewerGraph(graph).G.bestHeightAvailable, false);
-  assert.deepEqual([...backendViewerGraph(graph, { maximising: false }).G.bestPct], [0, 0, 0.5]);
+  expect(backendViewerGraph(graph).G.bestHeightAvailable).toBe(false);
+  expect([...backendViewerGraph(graph, { maximising: false }).G.bestPct]).toStrictEqual([0, 0, 0.5]);
 });

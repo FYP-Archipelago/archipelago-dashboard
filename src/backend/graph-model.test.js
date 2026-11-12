@@ -1,5 +1,4 @@
-import test from 'node:test';
-import assert from 'node:assert/strict';
+import { test, expect } from 'vitest';
 import { applyGraphDelta, emptyGraph, graphFromResult } from './graph-model.js';
 
 const nodes = (ids, islands) => ({
@@ -71,10 +70,10 @@ test('materializes backend columnar result with nullable weights and stable IDs'
   const graph = graphFromResult({
     graph: { nodes: nodes([10, 20], [0, 1]), edges: edges([5], [10], [20]), migrations: migrations([7], [10], [20]), overlap: 1.5 },
   });
-  assert.equal(graph.nodes.get(20).genome_hash, 'hash-20');
-  assert.equal(graph.nodes.get(10).weight, null);
-  assert.equal(graph.edges.get(5).target, 20);
-  assert.equal(graph.overlap, 1.5);
+  expect(graph.nodes.get(20).genome_hash).toBe('hash-20');
+  expect(graph.nodes.get(10).weight).toBe(null);
+  expect(graph.edges.get(5).target).toBe(20);
+  expect(graph.overlap).toBe(1.5);
 });
 
 test('applies delta order, removes incident links and refreshes best markers', () => {
@@ -112,17 +111,17 @@ test('applies delta order, removes incident links and refreshes best markers', (
     overlap: 1.2,
   };
   const next = applyGraphDelta(start, delta);
-  assert.equal(start.nodes.size, 2);
-  assert.equal(next.nodes.get(10).x, 9);
-  assert.equal(next.nodes.get(10).fitness_percentile, 95);
-  assert.equal(next.nodes.get(10).weight, 0.4);
-  assert.equal(next.nodes.get(10).island_best, true);
-  assert.equal(next.nodes.get(30).overall_best, true);
-  assert.equal(next.nodes.has(20), false);
-  assert.equal(next.edges.has(5), false);
-  assert.equal(next.edges.get(6).weight, 4);
-  assert.equal(next.migrations.has(7), false);
-  assert.equal(next.migrations.get(8).count, 5);
+  expect(start.nodes.size).toBe(2);
+  expect(next.nodes.get(10).x).toBe(9);
+  expect(next.nodes.get(10).fitness_percentile).toBe(95);
+  expect(next.nodes.get(10).weight).toBe(0.4);
+  expect(next.nodes.get(10).island_best).toBe(true);
+  expect(next.nodes.get(30).overall_best).toBe(true);
+  expect(next.nodes.has(20)).toBe(false);
+  expect(next.edges.has(5)).toBe(false);
+  expect(next.edges.get(6).weight).toBe(4);
+  expect(next.migrations.has(7)).toBe(false);
+  expect(next.migrations.get(8).count).toBe(5);
 });
 
 for (const [name, mutate] of [
@@ -293,17 +292,17 @@ for (const [name, mutate] of [
   test(`rejects snapshot with ${name}`, () => {
     const result = snapshot();
     mutate(result);
-    assert.throws(() => graphFromResult(result), /Backend graph/);
+    expect(() => graphFromResult(result)).toThrow(/Backend graph/);
   });
 
 test('preserves nullable node measurements and arbitrary finite layout coordinates', () => {
   const result = snapshot();
   Object.assign(result.graph.nodes, { x: [-124.5, 1e20], mean_fitness: [null, -12.5], best_fitness: [null, 0], weight: [null, 0.25] });
   const graph = graphFromResult(result);
-  assert.equal(graph.nodes.get(10).mean_fitness, null);
-  assert.equal(graph.nodes.get(10).weight, null);
-  assert.equal(graph.nodes.get(20).x, 1e20);
-  assert.equal(graph.nodes.get(20).fitness_percentile, 50);
+  expect(graph.nodes.get(10).mean_fitness).toBe(null);
+  expect(graph.nodes.get(10).weight).toBe(null);
+  expect(graph.nodes.get(20).x).toBe(1e20);
+  expect(graph.nodes.get(20).fitness_percentile).toBe(50);
 });
 
 for (const [name, mutate] of [
@@ -466,8 +465,8 @@ for (const [name, mutate] of [
     const before = structuredClone(previous);
     const update = delta();
     mutate(update);
-    assert.throws(() => applyGraphDelta(previous, update), /Backend graph/);
-    assert.deepEqual(previous, before);
+    expect(() => applyGraphDelta(previous, update)).toThrow(/Backend graph/);
+    expect(previous).toStrictEqual(before);
   });
 
 test('allows an empty backend delta and nullable overall best on an empty graph', () => {
@@ -475,7 +474,7 @@ test('allows an empty backend delta and nullable overall best on an empty graph'
   update.island_best = [];
   update.overall_best = null;
   update.overlap = 0;
-  assert.deepEqual(applyGraphDelta(emptyGraph(), update), emptyGraph());
+  expect(applyGraphDelta(emptyGraph(), update)).toStrictEqual(emptyGraph());
 });
 
 test('a late delta validation failure preserves previously applied node and link values', () => {
@@ -484,9 +483,9 @@ test('a late delta validation failure preserves previously applied node and link
   update.positions = changes([10], { x: [-99.5], y: [2], z: [3] });
   update.edge_updates = changes([5], { weight: [10] });
   update.overall_best = 999;
-  assert.throws(() => applyGraphDelta(previous, update), /Backend graph/);
-  assert.equal(previous.nodes.get(10).x, 10);
-  assert.equal(previous.edges.get(5).weight, 1);
+  expect(() => applyGraphDelta(previous, update)).toThrow(/Backend graph/);
+  expect(previous.nodes.get(10).x).toBe(10);
+  expect(previous.edges.get(5).weight).toBe(1);
 });
 
 test('delta preserves nullable fitness and fractional node weights while replacing prior best markers', () => {
@@ -504,11 +503,11 @@ test('delta preserves nullable fitness and fractional node weights while replaci
   update.weights = changes([10], { weight: [0.125] });
   update.overall_best = 10;
   const next = applyGraphDelta(previous, update);
-  assert.equal(next.nodes.get(10).mean_fitness, null);
-  assert.equal(next.nodes.get(10).best_fitness, null);
-  assert.equal(next.nodes.get(10).weight, 0.125);
-  assert.equal(next.nodes.get(10).overall_best, true);
-  assert.equal(next.nodes.get(20).island_best, false);
-  assert.equal(next.nodes.get(20).overall_best, false);
-  assert.equal(previous.nodes.get(20).overall_best, true);
+  expect(next.nodes.get(10).mean_fitness).toBe(null);
+  expect(next.nodes.get(10).best_fitness).toBe(null);
+  expect(next.nodes.get(10).weight).toBe(0.125);
+  expect(next.nodes.get(10).overall_best).toBe(true);
+  expect(next.nodes.get(20).island_best).toBe(false);
+  expect(next.nodes.get(20).overall_best).toBe(false);
+  expect(previous.nodes.get(20).overall_best).toBe(true);
 });
