@@ -23,7 +23,7 @@ function errorDetail(body) {
   return null;
 }
 
-export function createBackendClient({ baseUrl = '/backend', identityUrl, fetchImpl = globalThis.fetch, timeoutMs = 15000 } = {}) {
+export function createBackendClient({ baseUrl = 'http://127.0.0.1:8000', fetchImpl = globalThis.fetch, timeoutMs = 15000 } = {}) {
   const base = String(baseUrl).replace(/\/+$/, '');
   if (!/^https?:\/\/[^\s]+$/.test(base) && !/^\/(?!\/)[^?#\s]*$/.test(base)) throw new Error('Backend URL must be HTTP(S) or a same-origin path.');
   const url = (path) => {
@@ -67,19 +67,11 @@ export function createBackendClient({ baseUrl = '/backend', identityUrl, fetchIm
     return value;
   }
   const request = (path, options = {}) => requestAt(url(path), { ...options, creating: options.method === 'POST' && path === '/runs' });
-  const identityEndpoint = identityUrl === undefined && base === '/backend' ? '/api/backend-config' : identityUrl;
 
   return {
     baseUrl: base,
     url,
     request,
-    async identity(options) {
-      if (!identityEndpoint) return base;
-      const value = await requestAt(identityEndpoint, options);
-      if (typeof value?.backend_id !== 'string' || !/^https?:\/\//.test(value.backend_id))
-        throw new BackendError('Cannot identify the configured backend. Check the dashboard proxy configuration.');
-      return value.backend_id;
-    },
     health: (options) => request('/health', options),
     presets: (options) => request('/presets', options),
     result: (runId, options) => request(`/runs/${encodeURIComponent(runId)}/result`, options),
@@ -98,6 +90,4 @@ export function createBackendClient({ baseUrl = '/backend', identityUrl, fetchIm
   };
 }
 
-export const backendApi = createBackendClient({
-  baseUrl: import.meta.env?.VITE_BACKEND_URL || '/backend',
-});
+export const backendApi = createBackendClient({ baseUrl: import.meta.env?.VITE_BACKEND_URL || undefined });

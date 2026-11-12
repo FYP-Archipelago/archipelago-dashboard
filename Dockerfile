@@ -7,16 +7,9 @@ RUN bun install --frozen-lockfile
 COPY index.html vite.config.js ./
 COPY src ./src
 COPY public ./public
-COPY server ./server
+ARG VITE_BACKEND_URL
 RUN bun run build
 
-FROM node:22-alpine
-WORKDIR /app
-ENV NODE_ENV=production HOST=0.0.0.0 PORT=4174
-COPY --from=build /app/dist ./dist
-COPY package.json ./
-COPY server ./server
-USER node
-EXPOSE 4174
-HEALTHCHECK --interval=30s --timeout=5s CMD node -e "fetch('http://127.0.0.1:4174/api/status').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
-CMD ["node", "server/index.js"]
+FROM nginx:1.27-alpine
+COPY --from=build /app/dist /usr/share/nginx/html
+EXPOSE 80
