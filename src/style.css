@@ -107,22 +107,6 @@ nav button.active {
 nav button.active svg {
   color: var(--accent);
 }
-.run-facts {
-  margin: 0;
-  display: grid;
-  grid-template-columns: auto 1fr;
-  gap: 3px 12px;
-  font-size: 12px;
-}
-.run-facts dt {
-  color: var(--faint);
-}
-.run-facts dd {
-  margin: 0;
-  text-align: right;
-  color: var(--ink);
-  font-variant-numeric: tabular-nums;
-}
 main {
   min-width: 0;
   display: flex;
@@ -248,16 +232,6 @@ input[type='file'] {
 select {
   cursor: pointer;
 }
-.check {
-  flex-direction: row;
-  align-items: center;
-  gap: 8px;
-  margin: 12px 0;
-  font-weight: 400;
-}
-.check input {
-  accent-color: var(--accent);
-}
 .primary {
   margin-top: 12px;
   padding: 8px 15px;
@@ -342,12 +316,6 @@ hr {
   border-radius: 6px;
   background: var(--panel);
 }
-.table-wrap {
-  overflow: auto;
-  border: 1px solid var(--line);
-  border-radius: 6px;
-  background: var(--panel);
-}
 table {
   width: 100%;
   border-collapse: collapse;
@@ -389,9 +357,6 @@ summary {
 }
 .details-body {
   padding: 4px 15px 15px;
-}
-.details-body .table-wrap {
-  margin-top: 8px;
 }
 .notice {
   margin: 12px 0;
@@ -467,8 +432,7 @@ pre {
     width: auto;
     grid-template-columns: 18px auto;
   }
-  nav button small,
-  .run-facts {
+  nav button small {
     display: none;
   }
   .page-head {
