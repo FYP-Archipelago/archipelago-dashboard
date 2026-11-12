@@ -7,6 +7,7 @@ import { readRoute, runHash, RUN_VIEWS } from '../runs/navigation.js';
 import useRunLibrary, { browserStorage } from './useRunLibrary.js';
 import RunBrowserSidebar from './RunBrowserSidebar.jsx';
 import AboutPage from './AboutPage.jsx';
+import ErrorBoundary from './ErrorBoundary.jsx';
 import ExplainabilityPage from '../explainability/ExplainabilityPage.jsx';
 import './workspace.css';
 
@@ -105,14 +106,18 @@ export default function DashboardApp({ api = backendApi, storage = browserStorag
           </div>
         )}
         <div hidden={route.page !== 'library'} className="runs-home">
-          <RunsPage api={api} onOpenRun={openRun} onBusyChange={setBusy} />
-          <RunBrowserSidebar library={library} selectedId={route.runId} onOpenRun={openRun} onNewRun={newRun} busy={busy} />
+          <ErrorBoundary>
+            <RunsPage api={api} onOpenRun={openRun} onBusyChange={setBusy} />
+            <RunBrowserSidebar library={library} selectedId={route.runId} onOpenRun={openRun} onNewRun={newRun} busy={busy} />
+          </ErrorBoundary>
         </div>
-        {route.page === 'about' && <AboutPage />}
-        {route.page === 'explainability' && <ExplainabilityPage runId={route.runId} api={api} />}
-        {route.runId && ['archipelago', 'migration', 'convergence', 'diagnostics', 'run'].includes(route.page) && (
-          <Workspace runId={route.runId} api={api} configuration={configuration} onBack={newRun} warning="" view={route.page} />
-        )}
+        <ErrorBoundary resetKey={`${route.page}:${route.runId}`}>
+          {route.page === 'about' && <AboutPage />}
+          {route.page === 'explainability' && <ExplainabilityPage runId={route.runId} api={api} />}
+          {route.runId && ['archipelago', 'migration', 'convergence', 'diagnostics', 'run'].includes(route.page) && (
+            <Workspace runId={route.runId} api={api} configuration={configuration} onBack={newRun} warning="" view={route.page} />
+          )}
+        </ErrorBoundary>
         <footer>Archipelago · Distributed evolutionary search</footer>
       </main>
     </div>

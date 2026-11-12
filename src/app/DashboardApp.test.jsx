@@ -1,4 +1,4 @@
-import { test, expect } from 'vitest';
+import { test, expect, vi } from 'vitest';
 import { render, makeApi, runId, input, click, button, submit, find, act } from '../test/test-utils.js';
 import { rememberRun, readRecentRuns } from '../runs/recent-runs.js';
 import Dashboard from './DashboardApp.jsx';
@@ -120,4 +120,19 @@ test('accepted settings are remembered with the run and shown in its configurati
   expect(readRecentRuns(window.localStorage, 'http://localhost:8000')[0].configuration.overrides.evaluation_budget).toBe(3000);
   await click(button('Run configurations'));
   expect(document.body.textContent).toMatch(/3000/);
+});
+
+test('a view that crashes shows an error in place while navigation keeps working', async () => {
+  vi.spyOn(console, 'error').mockImplementation(() => {});
+  const Crashing = ({ view }) => {
+    if (view === 'diagnostics') throw new Error('broken diagnostics');
+    return <p>Showing {view}</p>;
+  };
+  window.history.replaceState(null, '', `#diagnostics?run_id=${runId}`);
+  await render(<Dashboard api={makeApi()} Workspace={Crashing} />);
+  expect(document.querySelector('[role="alert"]').textContent).toMatch(/This view failed: broken diagnostics/);
+  expect(document.querySelector('aside[aria-label="Run browser"]')).toBeTruthy();
+  await click(button('Migration'));
+  expect(document.querySelector('[role="alert"]')).toBe(null);
+  expect(document.body.textContent).toMatch(/Showing migration/);
 });
