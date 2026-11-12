@@ -8,5 +8,4 @@ dist/
 .idea/
 .vercel
 .test-cache/
-/public/local-explainability/
 __pycache__/
