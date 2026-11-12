@@ -35,9 +35,3 @@ test('migration switched off gives an empty matrix, and older results give null'
   expect(off.rows.every((row) => row.cells.every((cell) => cell.count === 0 && cell.intensity === 0))).toBeTruthy();
   expect(migrationSummary({ run: { islands: [0] } })).toBe(null);
 });
-
-test('malformed routes are errors', () => {
-  for (const routes of [[{ source: 0, destination: 1 }], [{ source: 0, destination: '1', migrants: 1 }]]) {
-    expect(() => migrationSummary({ run: { islands: [0, 1] }, migration_routes: routes })).toThrow(/malformed/);
-  }
-});

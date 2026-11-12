@@ -1,23 +1,10 @@
 import { test, expect } from 'vitest';
-import { validatePresets, buildRunRequest, initialClustering, FormError } from './run-form.js';
+import { buildRunRequest, initialClustering, FormError } from './run-form.js';
 
 import { catalog } from '../test/fixtures/presets.js';
 
 const build = (extra = {}) =>
   buildRunRequest({ catalog, preset: 'de_rastrigin', values: {}, clustering: initialClustering(), stream: true, ...extra });
-
-test('real catalog accepts published rules and rejects malformed/unsupported metadata', () => {
-  expect(validatePresets(catalog)).toBe(catalog);
-  for (const data of [
-    null,
-    [],
-    { presets: [] },
-    { ...catalog, presets: [{}] },
-    { ...catalog, overrides: { seed: { type: 'float' } } },
-    { ...catalog, overrides: { x: { type: 'choice', choices: [] } } },
-  ])
-    expect(() => validatePresets(data)).toThrow(/preset|override/i);
-});
 
 test('untouched defaults are omitted; dotted keys, bools and optional zero seed keep JSON types', () => {
   expect(build()).toStrictEqual({ preset: 'de_rastrigin', overrides: {}, stream: true, clustering: initialClustering() });

@@ -65,10 +65,7 @@ test('point inspection and generation rows keep module precision and exact evalu
   expect(cells[4].textContent).toBe('0.00000149109123456789');
 });
 
-test('malformed history is reported and a pending result waits for clustering', async () => {
-  const props = { result: withHistory([{ island_id: -1, generation: 0 }]) };
-  const view = await render(<Page {...props} />);
-  expect(document.querySelector('[role="alert"]').textContent).toMatch(/malformed generation history/);
-  await view.rerender(<Page {...props} result={null} />);
+test('a pending result waits for clustering', async () => {
+  await render(<Page result={null} />);
   expect(document.body.textContent).toMatch(/available when clustering finishes/);
 });

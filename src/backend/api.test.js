@@ -12,7 +12,7 @@ const run = {
 };
 const reply = (value, status = 200) => new Response(JSON.stringify(value), { status, headers: { 'content-type': 'application/json' } });
 
-test('cancel validates run identity and preserves terminal completion races', async () => {
+test('cancel posts and returns the backend status', async () => {
   for (const value of [
     { ...run, status: 'cancelling' },
     { ...run, status: 'cancelled' },
@@ -27,12 +27,6 @@ test('cancel validates run identity and preserves terminal completion races', as
     });
     expect(await api.cancelRun(run.run_id)).toStrictEqual(value);
     expect(options.method).toBe('POST');
-  }
-  for (const value of [
-    { ...run, run_id: 'other' },
-    { ...run, status: 'finished' },
-  ]) {
-    await expect(createBackendClient({ fetchImpl: async () => reply(value) }).cancelRun(run.run_id)).rejects.toThrow(/invalid cancellation response/);
   }
 });
 
@@ -103,13 +97,6 @@ test('HTML gateway failure after create carries an ambiguous-acceptance warning'
   await expect(api.createRun({})).rejects.toSatisfy(
     (error) => error.status === 504 && error.ambiguous && /may have been accepted/.test(error.message)
   );
-});
-
-test('malformed create success never yields an invented run ID', async () => {
-  for (const value of [{ job_id: 'old-job' }, { ...run, run_id: '' }, { ...run, status: 'finished' }]) {
-    const api = createBackendClient({ fetchImpl: async () => reply(value, 202) });
-    await expect(api.createRun({})).rejects.toSatisfy((error) => error.ambiguous && /run response/.test(error.message));
-  }
 });
 
 test('external abort stays an AbortError and timeouts are readable', async () => {

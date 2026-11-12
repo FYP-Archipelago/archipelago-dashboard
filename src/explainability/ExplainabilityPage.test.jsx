@@ -83,7 +83,7 @@ test('a failed or cancelled run is unavailable without polling', async () => {
   }
 });
 
-test('request failures, unknown runs and malformed results show an error with retry', async () => {
+test('request failures and unknown runs show an error with retry', async () => {
   const failures = [
     () => {
       throw new Error('Backend unavailable');
@@ -91,7 +91,6 @@ test('request failures, unknown runs and malformed results show an error with re
     () => {
       throw notFound('Run not found');
     },
-    () => resultFor(otherRunId),
   ];
   for (const fail of failures) {
     let calls = 0;

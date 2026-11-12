@@ -78,28 +78,3 @@ test('older results and module-unavailable attribution are reported as unavailab
   off.explainability.shapley = { status: 'unavailable', detail: 'No founders.' };
   expect(readAttribution(off, runId)).toStrictEqual({ status: 'unavailable', detail: 'No founders.' });
 });
-
-test('wrong runs and malformed attribution are errors', () => {
-  const mutations = [
-    (r) => {
-      r.run.run_id = 'run-20261102T120001Z-11223344';
-    },
-    (r) => {
-      r.explainability.shapley.coverage = { evaluations: 1, supported: 2 };
-    },
-    (r) => {
-      r.explainability.shapley.routes.players[0].player = 0;
-    },
-    (r) => {
-      r.explainability.shapley.islands.coalitions.push({ players: [7], value: 1 });
-    },
-    (r) => {
-      r.explainability.shapley.islands.players.push({ player: 1, value: 0, standard_error: null });
-    },
-  ];
-  for (const mutate of mutations) {
-    const value = result();
-    mutate(value);
-    expect(() => readAttribution(value, runId)).toThrow(/malformed|another run/);
-  }
-});

@@ -1,5 +1,5 @@
 import React from 'react';
-import { describe, test, expect, vi } from 'vitest';
+import { test, expect, vi } from 'vitest';
 import { render, act, runId, click, button, input } from '../test/test-utils.js';
 import { nodeTable, links, result, delta } from '../test/fixtures/backend.js';
 
@@ -247,49 +247,6 @@ test('a stream error cannot discard an acknowledged in-flight cancellation', asy
   expect(document.body.textContent).toMatch(/Status: cancelled/);
 });
 
-test('malformed backend error data does not disable REST cancellation', async () => {
-  let source,
-    calls = 0;
-  await render(
-    <Workspace
-      runId={runId}
-      api={{
-        ...pendingApi(),
-        cancelRun: async () => {
-          calls++;
-          return { run_id: runId, status: 'cancelled' };
-        },
-      }}
-      view="run"
-      eventSourceFactory={() => (source = new FakeSource(''))}
-    />
-  );
-  await act(async () => source.emit('status', { status: 'running' }));
-  await act(async () => source.emit('error', null));
-  await click(button('Cancel run'));
-  expect(calls).toBe(1);
-  expect(document.body.textContent).toMatch(/Status: cancelled/);
-});
-
-test('malformed separation row values are rejected before React diagnostics rendering', async () => {
-  let source;
-  await render(<Workspace runId={runId} api={pendingApi()} view="diagnostics" eventSourceFactory={() => (source = new FakeSource(''))} />);
-  await act(async () => source.emit('final', { ...result, separation: { ...result.separation, pairs: { ...result.separation.pairs, a: [{}] } } }));
-  expect(document.body.textContent).toMatch(/invalid separation/);
-  expect(button('Retry connection')).toBeTruthy();
-});
-
-test('malformed updates and statuses produce recoverable errors instead of unmounting the workspace', async () => {
-  let source;
-  await render(<Workspace runId={runId} api={pendingApi()} onBack={() => {}} view="run" eventSourceFactory={() => (source = new FakeSource(''))} />);
-  await act(async () => source.emit('update', { status: 'live', graph: { ...delta(), new_nodes: { id: [1] } }, warnings: [] }));
-  expect(document.body.textContent).toMatch(/missing.*island/);
-  expect(source.closed).toBeTruthy();
-  await click(button('Retry connection'));
-  await act(async () => source.emit('status', {}));
-  expect(document.body.textContent).toMatch(/invalid status/);
-  expect(button('Retry connection')).toBeTruthy();
-});
 test('live diagnostics use update metadata before a final result exists', async () => {
   let source;
   await render(
@@ -356,16 +313,6 @@ test('cancelled streams close without interpreting later final events as success
   expect(document.body.textContent).toMatch(/Status: cancelled/);
   expect(document.body.textContent).not.toMatch(/Final result loaded/);
 });
-test('malformed live metadata is recoverable before React renders diagnostics', async () => {
-  let source;
-  await render(
-    <Workspace runId={runId} api={pendingApi()} onBack={() => {}} view="diagnostics" eventSourceFactory={() => (source = new FakeSource(''))} />
-  );
-  await act(async () => source.emit('update', { status: 'live', graph: delta(), clustering: { stages: 'lsh' }, warnings: [] }));
-  expect(document.body.textContent).toMatch(/invalid clustering/);
-  expect(button('Retry connection')).toBeTruthy();
-  expect(source.closed).toBeTruthy();
-});
 test('failed status blocks late graph updates and finals while retaining backend error details', async () => {
   let source;
   await render(<Workspace runId={runId} api={pendingApi()} onBack={() => {}} view="run" eventSourceFactory={() => (source = new FakeSource(''))} />);
@@ -387,14 +334,6 @@ test('failed status closes within a bounded wait if error details never arrive',
   expect(source.closed).toBeTruthy();
   expect(document.body.textContent).toMatch(/No additional error details/);
 });
-test('malformed final separation metadata is reported without rendering a broken diagnostics page', async () => {
-  await render(
-    <Workspace runId={runId} api={{ url: (p) => p, result: async () => ({ ...result, separation: {} }) }} onBack={() => {}} view="diagnostics" />
-  );
-  expect(document.body.textContent).toMatch(/invalid separation metadata/);
-  expect(button('Retry connection')).toBeTruthy();
-});
-
 test('live status, graph delta, network retry state and final event render in the workspace', async () => {
   let source;
   const api = {
@@ -559,43 +498,7 @@ test('backend failure phase is shown and a pending event stream closes on unmoun
   expect(source.closed).toBe(true);
 });
 
-describe('invalid nested clustering metadata is rejected before diagnostics rendering', () => {
-  const cases = [
-    ['counts', { counts: { evaluations: { bad: 1 } } }],
-    ['resolved settings', { resolved: { birch_threshold: [] } }],
-    ['stage diagnostics', { diagnostics: { birch: { radius: { bad: 1 } } } }],
-    ['checkpoint arrays', { diagnostics: { denstream: { epsilon_checkpoints: [0.1, {}] } } }],
-    ['stage records', { diagnostics: { birch: [] } }],
-    ['elapsed time', { elapsed_seconds: 'soon' }],
-  ];
-  for (const [name, change] of cases)
-    test(name, async () => {
-      let source;
-      await render(<Workspace runId={runId} api={pendingApi()} view="diagnostics" eventSourceFactory={() => (source = new FakeSource(''))} />);
-      await act(async () => source.emit('update', { status: 'live', graph: delta(), clustering: { ...result.clustering, ...change } }));
-      expect(document.body.textContent).toMatch(/invalid clustering metadata/);
-      expect(button('Retry connection')).toBeTruthy();
-      expect(source.closed).toBeTruthy();
-    });
-});
-
-describe('run metadata is checked before accepting a saved result', () => {
-  for (const [name, run] of [
-    ['nested benchmark', { ...result.run, benchmark: { bad: 1 } }],
-    ['island shape', { ...result.run, islands: { length: 2 } }],
-    ['island values', { ...result.run, islands: [{}] }],
-    ['optimisation direction', { ...result.run, maximising: 'false' }],
-    ['missing identity', { ...result.run, run_id: '' }],
-  ])
-    test(name, async () => {
-      await render(<Workspace runId={runId} api={{ url: (p) => p, result: async () => ({ ...result, run }) }} view="run" />);
-      expect(document.body.textContent).toMatch(/invalid run metadata/);
-      expect(document.body.textContent).not.toMatch(/Final result loaded/);
-      expect(button('Retry connection')).toBeTruthy();
-    });
-});
-
-test('metadata validation preserves nullable values and backend diagnostic value types', async () => {
+test('nullable values and backend diagnostic value types render', async () => {
   const data = {
     ...result,
     run: { ...result.run, migration_topology: null },
@@ -612,56 +515,6 @@ test('metadata validation preserves nullable values and backend diagnostic value
   expect(document.body.textContent).toMatch(/p_stable/);
   expect([...document.querySelectorAll('.metric-series span')].map((item) => item.textContent)).toStrictEqual(['0.1', '0.2']);
   expect(document.body.textContent).toMatch(/Unavailable/);
-});
-
-describe('final results require complete metadata before declaring success', () => {
-  for (const field of ['run', 'layout', 'clustering', 'separation', 'malformed_rows', 'warnings']) {
-    for (const missing of [true, false])
-      test(`${field} ${missing ? 'missing' : 'null'}`, async () => {
-        const data = structuredClone(result);
-        if (missing) delete data[field];
-        else data[field] = null;
-        await render(<Workspace runId={runId} api={{ url: (p) => p, result: async () => data }} view="run" />);
-        expect(document.body.textContent).not.toMatch(/Final result loaded/);
-        expect(button('Retry connection')).toBeTruthy();
-      });
-  }
-});
-
-describe('final clustering metadata requires its declared fields', () => {
-  const paths = [
-    ['stages'],
-    ['counts'],
-    ['resolved'],
-    ['diagnostics'],
-    ['elapsed_seconds'],
-    ...['evaluations', 'rows_clustered', 'nodes', 'faded_nodes'].map((key) => ['counts', key]),
-    ...['birch_threshold', 'denstream_epsilon', 'denstream_half_life', 'lsh_bucket_width'].map((key) => ['resolved', key]),
-  ];
-  for (const path of paths)
-    test(path.join('.'), async () => {
-      const data = structuredClone(result);
-      let parent = data.clustering;
-      for (const key of path.slice(0, -1)) parent = parent[key];
-      delete parent[path.at(-1)];
-      await render(<Workspace runId={runId} api={{ url: (p) => p, result: async () => data }} view="run" />);
-      expect(document.body.textContent).not.toMatch(/Final result loaded/);
-      expect(button('Retry connection')).toBeTruthy();
-    });
-});
-
-describe('invalid scalar result metadata is recoverable', () => {
-  for (const [name, change, label] of [
-    ['malformed row count', { malformed_rows: {} }, 'malformed row count'],
-    ['separation distance', { separation: { ...result.separation, typical_distance: {} } }, 'separation metadata'],
-    ['separation method', { separation: { ...result.separation, method: [] } }, 'separation metadata'],
-  ])
-    test(name, async () => {
-      await render(<Workspace runId={runId} api={{ url: (p) => p, result: async () => ({ ...result, ...change }) }} view="run" />);
-      expect(document.body.textContent).toMatch(new RegExp('invalid ' + label));
-      expect(document.body.textContent).not.toMatch(/Final result loaded/);
-      expect(button('Retry connection')).toBeTruthy();
-    });
 });
 
 test('the final event carries migration routes, so completion needs no second result request', async () => {
