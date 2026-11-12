@@ -1,15 +1,24 @@
 /* Shared structure for every page. Colour lives in designs.css, as tokens only. */
 :root {
-  font-family: Archivo, Arial, sans-serif;
+  color-scheme: dark;
+  font-family: 'Archivo', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  line-height: 1.6;
   color: var(--ink);
   background: var(--bg);
   font-synthesis: none;
+  -webkit-font-smoothing: antialiased;
 }
 * {
   box-sizing: border-box;
 }
 body {
   margin: 0;
+}
+p {
+  margin: 0;
+}
+[hidden] {
+  display: none !important;
 }
 button,
 input,

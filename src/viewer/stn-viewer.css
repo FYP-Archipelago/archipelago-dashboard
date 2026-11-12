@@ -1,8 +1,4 @@
-/* STN viewer styles.
-   The viewport is dark in both themes on purpose: additive blending encodes
-   edge density as accumulated luminance, which only works on a dark ground. */
 :root {
-  color-scheme: dark;
   --shadow: none;
   --ink-2: var(--soft);
   --ink-3: var(--faint);
@@ -10,31 +6,10 @@
   --viz-ink: var(--ink);
   --viz-bg-2: var(--panel);
 }
-* {
-  box-sizing: border-box;
-}
-html,
-body {
-  margin: 0;
-  padding: 0;
-  background: var(--bg);
-  color: var(--ink);
-  font-family: 'Archivo', 'Helvetica Neue', Helvetica, Arial, sans-serif;
-  font-size: 16px;
-  line-height: 1.6;
-  -webkit-font-smoothing: antialiased;
-}
-p {
-  margin: 0;
-}
-.wrap {
-  padding: 0 2px;
-}
 
 .viewer {
   margin: 0;
   border: 1px solid var(--viz-rule);
-  border-radius: 4px;
   background: var(--viz-bg);
   overflow: hidden;
   box-shadow: var(--shadow);
@@ -68,10 +43,6 @@ p {
   background: var(--viz-bg);
   z-index: 5;
 }
-[hidden] {
-  display: none !important;
-}
-
 .rail {
   position: absolute;
   top: 14px;
@@ -124,9 +95,6 @@ p {
   display: flex;
   justify-content: space-between;
   font-family: 'IBM Plex Mono', monospace;
-  font-size: 9px;
-  letter-spacing: 0.1em;
-  color: var(--faint);
   margin-top: 1px;
 }
 input[type='range'] {
@@ -223,15 +191,9 @@ input[type='range']::-moz-range-thumb {
 
 .strip {
   display: flex;
-  flex-wrap: wrap;
-  border-top: 1px solid var(--viz-rule);
-  background: var(--viz-bg-2);
   color: var(--viz-ink);
 }
 .stat {
-  flex: 1 1 0;
-  min-width: 104px;
-  padding: 11px 14px;
   border-right: 1px solid var(--viz-rule);
 }
 .stat:nth-last-child(2) {
@@ -241,17 +203,12 @@ input[type='range']::-moz-range-thumb {
   display: none;
 }
 .stat .k {
-  font-family: 'IBM Plex Mono', monospace;
-  font-size: 9.5px;
-  letter-spacing: 0.13em;
-  text-transform: uppercase;
   color: var(--faint);
   display: block;
   margin-bottom: 3px;
 }
 .stat .v {
   font-family: 'IBM Plex Mono', monospace;
-  font-size: 16px;
   font-variant-numeric: tabular-nums;
   letter-spacing: -0.01em;
 }
@@ -272,8 +229,6 @@ input[type='range']::-moz-range-thumb {
   align-items: flex-end;
   gap: 6px;
   font-family: 'IBM Plex Mono', monospace;
-  font-size: 9.5px;
-  letter-spacing: 0.1em;
   color: var(--faint);
 }
 .axis .bar {
@@ -329,9 +284,6 @@ input[type='range']::-moz-range-thumb {
   padding: 9px 12px;
   border-bottom: 1px solid var(--viz-rule);
   font-family: 'IBM Plex Mono', monospace;
-  font-size: 10px;
-  letter-spacing: 0.13em;
-  text-transform: uppercase;
   color: var(--faint);
   position: sticky;
   top: 0;
@@ -340,7 +292,6 @@ input[type='range']::-moz-range-thumb {
 .ins-h b {
   font-weight: 500;
   color: var(--viz-ink);
-  letter-spacing: 0.04em;
   display: flex;
   align-items: center;
   gap: 6px;
@@ -441,14 +392,7 @@ input[type='range']::-moz-range-thumb {
 .legend-inline {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px 18px;
-  padding: 11px 14px;
-  border-top: 1px solid var(--viz-rule);
-  background: var(--viz-bg);
-  font-family: 'IBM Plex Mono', monospace;
-  font-size: 10.5px;
   color: var(--soft);
-  letter-spacing: 0.04em;
 }
 .legend-inline span {
   display: inline-flex;
@@ -584,8 +528,6 @@ input[type='range']::-moz-range-thumb {
   width: 12px;
   height: 12px;
   margin: -6px 0 0 -6px;
-  background: var(--best);
-  clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%);
   filter: drop-shadow(0 0 1.5px rgba(4, 8, 12, 0.95));
 }
 @media (max-width: 900px) {
@@ -947,11 +889,6 @@ input[type='range']::-moz-range-thumb {
   height: 15px;
   margin: -7.5px 0 0 -7.5px;
   border-width: 2px;
-}
-.backend-stn-host .bmark.br {
-  width: 16px;
-  height: 16px;
-  margin: -8px 0 0 -8px;
 }
 .tour-status {
   min-height: 16px;

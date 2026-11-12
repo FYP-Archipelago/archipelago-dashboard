@@ -3,7 +3,6 @@
   grid-template-columns: 270px minmax(0, 1fr);
   grid-template-rows: 56px minmax(0, 1fr);
   grid-template-areas: 'top top' 'browser content';
-  min-height: 100vh;
 }
 .workspace-topbar {
   grid-area: top;
@@ -165,9 +164,7 @@
   grid-area: content;
   display: block;
   min-width: 0;
-  padding: 28px 32px;
   max-height: none;
-  overflow: visible;
 }
 .workspace-main > [hidden] {
   display: none !important;
@@ -242,9 +239,6 @@
   }
   .browser-backend {
     margin-top: 16px;
-  }
-  .workspace-shell .workspace-main {
-    padding: 22px 14px;
   }
 }
 /* Keep the original top navigation and full-width Archipelago canvas. */
