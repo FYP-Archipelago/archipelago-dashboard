@@ -1,10 +1,9 @@
 import React,{useEffect,useState} from 'react';
 import {readAttribution} from './attribution.js';
+import {formatFitness as fmt} from '../backend/format-fitness.js';
 import './explainability.css';
 
-const number=new Intl.NumberFormat('en',{maximumFractionDigits:4});
 const percentage=new Intl.NumberFormat('en',{maximumFractionDigits:1});
-const fmt=value=>number.format(value);
 const pct=value=>`${percentage.format(value)}%`;
 
 function Metric({label,value,detail}) {
@@ -41,8 +40,8 @@ function Attribution({data}) {
       </section>
       <section className="ex-card ex-lab" aria-labelledby="ex-coalition-heading">
         <h2 id="ex-coalition-heading">Coalition value</h2>
-        {sampled?<div className="ex-empty"><p>Exact enumeration is limited to ten players. This game contains {game.players.length} players and uses {game.sampled_orders.toLocaleString()} sampled permutations.</p><p>Permutation-specific marginal contributions are reported below.</p></div>:<>
-          <p className="ex-description">v(S) is the maximum fitness improvement supported by complete ancestry within the selected {isRoutes?'routes':'islands'}.</p>
+        {sampled?<div className="ex-empty"><p>This game estimates credit across {game.sampled_orders.toLocaleString()} sampled player orders.</p><p>Permutation-specific marginal contributions are reported below.</p></div>:<>
+          <p className="ex-description">v(S) is the best improvement supported by the recorded ancestry within the selected {isRoutes?'routes':'islands'}.</p>
           <div className="ex-coalition-controls">{game.players.map(player=><label key={player.id}><input type="checkbox" checked={coalition.includes(player.id)} onChange={()=>setCoalition(ids=>ids.includes(player.id)?ids.filter(id=>id!==player.id):[...ids,player.id])}/>{player.label}</label>)}</div>
           <div className="ex-coalition-result"><span>Coalition value v(S)</span><strong data-coalition-value aria-live="polite">{fmt(selected?.value??0)}</strong><small>fitness improvement from the initial baseline</small></div>
           <div className="ex-track ex-coalition-track"><span style={{width:`${selected?.value_percent??0}%`}}/></div>
@@ -60,7 +59,7 @@ function Attribution({data}) {
         <p className="ex-description">Δᵢ(S) = v(S ∪ {'{i}'}) − v(S). Shapley values average these increments over {sampled?'sampled permutations':'all permutations'}; the selected permutation shows one marginal allocation.</p>
       </>:<p className="ex-description">No migration-route players available for marginal analysis.</p>}
     </section>
-    <details className="ex-card ex-method-detail"><summary>Method and assumptions</summary><div className="ex-method-grid"><div><h3>Characteristic function</h3><p>v(S) is the best ancestry-supported improvement relative to the initial-population best. Fitness direction follows the run objective; initial-population quality is held fixed.</p><p>Shapley values are mean permutation-marginal contributions and satisfy Σᵢφᵢ = v(N) − v(∅).</p></div><div><h3>Attribution scope</h3><p>Single-run observational attribution of recorded dependencies. These values do not estimate counterfactual optimiser performance or causal effects of island or route removal.</p><p>Attribution is specific to the recorded run and game definition. Equal contributions need not imply equivalent island performance.</p></div><div><h3>Lineage completeness</h3><p>{data.coverage.excluded===0?'All recorded evaluations have resolved ancestry.':`${data.coverage.excluded.toLocaleString()} evaluations lack fully resolved ancestry.`} Missing parents, cycles and dependent descendants are excluded.</p><p>Coverage is conditional on source-log completeness. Aggregated cluster links are not used to reconstruct individual ancestry.</p></div></div><p className="ex-description">Reference: <a href="https://doi.org/10.1515/9781400881970-018" target="_blank" rel="noreferrer">Shapley, A Value for n-Person Games</a>. {sampled?'Permutation sampling with a fixed seed.':'Exact coalition enumeration.'}</p></details>
+    <details className="ex-card ex-method-detail"><summary>Method and assumptions</summary><div className="ex-method-grid"><div><h3>Characteristic function</h3><p>v(S) is the best ancestry-supported improvement relative to the initial-population best. Fitness direction follows the run objective; initial-population quality is held fixed.</p><p>Shapley values are mean permutation-marginal contributions and satisfy Σᵢφᵢ = v(N) − v(∅).</p></div><div><h3>Attribution scope</h3><p>Single-run observational attribution of recorded dependencies. These values do not estimate counterfactual optimiser performance or causal effects of island or route removal.</p><p>Attribution depends on the recorded run and the selected game.</p></div><div><h3>Lineage completeness</h3><p>{data.coverage.excluded===0?'All recorded evaluations have resolved ancestry.':`${data.coverage.excluded.toLocaleString()} evaluations lack fully resolved ancestry.`} Missing parents, cycles and dependent descendants are excluded.</p><p>Coverage is conditional on source-log completeness. Aggregated cluster links are not used to reconstruct individual ancestry.</p></div></div><p className="ex-description">Reference: <a href="https://doi.org/10.1515/9781400881970-018" target="_blank" rel="noreferrer">Shapley, A Value for n-Person Games</a>. {sampled?'Permutation sampling with a fixed seed.':'Exact coalition enumeration.'}</p></details>
   </div>;
 }
 

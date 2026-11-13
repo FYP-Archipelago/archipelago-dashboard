@@ -12,7 +12,7 @@ const Workspace=({runId,configuration,view})=>React.createElement(React.Fragment
 test('recorded deployment preloads runs and preserves navigation without exposing live actions',async()=>{
   const view=await mount(Page,{api,Workspace});
   try{
-    assert.match(document.body.textContent,/Recorded-data demonstration/);
+    assert.match(document.body.textContent,/Recorded demo/);
     assert.match(document.body.textContent,/Saved runs/);
     assert.equal(document.querySelector('select[aria-label="Select run"]').options.length,2);
     assert.equal(button('Start run'),undefined);assert.equal(button('New run'),undefined);assert.equal(button('Forget'),undefined);

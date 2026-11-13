@@ -5,6 +5,8 @@ import MigrationOverview from './MigrationOverview.jsx';
 import RecordedConvergence from '../demo/RecordedConvergence.jsx';
 import RunConfiguration from '../app/RunConfiguration.jsx';
 import {runValueLabel} from '../runs/run-form.js';
+import {acceptedConfiguration} from '../runs/recent-runs.js';
+import {formatFitness} from './format-fitness.js';
 import './run-workspace.css';
 
 const show=value=>value===null||value===undefined?'Unavailable':typeof value==='number'?value.toLocaleString():String(value);
@@ -35,7 +37,7 @@ function ComparisonMatrix({islands,pairs,selected,onSelect,label}) {
         if(a===b)return <span className="matrix-diagonal" key={b} aria-label={`Island ${a} compared with itself`}>—</span>;
         if(!pair)return <span className="matrix-missing" key={b} aria-label={`No comparison for islands ${a} and ${b}`}>·</span>;
         const intensity=max>0?pair.value/max:0;
-        return <button className={`matrix-cell${selected===key&&a<b?' selected':''}`} key={b} type="button" aria-pressed={selected===key} aria-label={`Island ${a} and island ${b}: MMD squared ${exact(pair.value)}${pair.p===undefined?'':`, p value ${exact(pair.p)}`}`} style={{'--heat-opacity':0.5*intensity}} onClick={()=>onSelect(key)}><span className="matrix-fill" aria-hidden="true"/><span className="matrix-value">{pair.value===0?'0':pair.value.toPrecision(2)}</span></button>;
+        return <button className={`matrix-cell${selected===key?' selected':''}`} key={b} type="button" aria-pressed={selected===key} aria-label={`Island ${a} and island ${b}: MMD squared ${exact(pair.value)}${pair.p===undefined?'':`, p value ${exact(pair.p)}`}`} style={{'--heat-opacity':0.5*intensity}} onClick={()=>onSelect(key)}><span className="matrix-fill" aria-hidden="true"/><span className="matrix-value">{pair.value===0?'0':pair.value.toPrecision(2)}</span></button>;
       })}</React.Fragment>)}
   </div>;
 }
@@ -59,7 +61,7 @@ function SeparationVisuals({separation,islands,pairs,leftCards,rightCards}) {
       {pairs.length?<><ComparisonMatrix islands={islands} pairs={pairs} selected={pairKey(wholeSelected.a,wholeSelected.b)} onSelect={setWholeKey} label="Whole-run island separation matrix"/>
         <div className="matrix-selection" role="status"><strong>Island {wholeSelected.a} ↔ Island {wholeSelected.b}</strong><span>MMD² <b>{exact(wholeSelected.value)}</b></span><span>p value <b>{exact(wholeSelected.p)}</b></span></div>
       </>:<p className="notice">No island pairs were available for comparison.</p>}
-      <p className="matrix-note">Typical genome distance: {exact(separation.typical_distance)}. — same island; · no comparison.</p>
+      <p className="matrix-note">Larger MMD² indicates more distinct distributions of candidate positions.</p>
     </section>
     </div>
     <div className="metric-column">
@@ -71,7 +73,7 @@ function SeparationVisuals({separation,islands,pairs,leftCards,rightCards}) {
         {windowPairs.length?<><ComparisonMatrix islands={islands} pairs={windowPairs} selected={pairKey(windowSelected.a,windowSelected.b)} onSelect={setWindowKey} label={`Island separation matrix from generation ${windows[activeWindow]}`}/>
           <div className="matrix-selection" role="status"><strong>Island {windowSelected.a} ↔ Island {windowSelected.b}</strong><span>MMD² <b>{exact(windowSelected.value)}</b></span><span>Typical distance <b>{exact(separation.windows.typical_distance[activeWindow])}</b></span></div>
         </>:<p className="notice">No island pairs were compared in this window.</p>}</>:<p className="notice">No generation window comparisons are available.</p>}
-      <p className="matrix-note">Colour scale resets for each window. — same island; · no comparison.</p>
+      <p className="matrix-note">Each window has its own colour scale.</p>
     </section>
     </div>
   </div>;
@@ -104,7 +106,26 @@ function Diagnostics({session}) {
   </>;
 }
 
-function RunDetails({session,configuration,recorded}) {
+function RunDetails({session, configuration, api}) {
+  const recorded = api.isDemo;
+  const runId = session.runId;
+  const [lookup, setLookup] = React.useState(null);
+  const canFetch = !recorded && !configuration && typeof api.run === 'function';
+  React.useEffect(() => {
+    if (!canFetch) return;
+    const controller = new AbortController();
+    const request = { runId, api };
+    api.run(runId, {signal: controller.signal}).then(response => {
+      if (controller.signal.aborted) return;
+      const settings = response?.run_id === runId ? acceptedConfiguration(response) : undefined;
+      setLookup({...request, settings});
+    }).catch(() => {
+      if (!controller.signal.aborted) setLookup(request);
+    });
+    return () => controller.abort();
+  }, [api, canFetch, runId]);
+  const fetched = lookup?.runId === runId && lookup.api === api ? lookup : null;
+  const notice = canFetch && (fetched ? 'Run settings are unavailable from the backend.' : 'Loading accepted run settings…');
   const run=session.result?.run;
   const layout=session.layout;
   const counts=session.clustering?.counts;
@@ -123,7 +144,7 @@ function RunDetails({session,configuration,recorded}) {
       <div><dt>Best fitness</dt><dd>{number(best)}</dd></div>
       <div><dt>Clustering time</dt><dd>{session.clustering?.elapsed_seconds==null?'—':session.clustering.elapsed_seconds.toLocaleString('en',{minimumFractionDigits:3,maximumFractionDigits:3,roundingMode:'trunc'})}{session.clustering?.elapsed_seconds!=null&&<small> s</small>}</dd></div>
     </dl>
-    <RunConfiguration configuration={configuration} recorded={recorded}/>
+    <RunConfiguration configuration={configuration || fetched?.settings} recorded={recorded} notice={notice}/>
     <details className="run-technical"><summary>Diagnostics <span>{session.warnings.length} warnings</span></summary>
       <div className="run-technical-columns">
         <section><h2>Layout</h2><dl><dt>Method</dt><dd>{layout?.method?.toUpperCase()||'—'}</dd><dt>2D variance retained</dt><dd>{layout?variance(layout.variance_kept_2d):'—'}</dd><dt>3D variance retained</dt><dd>{layout?variance(layout.variance_kept_3d):'—'}</dd><dt>Graph overlap</dt><dd>{session.clustering?number(session.graph.overlap):'—'}</dd><dt>Malformed rows</dt><dd>{session.clustering?number(session.malformedRows):'—'}</dd></dl></section>
@@ -143,7 +164,7 @@ export default function RunWorkspace({runId,api,onBack,warning='',view='archipel
   const evaluations=session.clustering?.counts?.evaluations;
   return <section className="backend-run-workspace" aria-label="Selected backend run">
     {view!=='diagnostics'&&<button className="run-back" type="button" onClick={onBack}>← Back to Runs</button>}
-    <header className="page-head"><h1>{titles[view]||'Archipelago'}</h1>{view!=='archipelago'&&<p className="question">{api.isDemo?'Recorded run':'Backend run'} <code>{runId}</code></p>}{view==='diagnostics'&&<button className="run-back" type="button" onClick={onBack}>← Back to Runs</button>}{view==='archipelago'&&<><div className="run-facts-inline"><span>Islands {islands||'—'}</span><span>Evaluations {show(evaluations)}</span><span>Goal {run?run.maximising?'Maximise':'Minimise':'—'}</span><span>Best {show(best)}</span></div><details className="reading"><summary>Graph representation and controls</summary><div className="deck">Nodes represent evaluation clusters; edges encode aggregated trajectories and migration. Controls filter islands and paths, select height metrics and identify best-fitness clusters. Fitness height uses each cluster’s best fitness; mean fitness percentile is a separate option. Equal fitness has equal world height; camera angle affects screen position. Select a node for cluster attributes. Camera: drag to rotate, scroll to zoom.</div></details></>}
+    <header className="page-head"><h1>{titles[view]||'Archipelago'}</h1>{view!=='archipelago'&&<p className="question">{api.isDemo?'Recorded run':'Backend run'} <code>{runId}</code></p>}{view==='diagnostics'&&<button className="run-back" type="button" onClick={onBack}>← Back to Runs</button>}{view==='archipelago'&&<><div className="run-facts-inline"><span>Islands {islands||'—'}</span><span>Evaluations {show(evaluations)}</span><span>Goal {run?run.maximising?'Maximise':'Minimise':'—'}</span><span>Best {best==null?'Unavailable':formatFitness(best)}</span></div><details className="reading"><summary>Graph representation and controls</summary><div className="deck">Nodes represent evaluation clusters; edges encode aggregated trajectories and migration. Controls filter islands and paths, select height metrics and identify best-fitness clusters. Fitness height uses each cluster’s best fitness; mean fitness percentile is a separate option. Equal fitness has equal world height; camera angle affects screen position. Select a node for cluster attributes. Camera: drag to rotate, scroll to zoom.</div></details></>}
       <div className="run-status" role="status"><strong>Status: {session.status.replaceAll('_',' ')}</strong><span>{api.isDemo?'Source: saved result':`Events: ${session.connection}`}</span>{session.result&&<span>{api.isDemo?'Recorded result loaded':'Final result loaded'}</span>}{session.status==='done'&&!session.result&&session.connection==='loading result'&&<span>Loading final result…</span>}{['queued','running','clustering','warming_up','live'].includes(session.status)&&<button className="secondary" type="button" disabled={session.cancelPending} onClick={session.cancelRun}>{session.cancelPending?'Cancelling…':'Cancel run'}</button>}</div>
     </header>
     {warning&&<div className="notice" role="status">{warning}</div>}
@@ -154,6 +175,6 @@ export default function RunWorkspace({runId,api,onBack,warning='',view='archipel
     {view==='migration'&&<MigrationOverview session={session}/>}
     {view==='convergence'&&<RecordedConvergence key={runId} runId={runId} api={api} backend={!api.isDemo} result={session.result}/>}
     {view==='diagnostics'&&<Diagnostics session={session}/>}
-    {view==='run'&&<RunDetails session={session} configuration={configuration} recorded={api.isDemo}/>}
+    {view==='run'&&<RunDetails key={runId} session={session} configuration={configuration} api={api}/>}
   </section>;
 }

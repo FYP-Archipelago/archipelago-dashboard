@@ -90,3 +90,9 @@
 @media(max-width:650px){.workspace-topbar{position:static}.top-run-select{width:100%}.top-run-select select{max-width:none;flex:1}.workspace-shell .workspace-main{padding:15px}.workspace-main .backend-run-workspace .page-head{grid-template-columns:1fr}.backend-stn-host{--stage-h:440px}}
 @media(min-width:901px){.backend-stn-host .stage .select-region{left:calc(var(--side) + 14px);bottom:60px}}
 @media(max-width:900px){.backend-stn-host .stage .select-region{left:14px;top:344px}}
+
+@media (max-width:650px) {
+  .workspace-topbar nav { order:3; flex:0 0 100%; }
+  .top-run-select { width:auto; flex:1; min-width:0; }
+  .top-run-select select { min-width:0; }
+}

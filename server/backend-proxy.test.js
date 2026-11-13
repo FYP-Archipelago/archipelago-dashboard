@@ -38,6 +38,7 @@ test('local dashboard metadata and proxy use the same upstream and identity is n
     const config=await fetch(url(dashboard)+'/api/backend-config');
     assert.deepEqual(await config.json(),{backend_id:url(upstream)});assert.equal(config.headers.get('cache-control'),'no-store');
     const health=await fetch(url(dashboard)+'/backend/health');assert.equal((await health.json()).status,'ok');
+    const run=await fetch(url(dashboard)+'/backend/runs/run-20261102T120000Z-aabbccdd');assert.equal(run.status,200);
   }finally{
     if(previous===undefined)delete process.env.ARCHIPELAGO_BACKEND_URL;else process.env.ARCHIPELAGO_BACKEND_URL=previous;
     await close(dashboard);await close(upstream);

@@ -10,7 +10,7 @@ export default function RunBrowserSidebar({library,selectedId,onOpenRun,onNewRun
   };
   return <aside className="run-browser" aria-label="Run browser">
     <div className="browser-heading"><h2>Run browser</h2>{!recorded&&<button className="primary" type="button" onClick={onNewRun} disabled={busy}>New run</button>}</div>
-    <p className="caption">{recorded?'Published recordings. All recordings are restored when the page reloads.':'Browser-local run history for the selected backend; server-wide history is unavailable.'}</p>
+    <p className="caption">{recorded?'Published recordings.':'Runs remembered in this browser.'}</p>
     <form className="open-run-form" onSubmit={open} noValidate>
       <label>Open by run ID<input name="run_id" value={id} onChange={event=>setId(event.target.value)} placeholder="run-YYYYMMDDTHHMMSSZ-xxxxxxxx" aria-invalid={!!error}/></label>
       {error&&<p className="field-error" role="alert">{error}</p>}

@@ -491,3 +491,25 @@ test('real convergence handles older runs without history',async()=>{
   const view=await mount(Workspace,{runId,api:{result:async()=>result},view:'convergence'});
   try{assert.match(document.body.textContent,/No generation history/);assert.equal(document.querySelector('.recorded-chart'),null);}finally{await view.close();}
 });
+
+
+test('shared run links recover accepted settings without browser history', async () => {
+  const calls = [];
+  const api = {
+    result: async () => result,
+    run: async id => {
+      calls.push(id);
+      return {run_id: id, preset: 'pso_ackley', stream: true, overrides: {seed: 42}, clustering: {birch: true}};
+    },
+  };
+  const view = await mount(Workspace, {runId, api, view: 'run'});
+  try {
+    assert.deepEqual(calls, [runId]);
+    const settings = document.querySelector('.run-configuration');
+    assert.match(settings.textContent, /PSO Ackley|pso_ackley/);
+    assert.match(settings.textContent, /Live updates/);
+    assert.match(settings.textContent, /seed42/);
+  } finally {
+    await view.close();
+  }
+});

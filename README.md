@@ -18,7 +18,7 @@ Vite serves the UI, uncached `/api/backend-config` metadata and the fixed-target
 
 ### Hosted recorded demonstration
 
-The Vercel demonstration uses an earlier dashboard build with `VITE_RECORDED_DEMO=true`. The integration work is now on `main`. It preloads two published recordings and exposes the original graph controls, aggregate migrations, clustering/separation diagnostics, recorded settings, convergence histories and Shapley analysis without a backend. It is labelled as a recorded-data demonstration. Run creation and live execution require normal backend mode; the demo never submits or simulates an execution request. Detailed migration timing remains explicitly unavailable.
+The [public Vercel demonstration](https://archipelago-dashboard.vercel.app/#library) uses the dashboard on `main` with `VITE_RECORDED_DEMO=true`. It preloads two published recordings and exposes the original graph controls, aggregate migrations, clustering/separation diagnostics, recorded settings, convergence histories and Shapley analysis without a backend. It is labelled as a recorded-data demonstration. Run creation and live execution require normal backend mode; the demo never submits or simulates an execution request. Detailed migration timing remains explicitly unavailable.
 
 `public/recorded-runs` contains final Results computed offline by the current Python module; `public/recorded-analytics` contains genuine saved generation summaries and Python-prepared chart geometry. Raw CSV, genomes, local host diagnostics and private logs are not served or uploaded. To regenerate graph/history artifacts, use the backend's Python environment from this dashboard directory:
 
@@ -28,7 +28,7 @@ The Vercel demonstration uses an earlier dashboard build with `VITE_RECORDED_DEM
 ../archipelago-shapley-backend/.venv/Scripts/python.exe -m unittest discover -s tools/demo -p 'test_*.py'
 ```
 
-For a local demo build, set `VITE_RECORDED_DEMO=true` before `npm run build`, then run `npm start`. Leave the flag unset for real backend integration. The hosted project has been published using explicit Vercel CLI deployments. Its deployed assets may differ from `main`.
+For a local demo build, set `VITE_RECORDED_DEMO=true` before `npm run build`, then run `npm start`. Leave the flag unset for real backend integration. Publish from a clean checkout of `main` linked to the existing Vercel project. Deploy with `vercel deploy --prod --skip-domain --build-env VITE_RECORDED_DEMO=true`, verify both recordings in the staged deployment, then run `vercel promote <deployment-url>`. The public build serves saved data. Run execution uses the connected setup below.
 
 See [the faculty demo guide](docs/faculty-demo-guide.md) for the walkthrough and validity/completeness review points.
 
@@ -58,7 +58,7 @@ The Node server only serves static files, `/api/status`, `/api/backend-config`, 
 
 `src/backend/useRunSession.js` consumes backend SSE status/update/final/error events and loads the saved result. `src/backend/graph-model.js` applies deltas by stable backend IDs. `src/viewer/backend-graph.js` maps that graph into the original `src/viewer/stn-viewer.js` WebGL renderer without invoking its legacy per-evaluation aggregation. The viewer preserves its camera, island and route filters, and selected backend node across live updates.
 
-The Python API exposes run history at `GET /runs` and run metadata at `GET /runs/{id}`. The dashboard still uses browser-local history, SSE for active status, and `/runs/{id}/result` for saved results. The Node proxy forwards the endpoints currently used by the dashboard. The viewer uses backend node IDs, coordinates, percentiles, island assignments, best markers, links and migrations directly.
+The Python API exposes run history at `GET /runs` and run metadata at `GET /runs/{id}`. The dashboard uses browser-local history, loads accepted settings from the API when a shared run is missing local settings, follows active status over SSE, and loads saved graphs from `/runs/{id}/result`. The Node proxy forwards the endpoints currently used by the dashboard. The viewer uses backend node IDs, coordinates, percentiles, island assignments, best markers, links and migrations directly.
 
 | View | Backend contract / remaining data |
 |---|---|

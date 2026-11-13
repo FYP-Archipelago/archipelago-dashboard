@@ -62,6 +62,7 @@ export function createBackendClient({baseUrl='/backend', identityUrl, fetchImpl=
     },
     health: options => request('/health', options),
     presets: options => request('/presets', options),
+    run: (runId, options) => request(`/runs/${encodeURIComponent(runId)}`, options),
     result: (runId, options) => request(`/runs/${encodeURIComponent(runId)}/result`, options),
     async cancelRun(runId, options={}) {
       const value=await request(`/runs/${encodeURIComponent(runId)}/cancel`, {...options,method:'POST'});

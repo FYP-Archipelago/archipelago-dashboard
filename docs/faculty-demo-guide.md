@@ -36,4 +36,4 @@ The local dashboard forwards `/backend/*` through Vite to the Python API. The No
 
 The connected dashboard supports preset configuration, live and batch runs, SSE graph updates, persistence and reopening, cancellation, diagnostics and browser-local history. Current final results include generation histories, aggregate route counts and module-computed Shapley attribution. Earlier saved results can lack those fields. The hosted demonstration is a separately deployed recording viewer.
 
-Detailed migration timing remains unavailable in the result. Graph replay orders clusters by first evaluation and is illustrative. The API exposes run history and metadata, while the dashboard still uses browser-local history. Existing-run upload and Scale study are outside the agreed scope.
+Detailed migration timing remains unavailable in the result. Graph replay orders clusters by first evaluation and is illustrative. The API exposes run history and metadata. The dashboard keeps a browser-local list and recovers accepted settings from the API when opening a shared run URL. Existing-run upload and Scale study are outside the agreed scope.

@@ -4,6 +4,7 @@ dist
 .env
 .env.*
 data/
+public/local-explainability/
 .superpowers/
 tools/
 test-support/

@@ -2,7 +2,7 @@ import http from 'node:http';
 import https from 'node:https';
 
 const RUN = 'run-\\d{8}T\\d{6}Z-[a-f0-9]{8}';
-const READ = new RegExp(`^/(?:health|presets|runs/${RUN}/(?:events|result))$`);
+const READ = new RegExp(`^/(?:health|presets|runs/${RUN}(?:/(?:events|result))?)$`);
 const WRITE = new RegExp(`^/(?:runs|runs/${RUN}/cancel)$`);
 export function backendIdentity(baseUrl=process.env.ARCHIPELAGO_BACKEND_URL || 'http://127.0.0.1:8000') {
   const target = new URL(baseUrl);

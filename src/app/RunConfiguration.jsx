@@ -12,16 +12,16 @@ function Fields({values, prefix=''}) {
   });
 }
 
-export default function RunConfiguration({configuration, recorded=false}) {
+export default function RunConfiguration({configuration, recorded=false, notice}) {
   const mainKeys=['lsh','birch','denstream','detail',...(configuration?.clustering.birch?['birch_threshold']:[]),...(configuration?.clustering.denstream?['denstream_epsilon','denstream_half_life']:[])];
   const primary=Object.fromEntries(Object.entries(configuration?.clustering||{}).filter(([key])=>mainKeys.includes(key)));
   const additional=Object.fromEntries(Object.entries(configuration?.clustering||{}).filter(([key])=>!mainKeys.includes(key)));
   return <section className="run-configuration" aria-label="Run configuration">
     <h2>Configuration</h2>
-    {!configuration ? <p className="configuration-note">Request settings are not saved in this browser.</p> : <>
+    {!configuration ? <p className="configuration-note">{notice || "Request settings are not saved in this browser."}</p> : <>
       <dl className="configuration-summary">
         <div><dt>{recorded ? 'Recording' : 'Preset'}</dt><dd>{configuration.preset}</dd></div>
-        <div><dt>Updates</dt><dd>{configuration.stream ? 'Live updates' : 'Final result only'}</dd></div>
+        <div><dt>{recorded ? 'Source' : 'Updates'}</dt><dd>{recorded ? 'Saved result' : configuration.stream ? 'Live updates' : 'Final result only'}</dd></div>
       </dl>
       <div className="configuration-columns">
         <section><h3>{recorded ? 'Offline clustering' : 'Clustering settings'}</h3>
