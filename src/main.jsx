@@ -3,7 +3,7 @@ import { createRoot } from 'react-dom/client';
 // Each design loads its own chunk and CSS, so the old global styles never reach /new.
 // The imports sit in separate functions: in one ternary, Vite's build attached the
 // second import's CSS to both branches.
-const loadNew = () => import('./redesign/RedesignApp.jsx');
+const loadNew = () => import('./redesign/RedesignApp.tsx');
 const loadLegacy = () => import('./legacy-app.js');
 const app = /^\/new(\/|$)/.test(window.location.pathname) ? loadNew() : loadLegacy();
 
