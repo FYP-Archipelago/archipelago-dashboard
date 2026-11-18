@@ -6,7 +6,7 @@ export const runsHref = '/runs';
 export const newRunHref = '/runs/new';
 export const runHref = (id: string) => `/runs/${encodeURIComponent(id)}`;
 
-export function parseRoute(pathname: string): Route {
+function parseRoute(pathname: string): Route {
   const [first, second] = pathname.split('/').filter(Boolean);
   if (first === 'runs' && second === 'new') return { name: 'new' };
   if (first === 'runs' && second) return { name: 'run', id: decodeURIComponent(second) };

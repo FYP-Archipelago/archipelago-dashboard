@@ -11,30 +11,19 @@ export type Run = {
   updated_at: string;
 };
 
-export type RunPage = { runs: Run[]; next_cursor: string | null };
+type RunPage = { runs: Run[]; next_cursor: string | null };
 
 export type Preset = {
   preset: string;
   algorithm: string;
-  benchmark: string;
-  description: string;
   defaults: Record<string, unknown>;
 };
 
-export type Health = {
-  status: 'ok' | 'unavailable';
-  version: string;
-  db: boolean;
-  redis: boolean;
-  runner: boolean;
-  ready: boolean;
-  mood: string;
-  message: string;
-};
+export type Health = { status: 'ok' | 'unavailable'; version: string; ready: boolean };
 
-export type RunQuery = { status?: RunStatusName; preset?: string; cursor?: string };
+type RunQuery = { status?: RunStatusName; preset?: string; cursor?: string };
 
-export type Api = {
+type Api = {
   health: (signal?: AbortSignal) => Promise<Health>;
   presets: (signal?: AbortSignal) => Promise<Preset[]>;
   listRuns: (query: RunQuery, signal?: AbortSignal) => Promise<RunPage>;
@@ -47,7 +36,7 @@ function detail(body: unknown): string | null {
   return typeof value === 'string' ? value : null;
 }
 
-export function createApi(baseUrl: string): Api {
+function createApi(baseUrl: string): Api {
   const base = baseUrl.replace(/\/+$/, '');
   // `tolerate` is an error status whose body is still a valid answer.
   async function get<T>(path: string, signal?: AbortSignal, tolerate?: number): Promise<T> {

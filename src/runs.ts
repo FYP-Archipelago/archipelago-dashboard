@@ -7,8 +7,8 @@ export type PresetMap = ReadonlyMap<string, Preset>;
 export const runSetting = (presets: PresetMap, run: Run, key: string): unknown =>
   key in run.overrides ? run.overrides[key] : presets.get(run.preset)?.defaults[key];
 
-export function ago(iso: string, now = Date.now()): string {
-  const minutes = Math.round((now - Date.parse(iso)) / 60000);
+export function ago(iso: string): string {
+  const minutes = Math.round((Date.now() - Date.parse(iso)) / 60000);
   if (minutes < 1) return 'just now';
   if (minutes < 60) return `${minutes} min ago`;
   const hours = Math.round(minutes / 60);

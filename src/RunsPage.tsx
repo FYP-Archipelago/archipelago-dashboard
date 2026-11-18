@@ -1,5 +1,5 @@
 import { useRef, useState, type ReactNode } from 'react';
-import type { Api, Run, RunStatusName } from './api.ts';
+import { api, type Run, type RunStatusName } from './api.ts';
 import Icon from './Icon.tsx';
 import Link from './Link.tsx';
 import { navigate, runHref } from './route.ts';
@@ -59,7 +59,7 @@ function RunRow({ run, presets }: { run: Run; presets: PresetMap }) {
   );
 }
 
-export default function RunsPage({ api, presets }: { api: Api; presets: PresetMap }) {
+export default function RunsPage({ presets }: { presets: PresetMap }) {
   const [status, setStatus] = useState<RunStatusName | 'all'>('all');
   const [preset, setPreset] = useState('all');
   const [q, setQ] = useState('');

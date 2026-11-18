@@ -11,7 +11,7 @@ const PATHS = {
   cloudOff: <path d="m2 2 20 20M5.78 5.78A7 7 0 0 0 9 19h8.5a4.5 4.5 0 0 0 1.31-.19M21.53 16.5A4.5 4.5 0 0 0 17.5 10h-1.79A7 7 0 0 0 10 5.07" />,
 };
 
-export type IconName = keyof typeof PATHS;
+type IconName = keyof typeof PATHS;
 
 export default function Icon({ name, size = 16, stroke = 1.75 }: { name: IconName; size?: number; stroke?: number }) {
   return (

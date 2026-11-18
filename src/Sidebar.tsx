@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import type { Api, Health } from './api.ts';
+import { api, type Health } from './api.ts';
 import Icon from './Icon.tsx';
 import Link from './Link.tsx';
 import { newRunHref, runHref, runsHref, type Route } from './route.ts';
@@ -20,7 +20,7 @@ function backendState(health: Health | undefined, error: string): { dot: string;
   return { dot: 'failed', label: 'Unavailable' };
 }
 
-export default function Sidebar({ api, route }: { api: Api; route: Route }) {
+export default function Sidebar({ route }: { route: Route }) {
   const recent = usePoll('recent', (signal) => api.listRuns({}, signal));
   // Checked once per page load; the polled run list is what shows live changes.
   const [health, setHealth] = useState<{ data?: Health; error: string }>({ error: '' });
@@ -31,7 +31,7 @@ export default function Sidebar({ api, route }: { api: Api; route: Route }) {
       (reason: Error) => !controller.signal.aborted && setHealth({ error: reason.message })
     );
     return () => controller.abort();
-  }, [api]);
+  }, []);
   const runs = recent.data?.runs.slice(0, RECENT_COUNT);
   const state = backendState(health.data, health.error);
   return (
