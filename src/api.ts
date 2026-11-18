@@ -5,7 +5,7 @@ export type Run = {
   status: RunStatusName;
   stream: boolean;
   preset: string;
-  overrides: Record<string, unknown>;
+  run_settings: { num_islands: number; evaluation_budget: number } & Record<string, unknown>;
   error: { phase: 'runner' | 'clustering' | 'internal'; message: string } | null;
   created_at: string;
   updated_at: string;
@@ -13,11 +13,7 @@ export type Run = {
 
 type RunPage = { runs: Run[]; next_cursor: string | null };
 
-export type Preset = {
-  preset: string;
-  algorithm: string;
-  defaults: Record<string, unknown>;
-};
+export type Preset = { preset: string };
 
 export type Health = { status: 'ok' | 'unavailable'; version: string; ready: boolean };
 

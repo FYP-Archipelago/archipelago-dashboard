@@ -2,7 +2,7 @@ import '@fontsource-variable/geist';
 import '@fontsource-variable/geist-mono';
 import './theme.css';
 import './ui.css';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { api, type Preset } from './api.ts';
 import { runsHref, useRoute } from './route.ts';
 import RunsPage from './RunsPage.tsx';
@@ -13,13 +13,13 @@ if (window.location.pathname === '/') window.history.replaceState(null, '', runs
 
 export default function App() {
   const route = useRoute();
-  const [presetList, setPresetList] = useState<Preset[]>([]);
+  const [presets, setPresets] = useState<Preset[]>([]);
   // /presets goes through the runner, so it fails while the runner is down; retry until it answers.
   useEffect(() => {
     const controller = new AbortController();
     let timer: ReturnType<typeof setTimeout> | undefined;
     const load = () =>
-      api.presets(controller.signal).then(setPresetList, () => {
+      api.presets(controller.signal).then(setPresets, () => {
         if (!controller.signal.aborted) timer = setTimeout(load, POLL_MS);
       });
     load();
@@ -28,7 +28,6 @@ export default function App() {
       clearTimeout(timer);
     };
   }, []);
-  const presets = useMemo(() => new Map(presetList.map((preset) => [preset.preset, preset])), [presetList]);
   return (
     <div className="app">
       <Sidebar route={route} />

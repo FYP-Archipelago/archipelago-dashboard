@@ -1,11 +1,6 @@
-import type { Preset, Run, RunStatusName } from './api.ts';
+import type { RunStatusName } from './api.ts';
 
 export const isActive = (status: RunStatusName) => status === 'queued' || status === 'running' || status === 'clustering' || status === 'cancelling';
-
-export type PresetMap = ReadonlyMap<string, Preset>;
-
-export const runSetting = (presets: PresetMap, run: Run, key: string): unknown =>
-  key in run.overrides ? run.overrides[key] : presets.get(run.preset)?.defaults[key];
 
 export function ago(iso: string): string {
   const minutes = Math.round((Date.now() - Date.parse(iso)) / 60000);

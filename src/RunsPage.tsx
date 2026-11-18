@@ -1,9 +1,9 @@
 import { useRef, useState, type ReactNode } from 'react';
-import { api, type Run, type RunStatusName } from './api.ts';
+import { api, type Preset, type Run, type RunStatusName } from './api.ts';
 import Icon from './Icon.tsx';
 import Link from './Link.tsx';
 import { navigate, runHref } from './route.ts';
-import { ago, duration, isActive, runSetting, type PresetMap } from './runs.ts';
+import { ago, duration, isActive } from './runs.ts';
 import Unavailable from './Unavailable.tsx';
 import { usePoll } from './usePoll.ts';
 import './runs.css';
@@ -17,15 +17,12 @@ const compact = new Intl.NumberFormat('en', { notation: 'compact', maximumFracti
 
 const matches = (run: Run, q: string) => run.run_id.toLowerCase().includes(q) || run.preset.toLowerCase().includes(q);
 
-function RunRow({ run, presets }: { run: Run; presets: PresetMap }) {
-  const islands = runSetting(presets, run, 'num_islands');
-  const budget = runSetting(presets, run, 'evaluation_budget');
+function RunRow({ run }: { run: Run }) {
   const elapsed = !isActive(run.status)
     ? duration(run.created_at, run.updated_at)
     : run.status === 'queued'
       ? '—'
       : duration(run.created_at, new Date().toISOString());
-  const preset = presets.get(run.preset);
   return (
     <tr className="click" onClick={(event) => !(event.target as Element).closest('a') && navigate(runHref(run.run_id))}>
       <td>
@@ -35,18 +32,15 @@ function RunRow({ run, presets }: { run: Run; presets: PresetMap }) {
         </span>
       </td>
       <td>
-        <div className="run-name">
-          {preset && <span className="algo">{preset.algorithm}</span>}
-          <div className="run-cell">
-            <Link className="mono" href={runHref(run.run_id)}>
-              {run.run_id}
-            </Link>
-            <span className="muted">{run.preset}</span>
-          </div>
+        <div className="run-cell">
+          <Link className="mono" href={runHref(run.run_id)}>
+            {run.run_id}
+          </Link>
+          <span className="muted">{run.preset}</span>
         </div>
       </td>
-      <td className="r">{typeof islands === 'number' ? islands : '—'}</td>
-      <td className="r">{typeof budget === 'number' ? compact.format(budget) : '—'}</td>
+      <td className="r">{run.run_settings.num_islands}</td>
+      <td className="r">{compact.format(run.run_settings.evaluation_budget)}</td>
       <td className="ink-2">{run.stream ? 'Yes' : 'No'}</td>
       <td className="ink-2" title={run.created_at}>
         {ago(run.created_at)}
@@ -59,7 +53,7 @@ function RunRow({ run, presets }: { run: Run; presets: PresetMap }) {
   );
 }
 
-export default function RunsPage({ presets }: { presets: PresetMap }) {
+export default function RunsPage({ presets }: { presets: Preset[] }) {
   const [status, setStatus] = useState<RunStatusName | 'all'>('all');
   const [preset, setPreset] = useState('all');
   const [q, setQ] = useState('');
@@ -112,7 +106,7 @@ export default function RunsPage({ presets }: { presets: PresetMap }) {
         </div>
         <select className="select" aria-label="Preset" value={preset} onChange={(event) => setPreset(event.target.value)}>
           <option value="all">All presets</option>
-          {[...presets.keys()].map((id) => (
+          {presets.map(({ preset: id }) => (
             <option key={id} value={id}>
               {id}
             </option>
@@ -141,7 +135,7 @@ export default function RunsPage({ presets }: { presets: PresetMap }) {
                 </td>
               </tr>
             ) : (
-              shown.map((run) => <RunRow key={run.run_id} run={run} presets={presets} />)
+              shown.map((run) => <RunRow key={run.run_id} run={run} />)
             )}
           </tbody>
         </table>
