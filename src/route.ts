@@ -2,13 +2,12 @@ import { useSyncExternalStore } from 'react';
 
 export type Route = { name: 'runs' } | { name: 'new' } | { name: 'run'; id: string };
 
-export const BASE = '/new';
-export const runsHref = `${BASE}/runs`;
-export const newRunHref = `${BASE}/runs/new`;
-export const runHref = (id: string) => `${BASE}/runs/${encodeURIComponent(id)}`;
+export const runsHref = '/runs';
+export const newRunHref = '/runs/new';
+export const runHref = (id: string) => `/runs/${encodeURIComponent(id)}`;
 
 export function parseRoute(pathname: string): Route {
-  const [first, second] = pathname.slice(BASE.length).split('/').filter(Boolean);
+  const [first, second] = pathname.split('/').filter(Boolean);
   if (first === 'runs' && second === 'new') return { name: 'new' };
   if (first === 'runs' && second) return { name: 'run', id: decodeURIComponent(second) };
   return { name: 'runs' };
