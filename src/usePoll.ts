@@ -6,7 +6,7 @@ export const POLL_MS = 10000;
 type Polled<T> = { key: string; data?: T; error: string };
 
 // Loads now and every POLL_MS after. A new `key` restarts polling and drops the old result.
-export function usePoll<T>(key: string, load: (signal: AbortSignal) => Promise<T>): { data?: T; error: string; loading: boolean } {
+export function usePoll<T>(key: string, load: (signal: AbortSignal) => Promise<T>): { data?: T; error: string } {
   const [state, setState] = useState<Polled<T>>({ key, error: '' });
   const run = useEffectEvent(async (signal: AbortSignal) => {
     try {
@@ -35,9 +35,5 @@ export function usePoll<T>(key: string, load: (signal: AbortSignal) => Promise<T
     };
   }, [key]);
   const current = state.key === key;
-  return {
-    data: current ? state.data : undefined,
-    error: current ? state.error : '',
-    loading: !current || (state.data === undefined && !state.error),
-  };
+  return { data: current ? state.data : undefined, error: current ? state.error : '' };
 }
