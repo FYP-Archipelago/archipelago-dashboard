@@ -4,14 +4,14 @@ import './theme.css';
 import './ui.css';
 import { useEffect, useMemo, useState } from 'react';
 import { api as defaultApi, type Api, type Preset } from './api.ts';
-import { BASE, runsHref, useRoute } from './route.ts';
+import { runsHref, useRoute } from './route.ts';
 import RunsPage from './RunsPage.tsx';
 import Sidebar from './Sidebar.tsx';
 import { POLL_MS } from './usePoll.ts';
 
-if (window.location.pathname.replace(/\/+$/, '') === BASE) window.history.replaceState(null, '', runsHref);
+if (window.location.pathname === '/') window.history.replaceState(null, '', runsHref);
 
-export default function RedesignApp({ api = defaultApi }: { api?: Api }) {
+export default function App({ api = defaultApi }: { api?: Api }) {
   const route = useRoute();
   const [presetList, setPresetList] = useState<Preset[]>([]);
   // /presets goes through the runner, so it fails while the runner is down; retry until it answers.

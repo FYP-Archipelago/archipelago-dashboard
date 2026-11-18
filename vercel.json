@@ -2,5 +2,5 @@
   "installCommand": "bun install --frozen-lockfile",
   "buildCommand": "bun run build",
   "outputDirectory": "dist",
-  "rewrites": [{ "source": "/new/:path*", "destination": "/index.html" }]
+  "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
 }
