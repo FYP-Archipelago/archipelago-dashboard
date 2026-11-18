@@ -31,7 +31,6 @@
 }
 .btn-new {
   height: 34px;
-  margin-bottom: 12px;
 }
 
 .side-section-title {
@@ -40,7 +39,7 @@
   font-size: 12px;
   font-weight: 500;
   color: var(--muted);
-  padding: 22px 10px 6px;
+  padding: 13px 10px 6px;
 }
 .view-all {
   margin-left: auto;
