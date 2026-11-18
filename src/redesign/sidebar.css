@@ -1,0 +1,131 @@
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-height: 0;
+  padding: 16px 12px;
+  border-right: 1px solid var(--border);
+  background: var(--sidebar-bg);
+  overflow: hidden;
+}
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 8px 16px;
+}
+.brand img {
+  flex: none;
+}
+.brand span {
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: -0.03em;
+}
+.btn-new {
+  height: 34px;
+  margin-bottom: 12px;
+}
+
+.side-section-title {
+  display: flex;
+  align-items: center;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--muted);
+  padding: 22px 10px 6px;
+}
+.view-all {
+  margin-left: auto;
+  margin-right: -6px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 6px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  transition:
+    color 0.15s,
+    background 0.15s;
+}
+.view-all svg {
+  transition: transform 0.2s var(--ease);
+}
+.view-all:hover,
+.view-all.on {
+  color: var(--ink);
+  background: var(--hover);
+}
+.view-all:hover svg {
+  transform: translateX(2px);
+}
+
+.recent {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  overflow-y: auto;
+  min-height: 0;
+}
+.recent-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 8px;
+  border-radius: var(--radius-sm);
+  transition:
+    background 0.15s,
+    color 0.15s;
+}
+.recent-item:hover {
+  background: var(--hover);
+}
+.recent-item.active {
+  background: var(--surface-2);
+}
+.recent-meta {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  transition: transform 0.25s var(--ease);
+}
+.recent-item:hover .recent-meta {
+  transform: translateX(2px);
+}
+.recent-meta strong,
+.recent-meta small {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.recent-meta strong {
+  font-weight: 500;
+  font-size: 11px;
+}
+.recent-meta small {
+  color: var(--muted);
+  font-size: 12px;
+}
+.recent-note {
+  padding: 7px 8px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.side-foot {
+  margin-top: auto;
+  padding-top: 12px;
+}
+.backend-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.backend-line .mono {
+  margin-left: auto;
+  font-size: 11px;
+}
