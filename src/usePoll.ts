@@ -1,7 +1,7 @@
 import { useEffect, useEffectEvent, useState } from 'react';
 
 // How often run lists refresh while the tab is visible.
-export const POLL_MS = 10000;
+const POLL_MS = 10000;
 
 type Polled<T> = { key: string; data?: T; error: string };
 

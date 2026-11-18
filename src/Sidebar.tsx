@@ -9,7 +9,7 @@ import { usePoll } from './usePoll.ts';
 import './sidebar.css';
 
 // How many of the newest runs the sidebar lists.
-const RECENT_COUNT = 10;
+const RECENT_COUNT = 12;
 
 // A reachable backend with Postgres or Redis down cannot serve runs either, so it counts as unavailable.
 function backendState(health: Health | undefined, error: string): { dot: string; label: string } {

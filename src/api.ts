@@ -6,23 +6,20 @@ export type Run = {
   status: RunStatusName;
   stream: boolean;
   preset: string;
-  run_settings: { num_islands: number; evaluation_budget: number } & Record<string, unknown>;
+  run_settings: { num_islands: number; evaluation_budget: number };
+  clustering: { lsh: boolean; birch: boolean; denstream: boolean };
   error: { phase: 'runner' | 'clustering' | 'internal'; message: string } | null;
   created_at: string;
-  updated_at: string;
 };
 
 type RunPage = { runs: Run[]; next_cursor: string | null };
 
-export type Preset = { preset: string };
-
 export type Health = { status: 'ok' | 'unavailable'; version: string; ready: boolean };
 
-type RunQuery = { status?: RunStatusName; preset?: string; cursor?: string };
+type RunQuery = { status?: RunStatusName; cursor?: string };
 
 type Api = {
   health: (signal?: AbortSignal) => Promise<Health>;
-  presets: (signal?: AbortSignal) => Promise<Preset[]>;
   listRuns: (query: RunQuery, signal?: AbortSignal) => Promise<RunPage>;
 };
 
@@ -53,7 +50,6 @@ function createApi(baseUrl: string): Api {
   return {
     // A degraded backend answers /health with 503 and the same body.
     health: (signal) => get<Health>('/health', signal, 503),
-    presets: async (signal) => (await get<{ presets: Preset[] }>('/presets', signal)).presets,
     listRuns: (query, signal) => {
       const params = new URLSearchParams(Object.entries(query).filter((entry): entry is [string, string] => Boolean(entry[1])));
       return get<RunPage>(`/runs${params.size ? `?${params}` : ''}`, signal);
