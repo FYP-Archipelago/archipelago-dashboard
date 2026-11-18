@@ -8,6 +8,13 @@
   background: var(--sidebar-bg);
   overflow: hidden;
 }
+/* Only the recent list gives up height when the sidebar overflows; it scrolls instead. */
+.sidebar > * {
+  flex-shrink: 0;
+}
+.sidebar > .recent {
+  flex-shrink: 1;
+}
 .brand {
   display: flex;
   align-items: center;
