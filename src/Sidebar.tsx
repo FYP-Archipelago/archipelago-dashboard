@@ -57,11 +57,11 @@ export default function Sidebar({ route }: { route: Route }) {
             key={run.run_id}
             className={`recent-item${route.name === 'run' && route.id === run.run_id ? ' active' : ''}`}
             href={runHref(run.run_id)}
-            title={run.run_id}
+            title={run.run_name}
           >
             <span className={`dot ${run.status}`} />
             <span className="recent-meta">
-              <strong className="mono">{run.run_id}</strong>
+              <strong>{run.run_name}</strong>
               <small>
                 {run.preset} · {ago(run.created_at)}
               </small>

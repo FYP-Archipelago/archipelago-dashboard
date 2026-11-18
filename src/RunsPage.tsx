@@ -15,7 +15,7 @@ type Tail = { key: string; runs: Run[]; cursor: string | null; loading: boolean;
 
 const compact = new Intl.NumberFormat('en', { notation: 'compact', maximumFractionDigits: 1 });
 
-const matches = (run: Run, q: string) => run.run_id.toLowerCase().includes(q) || run.preset.toLowerCase().includes(q);
+const matches = (run: Run, q: string) => [run.run_name, run.run_id, run.preset].some((field) => field.toLowerCase().includes(q));
 
 function RunRow({ run }: { run: Run }) {
   const elapsed = !isActive(run.status)
@@ -33,10 +33,12 @@ function RunRow({ run }: { run: Run }) {
       </td>
       <td>
         <div className="run-cell">
-          <Link className="mono" href={runHref(run.run_id)}>
-            {run.run_id}
+          <Link href={runHref(run.run_id)} title={run.run_name}>
+            {run.run_name}
           </Link>
-          <span className="muted">{run.preset}</span>
+          <span className="muted">
+            <span className="mono">{run.run_id}</span> · {run.preset}
+          </span>
         </div>
       </td>
       <td className="r">{run.run_settings.num_islands}</td>
@@ -95,7 +97,7 @@ export default function RunsPage({ presets }: { presets: Preset[] }) {
       <div className="filters">
         <label className="search">
           <Icon name="search" size={15} />
-          <input className="input" placeholder="Search by preset or run ID" value={q} onChange={(event) => setQ(event.target.value)} />
+          <input className="input" placeholder="Search by name, run ID or preset" value={q} onChange={(event) => setQ(event.target.value)} />
         </label>
         <div className="seg" role="group" aria-label="Status">
           {(['all', ...STATUS_FILTERS] as const).map((value) => (

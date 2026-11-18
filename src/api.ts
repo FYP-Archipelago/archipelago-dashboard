@@ -2,6 +2,7 @@ export type RunStatusName = 'queued' | 'running' | 'clustering' | 'done' | 'fail
 
 export type Run = {
   run_id: string;
+  run_name: string;
   status: RunStatusName;
   stream: boolean;
   preset: string;
