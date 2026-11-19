@@ -86,3 +86,12 @@ test('external abort stays an AbortError and timeouts are readable', async () =>
   const keepAlive=setInterval(()=>{},100);
   try {await assert.rejects(api.health(),/timed out/);}finally{clearInterval(keepAlive);}
 });
+
+test('registered runners are discovered and selected health and presets use the runner query', async () => {
+  const calls=[];
+  const api=createBackendClient({fetchImpl:async url=>{calls.push(url);return reply({default:'dea',runners:['dea','volpe']});}});
+  assert.deepEqual(await api.runners(),{default:'dea',runners:['dea','volpe']});
+  await api.health({runnerKey:'volpe'});
+  await api.presets({runnerKey:'volpe'});
+  assert.deepEqual(calls,['/backend/runners','/backend/health?runner_key=volpe','/backend/presets?runner_key=volpe']);
+});
