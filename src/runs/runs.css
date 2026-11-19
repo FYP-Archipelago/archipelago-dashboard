@@ -6,7 +6,7 @@
 .new-run-form fieldset{border:0;padding:0;margin:0;min-width:0}
 .new-run-form .param-grid{grid-template-columns:repeat(2,minmax(0,1fr));align-items:start;margin-top:15px}
 .runs-page label small{color:var(--faint);font-weight:400;line-height:1.5;font-size:11px}
-.clustering-controls{margin-top:24px;padding-top:24px;border-top:1px solid var(--line)}
+.runner-options,.clustering-controls{margin-top:24px;padding-top:24px;border-top:1px solid var(--line)}
 .clustering-controls>.stage-row{gap:18px;flex-wrap:wrap}
 .clustering-controls details{margin-bottom:20px}
 .field-error{color:var(--best);font-size:12px;line-height:1.5;margin:6px 0}
