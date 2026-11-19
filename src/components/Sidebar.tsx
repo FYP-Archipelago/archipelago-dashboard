@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react';
-import { api } from './api.ts';
+import { api } from '@/api.ts';
 import Icon from './Icon.tsx';
 import Link from './Link.tsx';
-import { newRunHref, runHref, runsHref, type Route } from './route.ts';
-import { ago } from './runs.ts';
-import type { Health } from './types.ts';
+import { newRunHref, runHref, runsHref, type Route } from '@/route.ts';
+import { ago } from '@/runs.ts';
+import type { Health } from '@/types.ts';
 import Unavailable from './Unavailable.tsx';
-import { usePoll } from './usePoll.ts';
+import { usePoll } from '@/usePoll.ts';
 import './sidebar.css';
 
 // How many of the newest runs the sidebar lists.

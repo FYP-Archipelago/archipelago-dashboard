@@ -2,10 +2,10 @@ import '@fontsource-variable/geist';
 import '@fontsource-variable/geist-mono';
 import './theme.css';
 import './ui.css';
-import NewRunPage from './NewRunPage.tsx';
+import NewRunPage from './pages/new-run/NewRunPage.tsx';
 import { runsHref, useRoute } from './route.ts';
-import RunsPage from './RunsPage.tsx';
-import Sidebar from './Sidebar.tsx';
+import RunsPage from './pages/runs/RunsPage.tsx';
+import Sidebar from './components/Sidebar.tsx';
 
 if (window.location.pathname === '/') window.history.replaceState(null, '', runsHref);
 

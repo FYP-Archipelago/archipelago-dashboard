@@ -1,10 +1,10 @@
 import { Fragment, memo, useEffect, useRef, useState, type CSSProperties, type KeyboardEvent, type PointerEvent, type ReactNode } from 'react';
-import { api } from './api.ts';
+import { api } from '@/api.ts';
 import { adjectives, animals, colors, uniqueNamesGenerator } from 'unique-names-generator';
-import Icon from './Icon.tsx';
-import { navigate, runHref } from './route.ts';
-import type { Clustering, NewRun, OverrideSpec, Preset, Presets, RunSettings } from './types.ts';
-import Unavailable from './Unavailable.tsx';
+import Icon from '@/components/Icon.tsx';
+import { navigate, runHref } from '@/route.ts';
+import type { Clustering, NewRun, OverrideSpec, Preset, Presets, RunSettings } from '@/types.ts';
+import Unavailable from '@/components/Unavailable.tsx';
 import './newrun.css';
 
 const ALGORITHMS: Record<string, string> = {
