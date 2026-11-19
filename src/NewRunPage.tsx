@@ -1,8 +1,9 @@
 import { Fragment, memo, useEffect, useRef, useState, type CSSProperties, type KeyboardEvent, type PointerEvent, type ReactNode } from 'react';
-import { api, type Clustering, type NewRun, type OverrideSpec, type Preset, type Presets, type RunSettings } from './api.ts';
+import { api } from './api.ts';
 import { adjectives, animals, colors, uniqueNamesGenerator } from 'unique-names-generator';
 import Icon from './Icon.tsx';
 import { navigate, runHref } from './route.ts';
+import type { Clustering, NewRun, OverrideSpec, Preset, Presets, RunSettings } from './types.ts';
 import Unavailable from './Unavailable.tsx';
 import './newrun.css';
 
