@@ -406,10 +406,7 @@ export function mountStnViewer(root, cfg) {
     right.insertBefore(rightSections, right.querySelector('.rail-foot'));
     right.querySelector('.rail-h span').textContent = 'Routes and appearance';
     right.before(left);
-    const meanHeight = document.createElement('button');
-    meanHeight.id='z-mean';meanHeight.textContent='MEAN FITNESS';
-    meanHeight.setAttribute('aria-pressed','false');
-    root.querySelector('#z-fit').after(meanHeight);
+    root.querySelector('#z-fit').textContent = 'BEST FITNESS';
     const reset = right.querySelector('#reset');
     reset.textContent = 'Reset view';
     reset.classList.remove('btn-wide');
@@ -714,7 +711,7 @@ export function mountStnViewer(root, cfg) {
       v[o] = G.px[i]; v[o + 1] = G.py[i];
       v[o + 2] = offI[g][0]; v[o + 3] = offI[g][1];
       v[o + 4] = offR[g][0]; v[o + 5] = offR[g][1];
-      v[o + 6] = (DS.backend ? (state.bestFitness&&G.bestHeightAvailable?G.bestPct[i]:G.pct[i]) : fitnessPct(G.pf[i])) * 1.8 - 0.9;
+      v[o + 6] = (DS.backend ? G.bestPct[i] : fitnessPct(G.pf[i])) * 1.8 - 0.9;
       v[o + 7] = (DS.backend ? G.pg[i] : G.pg[i] / gLen[g]) * 1.8 - 0.9;
       v[o + 8] = DS.backend ? G.pz[i] : (gIsl[g] - (DS.isl - 1) / 2) * PLANE_GAP;
       v[o + 9] = g;
@@ -811,7 +808,7 @@ export function mountStnViewer(root, cfg) {
   /* ── state + camera ──────────────────────────────────────────── */
   const state = {
     ds: 0, res: 2, wt: 2, ns: 100, zMode: 0, op: 180, dom: 140, exI: 0, exR: 0,
-    bestFitness: true, colourBy: "island", grpOn: [], routesOn: [],
+    colourBy: "island", grpOn: [], routesOn: [],
     contest: false, edges: true, selMark: true, bestIsl: true, bestRun: true,
     includeHiddenPaths: MIGRATION_VISIBILITY_DEFAULTS.includeHiddenPaths,
     group: false, exIBefore: 0, flat: false, hs: 100, hsBefore: 100
@@ -929,7 +926,9 @@ export function mountStnViewer(root, cfg) {
     const r = canvas.getBoundingClientRect(), x = ev.clientX - r.left, y = ev.clientY - r.top, i = pickAt(x, y);
     tip.hidden = i < 0;
     if (i < 0) return;
-    tip.textContent = "Island " + islLabel(gIsl[G.pGrp[i]]) + " · " + (DS.backend?"mean fitness ":"fitness ") + (DS.backend ? (Number.isFinite(G.pf[i]) ? G.pf[i].toFixed(4) : "unavailable") : ((DS.fitSign || 1) * G.pf[i]).toFixed(4)) + " · " + G.pVis[i] + (G.pVis[i] === 1 ? " visit" : " visits");
+    const fitness = DS.backend ? G.nodes[i].best_fitness : (DS.fitSign || 1) * G.pf[i];
+    tip.textContent = "Island " + islLabel(gIsl[G.pGrp[i]]) + " · " + (DS.backend ? "best fitness " : "fitness ") +
+      (Number.isFinite(fitness) ? fitness.toFixed(4) : "unavailable") + " · " + G.pVis[i] + (G.pVis[i] === 1 ? " visit" : " visits");
     tip.style.transform = "translate(" + (canvas.offsetLeft + Math.max(0, Math.min(x + 14, r.width - 250))) + "px," + (canvas.offsetTop + y + 14) + "px)";
   }
   canvas.addEventListener("pointerleave", () => { $("hover-tip").hidden = true; });
@@ -1349,28 +1348,16 @@ export function mountStnViewer(root, cfg) {
   function syncHeight() {
     HEIGHT_IDS.forEach((id, j) => $(id).setAttribute("aria-pressed", String(!state.flat && j === state.zMode)));
     $("z-flat").setAttribute("aria-pressed", String(state.flat));
-    const bestHeight=DS?.backend&&state.bestFitness&&G.bestHeightAvailable;
-    if(DS?.backend){
-      $("z-fit").textContent=G.bestHeightAvailable?'BEST FITNESS':'BEST (PENDING)';
-      $("z-fit").disabled=!G.bestHeightAvailable;
-      $("z-fit").setAttribute('aria-pressed',String(!state.flat&&state.zMode===0&&bestHeight));
-      $("z-mean").setAttribute('aria-pressed',String(!state.flat&&state.zMode===0&&!bestHeight));
-    }
     $("v-height").textContent = state.flat ? "flat" : state.zMode===0&&DS?.backend
-      ? (bestHeight?'best fitness':'mean fitness percentile') : HEIGHT_NAMES[state.zMode];
+      ? (G.bestHeightAvailable ? 'best fitness' : 'best fitness pending') : HEIGHT_NAMES[state.zMode];
     const ax = HEIGHT_AXIS[state.zMode];
     $("ax-top").textContent = ax[0]; $("ax-bot").textContent = ax[1];
   }
   HEIGHT_IDS.forEach((id, i) => $(id).addEventListener("click", () => {
     state.zMode = i; state.flat = false;
-    if(i===0&&DS?.backend){state.bestFitness=true;buildGeometry();}
     zTarget = new Float32Array(6); zTarget[i] = 1;
     syncHeight();
   }));
-  if(cfg.backend)$("z-mean").addEventListener('click',()=>{
-    state.bestFitness=false;state.zMode=0;state.flat=false;
-    zTarget=new Float32Array([1,0,0,0,0,0]);buildGeometry();syncHeight();
-  });
   $("z-flat").addEventListener("click", () => { state.flat = !state.flat; syncHeight(); });
   segment(["c-isl", "c-run", "c-fit"], () => ["island", "run", "fitness"].indexOf(state.colourBy), i => {
     state.colourBy = ["island", "run", "fitness"][i];
@@ -1458,7 +1445,7 @@ export function mountStnViewer(root, cfg) {
   if(cfg.backend)$("reset-settings").addEventListener('click',()=>{
     regionFlight=null;setRegionMode(false);stopBestTour();
     Object.assign(state,{
-      wt:1,ns:100,zMode:0,op:180,dom:140,exI:0,exR:0,bestFitness:true,
+      wt:1,ns:100,zMode:0,op:180,dom:140,exI:0,exR:0,
       colourBy:'island',contest:false,edges:true,selMark:true,bestIsl:true,bestRun:true,
       includeHiddenPaths:MIGRATION_VISIBILITY_DEFAULTS.includeHiddenPaths,
       group:false,exIBefore:0,flat:false,hs:100,hsBefore:100,
