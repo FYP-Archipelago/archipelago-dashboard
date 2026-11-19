@@ -89,3 +89,15 @@ test('SSE is flushed immediately, forwards Last-Event-ID, and closes upstream on
     abort.abort();await ended;
   }finally{await close(proxy);await close(upstream);}
 });
+
+test('the production proxy forwards runner discovery and scoped preset queries', async () => {
+  const seen=[];
+  const upstream=await listen((req,res)=>{seen.push(req.url);res.writeHead(200,{'content-type':'application/json'});res.end('{}');});
+  const proxy=await listen((req,res)=>proxyBackend(req,res,{baseUrl:url(upstream)}));
+  try{
+    assert.equal((await fetch(url(proxy)+'/backend/runners')).status,200);
+    assert.equal((await fetch(url(proxy)+'/backend/presets?runner_key=volpe')).status,200);
+    assert.equal((await fetch(url(proxy)+'/backend/runners',{method:'POST'})).status,404);
+    assert.deepEqual(seen,['/runners','/presets?runner_key=volpe']);
+  }finally{await close(proxy);await close(upstream);}
+});

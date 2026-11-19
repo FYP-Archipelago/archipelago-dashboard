@@ -87,3 +87,79 @@ test('changing presets restores each draft and uses the selected preset defaults
     await input('evaluation_budget','4000');await input('preset','de_rastrigin');assert.equal(find('evaluation_budget').value,'3000');
   }finally{await view.close();}
 });
+
+const volpeCatalog={...catalog,runner_options:{
+  'volpe.image':{type:'choice',label:'Problem image',default:'local/ea:main',choices:['local/ea:main','local/ea:alias']},
+  'volpe.memory_mib':{type:'int',label:'Island memory limit (MiB)',min:128,max:16384,default:2048},
+}};
+const registered=async()=>({default:'dea',runners:['dea','volpe']});
+
+test('switching runners preserves the shared configuration and keeps VolPE options scoped',async()=>{
+  const bodies=[],lookups=[];
+  const view=await render(makeApi({
+    runners:registered,
+    presets:async({runnerKey})=>{lookups.push(runnerKey);return runnerKey==='volpe'?volpeCatalog:catalog;},
+    health:async({runnerKey})=>({status:'ok',db:true,redis:true,ready:runnerKey!==null}),
+    createRun:async body=>{bodies.push(body);return {run_id:runId,status:'queued',...body};},
+  }));
+  try{
+    assert.deepEqual([...find('runner').options].map(option=>option.textContent),['dEA Runner','VolPE Runner']);
+    assert.equal(find('volpe.memory_mib'),null);
+    await input('num_islands','6');await input('migration.topology','torus');
+    await input('seed','47');await input('detail','1.4');await click(find('denstream'));await click(find('final-only'));
+    const preset=find('preset').value;
+    await submit();
+    await input('runner','volpe');
+    assert.equal(find('preset').value,preset);
+    assert.equal(find('seed').value,'47');
+    assert.equal(find('detail').value,'1.4');
+    assert.equal(find('denstream').checked,false);
+    assert.equal(find('final-only').checked,true);
+    assert.equal(find('volpe.memory_mib').value,'2048');
+    assert.equal(find('volpe.image').selectedOptions[0].textContent,'local/ea:main');
+    assert.ok(find('volpe.memory_mib').closest('section').matches('[aria-labelledby="volpe-settings-title"]'));
+    await submit();
+    assert.deepEqual(bodies[1],{...bodies[0],runner_key:'volpe'});
+
+    await input('volpe.image','local/ea:alias');
+    await input('volpe.memory_mib','127');await submit();
+    assert.equal(bodies.length,2);
+    assert.match(document.body.textContent,/Island memory limit .* must be at least 128/);
+    await input('volpe.memory_mib','512');
+    await input('runner','dea');assert.equal(find('volpe.image'),null);
+    await submit();assert.deepEqual(bodies[2],bodies[0]);
+    await input('runner','volpe');assert.equal(find('volpe.memory_mib').value,'512');
+    await submit();
+    assert.deepEqual(bodies[3].overrides,{...bodies[0].overrides,'volpe.image':'local/ea:alias','volpe.memory_mib':512});
+    assert.deepEqual(lookups,[undefined,'volpe',undefined,'volpe']);
+  }finally{await view.close();}
+});
+
+test('a runner outage keeps the draft and lets the user return to dEA',async()=>{
+  const view=await render(makeApi({
+    runners:registered,
+    health:async({runnerKey})=>({status:'ok',db:true,redis:true,ready:runnerKey!=='volpe'}),
+    presets:async({runnerKey})=>{if(runnerKey==='volpe')throw Error('Cannot load VolPE presets');return catalog;},
+  }));
+  try{
+    await input('evaluation_budget','3000');
+    await input('runner','volpe');
+    assert.ok(button('Start run').disabled);
+    assert.match(document.body.textContent,/VolPE Runner is unavailable/);
+    assert.match(document.body.textContent,/Cannot load VolPE presets/);
+    assert.equal(find('runner').disabled,false);
+    await input('runner','dea');
+    assert.equal(find('evaluation_budget').value,'3000');
+    assert.equal(button('Start run').disabled,false);
+  }finally{await view.close();}
+});
+
+test('VolPE stays hidden when the backend does not register it',async()=>{
+  for(const runners of [async()=>({default:'dea',runners:['dea']}),async()=>{throw Error('Endpoint unavailable');}]){
+    const view=await render(makeApi({runners}));
+    try{
+      assert.deepEqual([...find('runner').options].map(option=>option.value),['dea']);
+      assert.equal(button('Start run').disabled,false);
+    }finally{await view.close();}
+  }
+});

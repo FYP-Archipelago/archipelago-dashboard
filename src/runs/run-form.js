@@ -21,12 +21,22 @@ export const CLUSTER_FIELDS = {
 };
 export const initialClustering = () => ({lsh:true,birch:true,denstream:true,...Object.fromEntries(Object.entries(CLUSTER_FIELDS).map(([key,rule])=>[key,rule.auto?null:rule.default]))});
 
-export function validatePresets(value) {
+function validateOverride(key,rule) {
+  if (!object(rule) || !['int','bool','choice'].includes(rule.type)) throw new Error(`Unsupported override type for ${key}.`);
+  if (rule.type === 'choice' && (!Array.isArray(rule.choices) || !rule.choices.length || !rule.choices.every(item=>typeof item === 'string'))) throw new Error(`Invalid override choices for ${key}.`);
+  if (['min','max'].some(bound=>rule[bound] !== undefined && !Number.isSafeInteger(rule[bound])) || (rule.min !== undefined && rule.max !== undefined && rule.min > rule.max)) throw new Error(`Invalid override bounds for ${key}.`);
+}
+
+export function validatePresets(value, {requireRunnerOptions=false}={}) {
   if (!object(value) || !object(value.overrides) || !Array.isArray(value.presets) || !value.presets.length) throw new Error('Backend returned no usable presets. Retry when the runner is available.');
-  for (const [key,rule] of Object.entries(value.overrides)) {
-    if (!object(rule) || !['int','bool','choice'].includes(rule.type)) throw new Error(`Unsupported override type for ${key}.`);
-    if (rule.type === 'choice' && (!Array.isArray(rule.choices) || !rule.choices.length || !rule.choices.every(item=>typeof item === 'string'))) throw new Error(`Invalid override choices for ${key}.`);
-    if (['min','max'].some(bound=>rule[bound] !== undefined && !Number.isSafeInteger(rule[bound])) || (rule.min !== undefined && rule.max !== undefined && rule.min > rule.max)) throw new Error(`Invalid override bounds for ${key}.`);
+  for (const [key,rule] of Object.entries(value.overrides)) validateOverride(key,rule);
+  if (requireRunnerOptions && (!object(value.runner_options) || !Object.keys(value.runner_options).length)) throw new Error('Backend returned no VolPE settings.');
+  if (requireRunnerOptions) {
+    for (const [key,rule] of Object.entries(value.runner_options)) {
+      validateOverride(key,rule);
+      if (Object.hasOwn(value.overrides,key) || typeof rule.label !== 'string' || !rule.label.trim()) throw new Error(`Invalid runner setting for ${key}.`);
+      try {parseValue(rule.label,rule.default,rule);} catch {throw new Error(`Invalid runner setting default for ${key}.`);}
+    }
   }
   const names = new Set();
   for (const preset of value.presets) {
@@ -58,7 +68,7 @@ function parseValue(label, value, rule) {
   return number;
 }
 
-export function buildRunRequest({catalog,preset,values={},clustering,stream=true}) {
+export function buildRunRequest({catalog,preset,values={},runnerKey,runnerValues={},clustering,stream=true}) {
   const selected = catalog?.presets?.find(item=>item.preset === preset);
   if (!selected) throw new FormError({preset:'Choose a preset from the backend.'});
   const errors = {}, overrides = {}, effective = {...selected.defaults};
@@ -71,6 +81,16 @@ export function buildRunRequest({catalog,preset,values={},clustering,stream=true
       effective[key] = parsed;
       if (parsed !== selected.defaults[key]) overrides[key] = parsed;
     } catch (error) {errors[key] = error.message;}
+  }
+  if (runnerKey) {
+    for (const [key,raw] of Object.entries(runnerValues)) {
+      const rule = catalog.runner_options?.[key];
+      if (!rule || Object.hasOwn(catalog.overrides,key)) {errors[key]=`Unsupported runner setting: ${key}.`;continue;}
+      try {
+        const parsed = parseValue(rule.label,raw,rule);
+        if (parsed !== rule.default) overrides[key] = parsed;
+      } catch (error) {errors[key] = error.message;}
+    }
   }
   if (effective['migration.enabled']) {
     if (effective['migration.topology'] === 'torus' && effective.num_islands !== 6) errors['migration.topology'] = 'A torus needs 6 islands.';
@@ -90,5 +110,5 @@ export function buildRunRequest({catalog,preset,values={},clustering,stream=true
   }
   if (typeof stream !== 'boolean') errors.stream = 'Choose live updates or final result only.';
   if (Object.keys(errors).length) throw new FormError(errors);
-  return {preset,overrides,stream,clustering:config};
+  return {preset,overrides,stream,clustering:config,...(runnerKey ? {runner_key:runnerKey} : {})};
 }

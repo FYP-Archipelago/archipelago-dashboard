@@ -50,6 +50,7 @@ export function createBackendClient({baseUrl='/backend', identityUrl, fetchImpl=
     return value;
   }
   const request = (path,options={}) => requestAt(url(path),{...options,creating:options.method === 'POST' && path === '/runs'});
+  const runnerRequest = (path, {runnerKey, ...options}={}) => request(runnerKey ? path + '?' + new URLSearchParams({runner_key:runnerKey}) : path, options);
   const identityEndpoint = identityUrl === undefined && base === '/backend' ? '/api/backend-config' : identityUrl;
 
   return {
@@ -60,8 +61,9 @@ export function createBackendClient({baseUrl='/backend', identityUrl, fetchImpl=
       if (typeof value?.backend_id !== 'string' || !/^https?:\/\//.test(value.backend_id)) throw new BackendError('Cannot identify the configured backend. Check the dashboard proxy configuration.');
       return value.backend_id;
     },
-    health: options => request('/health', options),
-    presets: options => request('/presets', options),
+    runners: options => request('/runners', options),
+    health: options => runnerRequest('/health', options),
+    presets: options => runnerRequest('/presets', options),
     run: (runId, options) => request(`/runs/${encodeURIComponent(runId)}`, options),
     result: (runId, options) => request(`/runs/${encodeURIComponent(runId)}/result`, options),
     async cancelRun(runId, options={}) {
