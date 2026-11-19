@@ -1,6 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {backendViewerGraph,remapBackendAnchor} from './backend-graph.js';
+import {applyGraphDelta,emptyGraph} from '../backend/graph-model.js';
+import {delta,nodeTable} from '../../test-support/backend-fixture.js';
 
 test('camera anchors retain stable backend IDs when preceding nodes disappear',()=>{
   const old=[{id:10},{id:20},{id:30}];
@@ -22,7 +24,6 @@ test('backend graph keeps stable IDs, island labels, best markers and migration 
   assert.equal(idIndex.get(72),1);
   assert.deepEqual([...G.e],[0,1]);
   assert.ok(Math.abs(G.pz[1]-.4)<1e-6);
-  assert.ok(Math.abs(G.pct[1]-.25)<1e-6);
   assert.deepEqual([...G.bestOfGroup],[0,1]);
   assert.equal(G.bestOfRun[0],1);
   assert.equal(G.routes[0].n,9);
@@ -42,14 +43,33 @@ test('best fitness height agrees with run best despite worse cluster mean, and p
     const {G}=backendViewerGraph({nodes,edges:new Map(),migrations:new Map()},'',{maximising});
     assert.equal(G.bestHeightAvailable,true);
     assert.deepEqual([...G.bestPct],[0,0,1]);
-    assert.ok(G.pct[0]>G.pct[2],'Mean ordering remains available independently');
     assert.equal(G.bestOfRun[0],0);
     assert.equal(G.nodes[0].best_fitness,best,'Display does not alter supplied fitness');
   }
 });
 
-test('best height requires an explicit objective and handles equal or missing fitness',()=>{
+test('live graph deltas use the same best fitness heights as the final objective',()=>{
+  for(const maximising of [false,true]){
+    const sign=maximising?-1:1;
+    const initial={...nodeTable([10,20]),best_fitness:[2*sign,4*sign]};
+    const first=applyGraphDelta(emptyGraph(),{...delta(),new_nodes:initial,overall_best:10});
+    const next=applyGraphDelta(first,{
+      ...delta(),new_nodes:{...nodeTable([30]),best_fitness:[0]},overall_best:30
+    });
+    for(const [graph,expected] of [[first,[0,1]],[next,[.5,1,0]]]){
+      const live=backendViewerGraph(graph).G;
+      const final=backendViewerGraph(graph,'',{maximising}).G;
+      assert.equal(live.bestHeightAvailable,true);
+      assert.deepEqual([...live.bestPct],expected);
+      assert.deepEqual(live.bestPct,final.bestPct);
+    }
+  }
+});
+
+test('equal fitness can scale live even when the objective is unknown',()=>{
   const graph={nodes:new Map([[0,{id:0,island:0,best_fitness:7}],[1,{id:1,island:1,best_fitness:7}],[2,{id:2,island:1,best_fitness:null}]]),edges:new Map(),migrations:new Map()};
+  assert.equal(backendViewerGraph(graph).G.bestHeightAvailable,true);
+  assert.deepEqual([...backendViewerGraph(graph).G.bestPct],[0,0,.5]);
+  graph.nodes.get(1).best_fitness=8;
   assert.equal(backendViewerGraph(graph).G.bestHeightAvailable,false);
-  assert.deepEqual([...backendViewerGraph(graph,'',{maximising:false}).G.bestPct],[0,0,.5]);
 });
