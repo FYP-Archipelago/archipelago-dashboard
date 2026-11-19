@@ -1,11 +1,11 @@
 import { useRef, useState, type KeyboardEvent, type PointerEvent } from 'react';
 
 import Icon from '@/components/Icon.tsx';
+import { populationOf, torusGrid, torusNeeds, type Form, type Patch, type ScheduleKey, type SetText } from '@/pages/new-run/form.ts';
+import { ISLAND_COLORS, TOPOLOGIES, type Pt } from '@/pages/new-run/shared.ts';
 import type { Presets } from '@/types.ts';
 
 import { InlineNumber } from './fields.tsx';
-import { populationOf, torusGrid, torusNeeds, type Form, type Patch, type ScheduleKey, type SetText } from './form.ts';
-import { ISLAND_COLORS, TOPOLOGIES, type Pt } from './shared.ts';
 
 import './migration.css';
 

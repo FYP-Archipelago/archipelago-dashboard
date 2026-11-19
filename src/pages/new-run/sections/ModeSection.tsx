@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 
-import { seeded } from './shared.ts';
+import { seeded } from '@/pages/new-run/shared.ts';
 
 import './mode.css';
 
