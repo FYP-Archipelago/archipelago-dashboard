@@ -30,6 +30,37 @@ export function NumberField({ id, label, value, onChange, error, hint, placehold
   );
 }
 
+type InlineNumberProps = {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  onStep: (delta: number) => void;
+  invalid?: boolean;
+  preview?: boolean;
+};
+
+// A number typed straight into a sentence, on an underline that grows with it. Up and down arrows step it.
+export function InlineNumber({ label, value, onChange, onStep, invalid, preview }: InlineNumberProps) {
+  return (
+    <input
+      className={`inline-num num${invalid ? ' invalid' : ''}${preview ? ' preview' : ''}`}
+      inputMode="numeric"
+      aria-label={label}
+      aria-invalid={invalid}
+      value={value}
+      spellCheck={false}
+      style={{ width: `calc(${Math.max(2, value.length)}ch + 10px)` }}
+      onChange={(event) => onChange(event.target.value)}
+      onKeyDown={(event) => {
+        const delta = { ArrowUp: 1, ArrowDown: -1 }[event.key];
+        if (!delta) return;
+        event.preventDefault();
+        onStep(delta * (event.shiftKey ? 10 : 1));
+      }}
+    />
+  );
+}
+
 export function Switch({ on }: { on: boolean }) {
   return <span className={`switch${on ? ' on' : ''}`} aria-hidden="true" />;
 }
