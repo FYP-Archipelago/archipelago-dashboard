@@ -1,4 +1,5 @@
 import type { AnchorHTMLAttributes, MouseEvent } from 'react';
+
 import { navigate } from '@/route.ts';
 
 // Navigates in place for plain left clicks; modified clicks keep the browser's new-tab behaviour.

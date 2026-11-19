@@ -1,0 +1,237 @@
+.nr-step .topos {
+  margin-top: 16px;
+}
+
+.topo.on {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
+  background: var(--surface-2);
+}
+
+.step-h {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.title-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 4px 4px 10px;
+  border-radius: 999px;
+  color: var(--ink-2);
+  font-size: 13px;
+  font-weight: 500;
+  transition: background 0.2s;
+}
+
+.title-switch:hover {
+  background: var(--hover);
+  color: var(--ink);
+}
+
+.mig-body {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  transition: opacity 0.25s;
+}
+
+.mig-body:disabled {
+  opacity: 0.4;
+  filter: grayscale(1);
+}
+
+.mig-body:disabled * {
+  cursor: not-allowed;
+}
+
+.nr-step .mig-body .topos,
+.nr-step .mig-body .fields,
+.mig-body .field-error.block {
+  margin-top: 0;
+}
+
+.topos {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+  gap: 8px;
+}
+
+.topo {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 6px 10px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--ink-2);
+  font-size: 12px;
+  transition:
+    border-color 0.2s,
+    background 0.2s;
+}
+
+.topo:hover {
+  border-color: var(--border-strong);
+}
+
+.topo.on {
+  color: var(--ink);
+}
+
+.topo.invalid {
+  opacity: 0.4;
+}
+
+/* Migration schedule: calendar and population */
+.ms-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--ink-2);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.ms-label svg {
+  color: var(--muted);
+}
+
+.mg-readout {
+  flex: 1;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.mg-readout b {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.mq {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+
+.q-head {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+  margin-bottom: 10px;
+}
+
+.cal-grid {
+  display: grid;
+  grid-template-columns: repeat(50, minmax(0, 1fr));
+  gap: 3px;
+  padding: 2px;
+  border-radius: 6px;
+}
+
+.cal-day {
+  aspect-ratio: 1;
+  border-radius: 2px;
+  background: var(--surface-3);
+  transition:
+    background 0.15s,
+    transform 0.15s var(--spring);
+}
+
+.cal-day.alone {
+  background: color-mix(in srgb, var(--accent) 22%, var(--surface-3));
+}
+
+.cal-day.migrates {
+  background: var(--accent);
+}
+
+.cal-day.first {
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 35%, transparent);
+}
+
+.cal-day:hover {
+  transform: scale(1.45);
+  position: relative;
+  z-index: 1;
+}
+
+.cal-legend {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-top: 10px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.cal-legend > span:last-child {
+  margin-left: auto;
+}
+
+.cal-legend i {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  margin-right: 5px;
+  border-radius: 2px;
+  vertical-align: -1px;
+}
+
+.cal-legend i.alone {
+  background: color-mix(in srgb, var(--accent) 22%, var(--surface-3));
+}
+
+.cal-legend i.migrates {
+  background: var(--accent);
+}
+
+.pop-grid {
+  display: grid;
+  grid-template-columns: repeat(40, minmax(0, 1fr));
+  gap: 4px;
+  padding: 2px;
+  border-radius: 6px;
+}
+
+.pop-one {
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--ink) calc(48% - var(--i) * 0.22%), var(--surface-3));
+  transition:
+    background 0.15s,
+    transform 0.15s var(--spring);
+}
+
+.pop-one.sent {
+  background: var(--accent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 25%, transparent);
+}
+
+.pop-one.preview {
+  background: color-mix(in srgb, var(--accent) 60%, var(--surface-3));
+  box-shadow: none;
+}
+
+.pop-one:hover:not(:disabled) {
+  transform: scale(1.35);
+}
+
+.pop-one:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.pop-arrow {
+  display: grid;
+  margin: 0 -8px;
+}

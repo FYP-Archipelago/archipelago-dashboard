@@ -1,12 +1,15 @@
 import { useEffect, useState } from 'react';
+
 import { api } from '@/api.ts';
-import Icon from './Icon.tsx';
-import Link from './Link.tsx';
 import { newRunHref, runHref, runsHref, type Route } from '@/route.ts';
 import { ago } from '@/runs.ts';
 import type { Health } from '@/types.ts';
-import Unavailable from './Unavailable.tsx';
 import { usePoll } from '@/usePoll.ts';
+
+import Icon from './Icon.tsx';
+import Link from './Link.tsx';
+import Unavailable from './Unavailable.tsx';
+
 import './sidebar.css';
 
 // How many of the newest runs the sidebar lists.
@@ -43,7 +46,7 @@ export default function Sidebar({ route }: { route: Route }) {
       </Link>
       <Link className="btn btn-primary btn-new" href={newRunHref}>
         <Icon name="plus" size={15} stroke={2} />
-        New run
+        New Run
       </Link>
       <div className="side-section-title">
         <span>Recent</span>

@@ -1,12 +1,14 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
+
 import { api } from '@/api.ts';
 import Icon from '@/components/Icon.tsx';
 import Link from '@/components/Link.tsx';
+import Unavailable from '@/components/Unavailable.tsx';
 import { navigate, runHref } from '@/route.ts';
 import { ago } from '@/runs.ts';
 import type { Run, RunStatusName } from '@/types.ts';
-import Unavailable from '@/components/Unavailable.tsx';
 import { usePoll } from '@/usePoll.ts';
+
 import './runs.css';
 
 // Cancelling is too brief to be worth a filter of its own.
@@ -174,10 +176,12 @@ export default function RunsPage() {
       </div>
       <div className="table-foot">
         {tail?.failed && <Unavailable />}
-        {cursor && (
+        {cursor ? (
           <button className="btn" disabled={tail?.loading} onClick={loadMore}>
             {tail?.loading ? 'Loading…' : 'Load more'}
           </button>
+        ) : (
+          !placeholder && <p className="table-end">{loaded.length === 1 ? 'All 1 run loaded' : `All ${loaded.length} runs loaded`}</p>
         )}
       </div>
     </div>
