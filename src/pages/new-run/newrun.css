@@ -144,6 +144,40 @@
   background: var(--accent-ink);
 }
 
+.inline-num {
+  padding: 0 4px;
+  margin: 0 2px;
+  border: 0;
+  border-bottom: 1.5px solid var(--border-strong);
+  border-radius: 0;
+  background: transparent;
+  color: var(--ink);
+  font-weight: 600;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  transition:
+    border-color 0.15s,
+    color 0.15s;
+}
+
+.inline-num:hover {
+  border-bottom-color: var(--ink-2);
+}
+
+.inline-num:focus {
+  outline: none;
+  border-bottom-color: var(--accent);
+}
+
+.inline-num.preview {
+  color: var(--ink-2);
+  border-bottom-style: dashed;
+}
+
+.inline-num.invalid {
+  border-bottom-color: var(--critical);
+}
+
 .input:disabled {
   opacity: 0.45;
   cursor: not-allowed;

@@ -62,7 +62,7 @@ export default function Summary({ form, errors, submit, patch, onLaunch }: Summa
         <dt>Generations</dt>
         <dd>{errors.target_generations ? '—' : form.text.target_generations.trim()}</dd>
         <dt>Migration</dt>
-        <dd>{form.migration ? (TOPOLOGIES[form.topology] ?? form.topology) : 'Off'}</dd>
+        <dd>{form.migration ? (TOPOLOGIES[form.topology] ?? form.topology) : '—'}</dd>
         {form.migration && (
           <>
             <dt>Schedule</dt>

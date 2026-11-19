@@ -1,11 +1,11 @@
-import { useState, type KeyboardEvent } from 'react';
+import { useRef, useState, type KeyboardEvent, type PointerEvent } from 'react';
 
 import Icon from '@/components/Icon.tsx';
 import type { Presets } from '@/types.ts';
 
-import { Switch } from './fields.tsx';
+import { InlineNumber } from './fields.tsx';
 import { TORUS_ISLANDS, type Form, type Patch, type ScheduleKey, type SetText } from './form.ts';
-import { ISLAND_COLORS, TOPOLOGIES, vars, type Pt } from './shared.ts';
+import { ISLAND_COLORS, TOPOLOGIES, type Pt } from './shared.ts';
 
 import './migration.css';
 
@@ -127,16 +127,32 @@ function IntervalCalendar({ form, errors, setText, step }: ScheduleProps) {
           <Icon name="clock" size={14} />
           Interval
         </span>
+        <span className="q-head-dot" aria-hidden="true">
+          ·
+        </span>
         <span className="mg-readout">
-          {errors['migration.interval'] ??
-            (shownInterval ? (
-              <>
-                {hovered ? 'click to migrate ' : ''}every <b className="num">{shownInterval}</b> generations · <b className="num">{migrationCount}</b>{' '}
-                migrations
-              </>
-            ) : (
-              'Set target generations first'
-            ))}
+          {hovered ? 'click to migrate ' : ''}every
+          <InlineNumber
+            label="Generations between migrations"
+            value={hovered ? String(hovered) : form.text['migration.interval']}
+            invalid={Boolean(errors['migration.interval'])}
+            preview={hovered > 0}
+            onChange={setText('migration.interval')}
+            onStep={(delta) => step('migration.interval', delta)}
+          />
+          generations
+          <span className="mg-readout-arrow">
+            <Icon name="arrowR" size={13} />
+          </span>
+          {errors['migration.interval'] ? (
+            <span className="field-error">{errors['migration.interval']}</span>
+          ) : generations === null ? (
+            'set target generations first'
+          ) : (
+            <>
+              <b className="num">{migrationCount}</b> {migrationCount === 1 ? 'migration' : 'migrations'}
+            </>
+          )}
         </span>
       </div>
       <div
@@ -185,16 +201,25 @@ function IntervalCalendar({ form, errors, setText, step }: ScheduleProps) {
   );
 }
 
-// One island's population, best first: click how many of the best to send.
-function MigrantPopulation({ form, errors, setText, step }: ScheduleProps) {
+// One island's population as bars of fitness, best first: drag the cut to choose how many of the best are sent.
+function MigrantRanked({ form, errors, setText, step }: ScheduleProps) {
   const [hovered, setHovered] = useState(0);
+  const dragging = useRef(false);
 
+  const key = 'migration.num_migrants';
   const population = populationOf(form, errors);
-  const migrants = errors['migration.num_migrants'] ? 0 : Number(form.text['migration.num_migrants']);
-  const shownMigrants = hovered || migrants;
-  // The grid draws at most 160 individuals.
-  const limit = 160;
-  const drawn = Math.min(population ?? 40, limit);
+  const migrants = errors[key] ? 0 : Number(form.text[key]);
+  const shown = hovered || migrants;
+  // The chart draws at most 160 individuals.
+  const bars = Math.min(population ?? 40, 160);
+  // Sending the whole population is not allowed.
+  const max = population ? Math.min(bars, population - 1) : bars;
+  const cut = Math.min(shown, bars);
+
+  const countAt = (event: PointerEvent<HTMLDivElement>) => {
+    const box = event.currentTarget.getBoundingClientRect();
+    return Math.min(max, Math.max(1, Math.ceil(((event.clientX - box.left) / box.width) * bars)));
+  };
 
   return (
     <div>
@@ -203,49 +228,70 @@ function MigrantPopulation({ form, errors, setText, step }: ScheduleProps) {
           <Icon name="arrowR" size={14} />
           Migrants per route
         </span>
+        <span className="q-head-dot" aria-hidden="true">
+          ·
+        </span>
         <span className="mg-readout">
-          {errors['migration.num_migrants'] ?? (
-            <>
-              {hovered ? 'click to send ' : 'sends '}its best <b className="num">{shownMigrants}</b>
-              {population !== null && (
-                <>
-                  {' '}
-                  of about <b className="num">{population}</b> ({Math.round((shownMigrants / population) * 100)}%)
-                </>
-              )}{' '}
-              along each route
-            </>
-          )}
+          {hovered ? 'click to send ' : 'sends '}its best
+          <InlineNumber
+            label="Migrants per route"
+            value={hovered ? String(hovered) : form.text[key]}
+            invalid={Boolean(errors[key])}
+            preview={hovered > 0}
+            onChange={setText(key)}
+            onStep={(delta) => step(key, delta)}
+          />
+          {errors[key] ? (
+            <span className="field-error">{errors[key]}</span>
+          ) : (
+            population !== null && (
+              <>
+                of about <b className="num">{population}</b> ({Math.round((shown / population) * 100)}%)
+              </>
+            )
+          )}{' '}
+          along each route
         </span>
       </div>
       <div
-        className="pop-grid"
+        className="ranked-chart"
         role="slider"
         tabIndex={form.migration ? 0 : -1}
         aria-label="Migrants per route"
         aria-valuemin={1}
-        aria-valuemax={population ? population - 1 : undefined}
+        aria-valuemax={max}
         aria-valuenow={migrants || undefined}
-        onKeyDown={form.migration ? sliderKeys('migration.num_migrants', step) : undefined}
+        onKeyDown={form.migration ? sliderKeys(key, step) : undefined}
+        onPointerDown={(event) => {
+          if (!form.migration) return;
+          event.currentTarget.setPointerCapture(event.pointerId);
+          dragging.current = true;
+          setText(key)(String(countAt(event)));
+        }}
+        onPointerMove={(event) => {
+          if (!form.migration) return;
+          if (dragging.current) setText(key)(String(countAt(event)));
+          else setHovered(countAt(event));
+        }}
+        onPointerUp={() => (dragging.current = false)}
         onPointerLeave={() => setHovered(0)}
       >
-        {Array.from({ length: drawn }, (_, i) => {
-          // Sending the whole population is not allowed, so the last individual always stays.
-          const locked = population !== null && i >= population - 1;
-          return (
-            <button
-              key={i}
-              type="button"
-              tabIndex={-1}
-              disabled={locked}
-              aria-label={`Send the best ${i + 1}`}
-              className={`pop-one${i < shownMigrants ? ' sent' : ''}${hovered && i < hovered ? ' preview' : ''}`}
-              style={vars({ '--i': i })}
-              onPointerEnter={() => !locked && setHovered(i + 1)}
-              onClick={() => setText('migration.num_migrants')(String(i + 1))}
-            />
-          );
-        })}
+        {Array.from({ length: bars }, (_, i) => (
+          <span
+            key={i}
+            className={`ranked-bar${i < cut ? ' sent' : ''}${hovered && i < hovered ? ' preview' : ''}${i >= max ? ' locked' : ''}`}
+            // A smooth falling fitness curve, best on the left.
+            style={{ height: `${100 - 78 * (i / Math.max(1, bars - 1)) ** 0.6}%` }}
+          />
+        ))}
+        {cut > 0 && (
+          <span className="ranked-cut" style={{ left: `${(cut / bars) * 100}%` }}>
+            <span className="ranked-tag">
+              best <b className="num">{shown}</b> sent
+              <Icon name="arrowR" size={11} />
+            </span>
+          </span>
+        )}
       </div>
       <div className="cal-legend">
         <span>best</span>
@@ -256,9 +302,9 @@ function MigrantPopulation({ form, errors, setText, step }: ScheduleProps) {
         <span className="num">
           {population === null
             ? 'population size depends on budget and generations'
-            : population > limit
-              ? `showing the best ${limit} of about ${population}`
-              : `about ${population} per island, from budget and generations`}
+            : population > bars
+              ? `showing the best ${bars} of about ${population}`
+              : `about ${population} per island, ranked by fitness`}
         </span>
       </div>
     </div>
@@ -273,10 +319,19 @@ export default function MigrationSection({ form, errors, overrides, patch, setTe
     <section className="nr-step">
       <div className="step-h">
         <h2>Migration</h2>
-        <button className="title-switch" role="switch" aria-checked={form.migration} onClick={() => patch({ migration: !form.migration })}>
-          {form.migration ? 'On' : 'Off'}
-          <Switch on={form.migration} />
-        </button>
+        <div className="mig-seg" role="radiogroup" aria-label="Migration">
+          {[false, true].map((on) => (
+            <button
+              key={String(on)}
+              role="radio"
+              aria-checked={form.migration === on}
+              className={form.migration === on ? 'on' : undefined}
+              onClick={() => patch({ migration: on })}
+            >
+              {on ? 'On' : 'Off'}
+            </button>
+          ))}
+        </div>
       </div>
       <p className="desc">{form.migration ? 'How individuals move between islands.' : 'Islands evolve in isolation.'}</p>
       <fieldset className="mig-body" disabled={!form.migration}>
@@ -299,7 +354,7 @@ export default function MigrationSection({ form, errors, overrides, patch, setTe
         {errors.topology && <p className="field-error block">{errors.topology}</p>}
         <div className="mq">
           <IntervalCalendar form={form} errors={errors} setText={setText} step={step} />
-          <MigrantPopulation form={form} errors={errors} setText={setText} step={step} />
+          <MigrantRanked form={form} errors={errors} setText={setText} step={step} />
         </div>
       </fieldset>
     </section>
