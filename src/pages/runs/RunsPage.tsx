@@ -181,7 +181,7 @@ export default function RunsPage() {
             {tail?.loading ? 'Loading…' : 'Load more'}
           </button>
         ) : (
-          !placeholder && <p className="table-end">{loaded.length === 1 ? 'All 1 run loaded' : `All ${loaded.length} runs loaded`}</p>
+          !placeholder && <p className="table-end">{loaded.length === 1 ? '1 run loaded' : `${loaded.length} runs loaded`}</p>
         )}
       </div>
     </div>
