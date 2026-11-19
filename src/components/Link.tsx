@@ -1,5 +1,5 @@
 import type { AnchorHTMLAttributes, MouseEvent } from 'react';
-import { navigate } from './route.ts';
+import { navigate } from '@/route.ts';
 
 // Navigates in place for plain left clicks; modified clicks keep the browser's new-tab behaviour.
 export default function Link({ href, ...props }: Omit<AnchorHTMLAttributes<HTMLAnchorElement>, 'onClick'> & { href: string }) {

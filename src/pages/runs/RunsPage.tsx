@@ -1,12 +1,12 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { api } from './api.ts';
-import Icon from './Icon.tsx';
-import Link from './Link.tsx';
-import { navigate, runHref } from './route.ts';
-import { ago } from './runs.ts';
-import type { Run, RunStatusName } from './types.ts';
-import Unavailable from './Unavailable.tsx';
-import { usePoll } from './usePoll.ts';
+import { api } from '@/api.ts';
+import Icon from '@/components/Icon.tsx';
+import Link from '@/components/Link.tsx';
+import { navigate, runHref } from '@/route.ts';
+import { ago } from '@/runs.ts';
+import type { Run, RunStatusName } from '@/types.ts';
+import Unavailable from '@/components/Unavailable.tsx';
+import { usePoll } from '@/usePoll.ts';
 import './runs.css';
 
 // Cancelling is too brief to be worth a filter of its own.
