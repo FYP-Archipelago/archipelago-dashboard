@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type PointerEvent, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 
 import Icon from '@/components/Icon.tsx';
 
@@ -8,46 +8,29 @@ import './start.css';
 
 export type StartPhase = 'idle' | 'busy' | 'done' | 'failed';
 
-type StartProps = { phase: StartPhase; disabled: boolean; islands: number; onLaunch: () => void };
+type StartProps = { phase: StartPhase; disabled: boolean; onLaunch: () => void };
 
 type Burst = { id: number; x: number; y: number };
 
-// Hold to launch: a fill charges across the button while the islands light up, then the run starts with a burst.
-export default function StartButton({ phase, disabled, islands, onLaunch }: StartProps) {
+export default function StartButton({ phase, disabled, onLaunch }: StartProps) {
   const [bursts, setBursts] = useState<Burst[]>([]);
-  const [charge, setCharge] = useState(0);
-  const chargeFrame = useRef(0);
+  const [launching, setLaunching] = useState(false);
+  const timers = useRef<number[]>([]);
 
-  useEffect(() => () => cancelAnimationFrame(chargeFrame.current), []);
+  useEffect(() => () => timers.current.forEach((timer) => window.clearTimeout(timer)), []);
+
+  const later = (ms: number, run: () => void) => timers.current.push(window.setTimeout(run, ms));
 
   const launch = (button: HTMLElement) => {
+    if (launching) return;
+    setLaunching(true);
     const id = performance.now() + Math.random();
-    setBursts((list) => [...list, { id, x: button.clientWidth / 2, y: button.clientHeight / 2 }]);
-    window.setTimeout(() => setBursts((list) => list.filter((burst) => burst.id !== id)), 900);
-    onLaunch();
-  };
-
-  const startHold = (event: PointerEvent<HTMLButtonElement>) => {
-    if (event.button !== 0 || disabled) return;
-
-    const button = event.currentTarget;
-    const pressedAt = performance.now();
-    const tick = (now: number) => {
-      // A full charge takes 650 ms.
-      const charged = Math.min(1, (now - pressedAt) / 650);
-      setCharge(charged);
-      if (charged < 1) chargeFrame.current = requestAnimationFrame(tick);
-      else {
-        setCharge(0);
-        launch(button);
-      }
-    };
-    chargeFrame.current = requestAnimationFrame(tick);
-  };
-
-  const cancelHold = () => {
-    cancelAnimationFrame(chargeFrame.current);
-    setCharge(0);
+    later(150, () => setBursts((list) => [...list, { id, x: button.clientWidth / 2, y: button.clientHeight / 2 }]));
+    later(1050, () => setBursts((list) => list.filter((burst) => burst.id !== id)));
+    later(400, () => {
+      setLaunching(false);
+      onLaunch();
+    });
   };
 
   const islandColour = (i: number) => ISLAND_COLORS[i % ISLAND_COLORS.length]!;
@@ -79,12 +62,10 @@ export default function StartButton({ phase, disabled, islands, onLaunch }: Star
   else
     content = (
       <>
-        <span className="hold-dots" aria-hidden="true">
-          {Array.from({ length: islands }, (_, i) => (
-            <i key={i} className={charge > i / islands ? 'lit' : ''} style={vars({ '--c': islandColour(i) })} />
-          ))}
+        <span className="start-arrow">
+          <Icon name="arrowR" size={14} stroke={2} />
         </span>
-        {charge > 0 ? 'Keep holding…' : 'Hold to Start Run'}
+        Start Run
       </>
     );
 
@@ -92,21 +73,10 @@ export default function StartButton({ phase, disabled, islands, onLaunch }: Star
     // The burst sits beside the button, not in it, so the button's dimming and scaling while it starts do not touch it.
     <div className="start-wrap">
       <button
-        className={`btn btn-primary start phase-${phase}${charge > 0 ? ' holding' : ''}`}
+        className={`btn btn-primary start phase-${phase}${launching ? ' launching' : ''}`}
         disabled={disabled}
-        style={vars({ '--hold': charge })}
-        onPointerDown={startHold}
-        onPointerUp={cancelHold}
-        onPointerLeave={cancelHold}
-        onPointerCancel={cancelHold}
-        // Keyboard presses arrive as clicks with no pointer, so they launch straight away.
-        onClick={(event) => event.detail === 0 && launch(event.currentTarget)}
+        onClick={(event) => launch(event.currentTarget)}
       >
-        {phase === 'idle' && (
-          <span className="hold-clip" aria-hidden="true">
-            <span className="hold-fill" />
-          </span>
-        )}
         <span className="start-content" key={phase}>
           {content}
         </span>
