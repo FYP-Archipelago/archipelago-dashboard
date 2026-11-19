@@ -4,7 +4,7 @@ import Icon from '@/components/Icon.tsx';
 import type { Presets } from '@/types.ts';
 
 import { InlineNumber } from './fields.tsx';
-import { populationOf, TORUS_ISLANDS, type Form, type Patch, type ScheduleKey, type SetText } from './form.ts';
+import { populationOf, torusGrid, torusNeeds, type Form, type Patch, type ScheduleKey, type SetText } from './form.ts';
 import { ISLAND_COLORS, TOPOLOGIES, type Pt } from './shared.ts';
 
 import './migration.css';
@@ -37,16 +37,16 @@ function TopologyGlyph({ kind, count }: { kind: string; count: number }) {
     edges = points.slice(1).map((_, i) => [0, i + 1]);
   }
   if (kind === 'torus') {
-    points = [0, 1, 2].flatMap((x) => [0, 1].map((y) => [9 + x * 13, 14 + y * 16] as Pt));
-    edges = [
-      [0, 2],
-      [2, 4],
-      [1, 3],
-      [3, 5],
-      [0, 1],
-      [2, 3],
-      [4, 5],
-    ];
+    // The grid the runner would build, joined to its right and lower neighbours; the wrap-around links are left out.
+    const { rows, columns } = torusGrid(count);
+    points = Array.from({ length: count }, (_, i) => [
+      columns > 1 ? 7 + ((i % columns) * 30) / (columns - 1) : centre,
+      rows > 1 ? 12 + (Math.floor(i / columns) * 20) / (rows - 1) : centre,
+    ]);
+    edges = points.flatMap((_, i) => [
+      ...(i % columns < columns - 1 ? [[i, i + 1] as [number, number]] : []),
+      ...(i + columns < count ? [[i, i + columns] as [number, number]] : []),
+    ]);
   }
   if (kind === 'random') {
     const links: [number, number][] = [
@@ -333,13 +333,13 @@ export default function MigrationSection({ form, errors, overrides, patch, setTe
             <button
               key={kind}
               type="button"
-              className={`topo${form.topology === kind ? ' on' : ''}${kind === 'torus' && form.islands !== TORUS_ISLANDS ? ' invalid' : ''}`}
+              className={`topo${form.topology === kind ? ' on' : ''}${kind === 'torus' && !torusGrid(form.islands).valid ? ' invalid' : ''}`}
               role="radio"
               aria-checked={form.topology === kind}
-              title={kind === 'torus' ? `Needs ${TORUS_ISLANDS} islands` : undefined}
+              title={kind === 'torus' ? `Needs ${torusNeeds(overrides)}` : undefined}
               onClick={() => patch({ topology: kind })}
             >
-              <TopologyGlyph kind={kind} count={kind === 'torus' ? TORUS_ISLANDS : form.islands} />
+              <TopologyGlyph kind={kind} count={form.islands} />
               {TOPOLOGIES[kind] ?? kind}
             </button>
           ))}

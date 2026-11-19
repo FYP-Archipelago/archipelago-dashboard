@@ -32,8 +32,23 @@ export type Form = {
 export type Patch = (change: Partial<Form>) => void;
 export type SetText = (key: SettingKey) => (value: string) => void;
 
-// The runner rejects a torus that collapses into a ring, which for 4 to 6 islands is anything but 6.
-export const TORUS_ISLANDS = 6;
+// The runner lays a torus out as rows x columns, the rows being the largest divisor of the island count up to its
+// square root. Under 2 rows or 3 columns every island has just two neighbours, a ring, which the runner rejects.
+export function torusGrid(islands: number): { rows: number; columns: number; valid: boolean } {
+  let rows = 1;
+  for (let candidate = 1; candidate * candidate <= islands; candidate++) if (islands % candidate === 0) rows = candidate;
+  const columns = islands / rows;
+  return { rows, columns, valid: rows >= 2 && columns >= 3 };
+}
+
+// The island counts the runner allows that make a torus, e.g. "6, 8 or 9 islands".
+export function torusNeeds(overrides: Presets['overrides']): string {
+  const spec = overrides.num_islands;
+  const [min, max] = spec?.type === 'int' && spec.min !== undefined && spec.max !== undefined ? [spec.min, spec.max] : [6, 6];
+  const counts = Array.from({ length: max - min + 1 }, (_, i) => min + i).filter((count) => torusGrid(count).valid);
+  if (!counts.length) return 'a grid of at least 2 x 3 islands';
+  return `${counts.length > 1 ? `${counts.slice(0, -1).join(', ')} or ` : ''}${counts.at(-1)} islands`;
+}
 
 // archipelago's clustering Config allows detail in this range.
 export const DETAIL_MIN = 0.5;
@@ -140,7 +155,7 @@ export function validate(form: Form, overrides: Presets['overrides']): Record<st
     const intervalTooLong = Number(form.text['migration.interval']) > Number(form.text.target_generations);
     if (!errors['migration.interval'] && !errors.target_generations && intervalTooLong)
       flag('migration.interval', 'Must not exceed target generations');
-    if (form.topology === 'torus' && form.islands !== TORUS_ISLANDS) flag('topology', `A torus needs ${TORUS_ISLANDS} islands.`);
+    if (form.topology === 'torus' && !torusGrid(form.islands).valid) flag('topology', `A torus needs ${torusNeeds(overrides)}.`);
     // The runner refuses to send a whole population.
     const population = populationOf(form);
     if (!errors['migration.num_migrants'] && population !== null && Number(form.text['migration.num_migrants']) >= population)

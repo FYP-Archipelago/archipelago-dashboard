@@ -78,18 +78,35 @@ export default function SearchSection({ form, errors, overrides, patch, setText 
       ? Array.from({ length: islandSpec.max - islandSpec.min + 1 }, (_, i) => islandSpec.min! + i)
       : [form.islands];
 
-  const budgetSpec = overrides.evaluation_budget;
-  const { min, max } = budgetSpec?.type === 'int' ? budgetSpec : {};
+  const limits = (key: SettingKey) => {
+    const spec = overrides[key];
+    return spec?.type === 'int' ? { min: spec.min, max: spec.max } : {};
+  };
+  // The limits as hint text, e.g. " · 1,000 to 250,000" or " · at least 2".
+  const range = (key: SettingKey) => {
+    const { min, max } = limits(key);
+    if (min !== undefined && max !== undefined) return ` · ${numberFormat.format(min)} to ${numberFormat.format(max)}`;
+    if (min !== undefined) return ` · at least ${numberFormat.format(min)}`;
+    return max === undefined ? '' : ` · at most ${numberFormat.format(max)}`;
+  };
+  // Without limits from /presets, a seed is any 32-bit unsigned number.
+  const { min: seedMin = 0, max: seedMax = 2 ** 32 - 1 } = limits('seed');
 
-  const chips = (key: SettingKey, picks: number[]) => (
-    <div className="sd-chips">
-      {picks.map((pick) => (
-        <button key={pick} className={Number(form.text[key]) === pick ? 'on' : ''} onClick={() => setText(key)(String(pick))}>
-          {compactNumber.format(pick)}
-        </button>
-      ))}
-    </div>
-  );
+  // Quick picks outside the runner's limits for the setting are left out.
+  const chips = (key: SettingKey, picks: number[]) => {
+    const { min = -Infinity, max = Infinity } = limits(key);
+    return (
+      <div className="sd-chips">
+        {picks
+          .filter((pick) => min <= pick && pick <= max)
+          .map((pick) => (
+            <button key={pick} className={Number(form.text[key]) === pick ? 'on' : ''} onClick={() => setText(key)(String(pick))}>
+              {compactNumber.format(pick)}
+            </button>
+          ))}
+      </div>
+    );
+  };
 
   return (
     <section className="nr-step">
@@ -107,12 +124,9 @@ export default function SearchSection({ form, errors, overrides, patch, setText 
           value={form.text.evaluation_budget}
           onChange={setText('evaluation_budget')}
           error={errors.evaluation_budget}
-          hint={`Shared across all islands${min !== undefined && max !== undefined ? ` · ${numberFormat.format(min)} to ${numberFormat.format(max)}` : ''}`}
+          hint={`Shared across all islands${range('evaluation_budget')}`}
         >
-          {chips(
-            'evaluation_budget',
-            [10000, 25000, 50000, 100000, 250000].filter((pick) => (min === undefined || pick >= min) && (max === undefined || pick <= max))
-          )}
+          {chips('evaluation_budget', [10000, 25000, 50000, 100000, 250000])}
         </NumberTile>
         <NumberTile
           id="f-generations"
@@ -120,7 +134,7 @@ export default function SearchSection({ form, errors, overrides, patch, setText 
           value={form.text.target_generations}
           onChange={setText('target_generations')}
           error={errors.target_generations}
-          hint="Guides population size, not a hard limit"
+          hint={`Guides population size, not a hard limit${range('target_generations')}`}
         >
           {chips('target_generations', [50, 100, 200, 500])}
         </NumberTile>
@@ -137,7 +151,7 @@ export default function SearchSection({ form, errors, overrides, patch, setText 
             <button className={form.text.seed.trim() ? '' : 'on'} onClick={() => setText('seed')('')}>
               Random
             </button>
-            <button onClick={() => setText('seed')(String(Math.floor(Math.random() * 2 ** 32)))}>Roll one</button>
+            <button onClick={() => setText('seed')(String(seedMin + Math.floor(Math.random() * (seedMax - seedMin + 1))))}>Roll one</button>
           </div>
         </NumberTile>
       </div>
