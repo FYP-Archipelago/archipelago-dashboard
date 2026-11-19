@@ -1,5 +1,5 @@
 import { act, render, screen } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { mockBackend } from '@/test/backend.ts';
 import { makeRun } from '@/test/fixtures.ts';
@@ -50,12 +50,20 @@ describe('Sidebar backend status', () => {
 });
 
 describe('Sidebar recent runs', () => {
-  it('lists only the 12 newest runs, each linking to its page', async () => {
+  // jsdom lays nothing out, so the list's and a row's heights are given here.
+  it('shows only as many of the newest runs as fit whole in the list', async () => {
+    vi.spyOn(HTMLElement.prototype, 'clientHeight', 'get').mockImplementation(function (this: HTMLElement) {
+      return this.tagName === 'NAV' ? 300 : 0;
+    });
+    vi.spyOn(HTMLElement.prototype, 'offsetHeight', 'get').mockImplementation(function (this: HTMLElement) {
+      return this.tagName === 'A' ? 46 : 0;
+    });
     const runs = Array.from({ length: 15 }, (_, i) => makeRun(`run-${i}`));
     await renderWith({ body: { status: 'ok', version: '0.2.0', ready: true } }, runs);
 
+    // 300 px holds six 46 px rows; a seventh would be cut off.
     const links = screen.getByRole('navigation', { name: 'Recent runs' }).querySelectorAll('a');
-    expect(links).toHaveLength(12);
+    expect(links).toHaveLength(6);
     expect(links[0]!.getAttribute('href')).toBe('/runs/run-0');
   });
 });

@@ -14,6 +14,16 @@ window.matchMedia = (query: string) =>
     dispatchEvent: () => false,
   }) as MediaQueryList;
 
+// jsdom has no ResizeObserver either. This one reports each element once when it starts observing, as the real one does.
+window.ResizeObserver = class {
+  constructor(private readonly report: ResizeObserverCallback) {}
+  observe(target: Element) {
+    this.report([{ target } as ResizeObserverEntry], this as unknown as ResizeObserver);
+  }
+  unobserve() {}
+  disconnect() {}
+};
+
 afterEach(() => {
   cleanup();
   vi.useRealTimers();
