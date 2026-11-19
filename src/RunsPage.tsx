@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { api, type Run, type RunStatusName } from './api.ts';
+import { api } from './api.ts';
 import Icon from './Icon.tsx';
 import Link from './Link.tsx';
 import { navigate, runHref } from './route.ts';
 import { ago } from './runs.ts';
+import type { Run, RunStatusName } from './types.ts';
 import Unavailable from './Unavailable.tsx';
 import { usePoll } from './usePoll.ts';
 import './runs.css';
