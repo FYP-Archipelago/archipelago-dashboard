@@ -11,8 +11,9 @@ import { usePoll } from '@/usePoll.ts';
 
 import './runs.css';
 
-// Cancelling is too brief to be worth a filter of its own.
-const STATUS_FILTERS: RunStatusName[] = ['queued', 'running', 'clustering', 'done', 'failed', 'cancelled'];
+type StatusFilter = 'all' | RunStatusName;
+
+const STATUS_FILTERS: StatusFilter[] = ['all', 'queued', 'running', 'clustering', 'done', 'failed', 'cancelled'];
 
 type Tail = { key: string; runs: Run[]; cursor: string | null; loading: boolean; failed: boolean };
 
@@ -43,11 +44,13 @@ function RunRow({ run }: { run: Run }) {
           <Link href={runHref(run.run_id)} title={run.run_name}>
             {run.run_name}
           </Link>
-          <span className="mono muted">{run.run_id}</span>
+          <span className="mono muted" title={run.run_id}>
+            {run.run_id}
+          </span>
         </div>
       </td>
-      <td className="ink-2">{run.preset.slice(0, cut)}</td>
-      <td className="ink-2">{run.preset.slice(cut + 1)}</td>
+      <td className="ink-2 preset-part">{run.preset.slice(0, cut)}</td>
+      <td className="ink-2 preset-part">{run.preset.slice(cut + 1)}</td>
       <td className="r">{run.run_settings.num_islands}</td>
       <td className="r">{compact.format(run.run_settings.evaluation_budget)}</td>
       <td>
@@ -65,7 +68,7 @@ function RunRow({ run }: { run: Run }) {
           ))}
         </div>
       </td>
-      <td className="ink-2" title={run.created_at}>
+      <td className="ink-2 created" title={run.created_at}>
         {ago(run.created_at)}
       </td>
       <td className="r muted">
@@ -76,7 +79,7 @@ function RunRow({ run }: { run: Run }) {
 }
 
 export default function RunsPage() {
-  const [status, setStatus] = useState<RunStatusName | 'all'>('all');
+  const [status, setStatus] = useState<StatusFilter>('all');
   const [q, setQ] = useState('');
   const query = { status: status === 'all' ? undefined : status };
   const key = status;
@@ -121,7 +124,7 @@ export default function RunsPage() {
   else if (!shown.length) placeholder = needle || status !== 'all' ? 'No runs match these filters.' : 'No runs yet.';
 
   return (
-    <div className="page">
+    <div className="page runs-page">
       <div className="page-h">
         <h1>Runs</h1>
       </div>
@@ -138,21 +141,33 @@ export default function RunsPage() {
           <kbd className="search-kbd">Ctrl+K</kbd>
         </label>
         <div className="seg" role="group" aria-label="Status">
-          {(['all', ...STATUS_FILTERS] as const).map((value) => (
+          {STATUS_FILTERS.map((value) => (
             <button key={value} className={status === value ? 'on' : ''} aria-pressed={status === value} onClick={() => setStatus(value)}>
               <span className="status">{value}</span>
             </button>
           ))}
         </div>
+        <select
+          className="input status-select"
+          aria-label="Status"
+          value={status}
+          onChange={(event) => setStatus(event.target.value as StatusFilter)}
+        >
+          {STATUS_FILTERS.map((value) => (
+            <option key={value} value={value}>
+              {value.charAt(0).toUpperCase() + value.slice(1)}
+            </option>
+          ))}
+        </select>
       </div>
-      <div className="card table-card">
+      <div className="card table-card" role="region" aria-label="Run history" tabIndex={0}>
         <table className="table">
           <thead>
             <tr>
               <th className="col-status">Status</th>
               <th>Run</th>
               <th>Algorithm</th>
-              <th>Problem</th>
+              <th className="col-problem">Problem</th>
               <th className="r">Islands</th>
               <th className="r">Budget</th>
               <th>Mode</th>

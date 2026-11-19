@@ -1,17 +1,32 @@
 .filters {
+  container: run-filters / inline-size;
   display: flex;
   align-items: center;
-  flex-wrap: wrap;
+  justify-content: space-between;
   gap: 10px;
   margin-bottom: 16px;
 }
-.filters .seg {
-  margin-left: auto;
+.filters .status-select {
+  display: none;
+  flex: none;
+  font-size: 13px;
+  cursor: pointer;
+}
+@container run-filters (width < 890px) {
+  .filters .seg {
+    display: none;
+  }
+  .filters .status-select {
+    display: block;
+  }
 }
 .search {
   position: relative;
   display: flex;
   align-items: center;
+  flex: 1 1 400px;
+  max-width: 480px;
+  min-width: 0;
 }
 .search svg {
   position: absolute;
@@ -21,7 +36,7 @@
 .search .input {
   padding-left: 34px;
   padding-right: 60px;
-  width: 480px;
+  width: 100%;
 }
 .search-kbd {
   position: absolute;
@@ -37,7 +52,7 @@
 }
 .table-card {
   padding: 0;
-  overflow: hidden;
+  overflow-x: auto;
 }
 .table {
   width: 100%;
@@ -66,6 +81,12 @@
 }
 .table .col-status {
   width: 130px;
+}
+.table .preset-part {
+  overflow-wrap: anywhere;
+}
+.table .created {
+  white-space: nowrap;
 }
 .table tbody tr.click {
   cursor: pointer;
@@ -159,6 +180,69 @@
   content: '';
   flex: 1;
   border-top: 1px solid var(--border);
+}
+
+@media (max-width: 1440px) {
+  .runs-page {
+    padding: 28px 24px 64px;
+  }
+  .table th,
+  .table td {
+    padding-inline: 10px;
+  }
+  .table .col-status {
+    width: 104px;
+  }
+  .run-cell {
+    max-width: clamp(120px, 14vw, 200px);
+  }
+}
+
+@media (max-width: 1300px) {
+  .app:has(.runs-page) {
+    grid-template-columns: clamp(200px, 20%, 248px) minmax(0, 1fr);
+  }
+  .runs-page {
+    padding-inline: 16px;
+  }
+  .table th,
+  .table td {
+    padding-inline: 8px;
+  }
+  .table td {
+    padding-block: 9px;
+  }
+  .table th {
+    white-space: normal;
+  }
+  .table .col-status {
+    width: auto;
+  }
+  .table .col-problem {
+    min-width: 88px;
+  }
+  .stages {
+    flex-wrap: wrap;
+  }
+}
+
+@media (max-width: 1160px) {
+  .table {
+    font-size: 13px;
+  }
+  .table th,
+  .table td {
+    padding-inline: 6px;
+  }
+  .table th {
+    font-size: 12px;
+  }
+  .run-cell {
+    max-width: 130px;
+  }
+  .stage {
+    padding-inline: 4px;
+  }
 }
 
 @media (prefers-reduced-motion: no-preference) {
