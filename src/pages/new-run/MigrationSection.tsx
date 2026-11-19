@@ -4,7 +4,7 @@ import Icon from '@/components/Icon.tsx';
 import type { Presets } from '@/types.ts';
 
 import { InlineNumber } from './fields.tsx';
-import { TORUS_ISLANDS, type Form, type Patch, type ScheduleKey, type SetText } from './form.ts';
+import { populationOf, TORUS_ISLANDS, type Form, type Patch, type ScheduleKey, type SetText } from './form.ts';
 import { ISLAND_COLORS, TOPOLOGIES, type Pt } from './shared.ts';
 
 import './migration.css';
@@ -93,16 +93,6 @@ const sliderKeys = (key: ScheduleKey, step: Step) => (event: KeyboardEvent<Eleme
   event.preventDefault();
   step(key, delta * (event.shiftKey ? 10 : 1));
 };
-
-// Roughly the per-island population the runner will use: the island's budget over (generations + 1),
-// divided again by the 7 offspring per parent that evolution strategies spend by default, at least 4.
-function populationOf(form: Form, errors: Record<string, string>): number | null {
-  if (errors.evaluation_budget || errors.target_generations) return null;
-
-  const budgetPerIsland = Math.floor(Number(form.text.evaluation_budget) / form.islands);
-  const offspring = form.preset.algorithm === 'es' ? 7 : 1;
-  return Math.max(4, Math.round(budgetPerIsland / ((Number(form.text.target_generations) + 1) * offspring)));
-}
 
 // The run as a calendar of generations: click the day of the first migration.
 function IntervalCalendar({ form, errors, setText, step }: ScheduleProps) {
@@ -207,7 +197,7 @@ function MigrantRanked({ form, errors, setText, step }: ScheduleProps) {
   const dragging = useRef(false);
 
   const key = 'migration.num_migrants';
-  const population = populationOf(form, errors);
+  const population = populationOf(form);
   const migrants = errors[key] ? 0 : Number(form.text[key]);
   const shown = hovered || migrants;
   // The chart draws at most 160 individuals.
@@ -241,16 +231,19 @@ function MigrantRanked({ form, errors, setText, step }: ScheduleProps) {
             onChange={setText(key)}
             onStep={(delta) => step(key, delta)}
           />
+          along each route
+          <span className="mg-readout-arrow">
+            <Icon name="arrowR" size={13} />
+          </span>
           {errors[key] ? (
             <span className="field-error">{errors[key]}</span>
+          ) : population === null ? (
+            'population depends on budget and generations'
           ) : (
-            population !== null && (
-              <>
-                of about <b className="num">{population}</b> ({Math.round((shown / population) * 100)}%)
-              </>
-            )
-          )}{' '}
-          along each route
+            <>
+              <b className="num">{Math.round((shown / population) * 100)}%</b> of about <b className="num">{population}</b>
+            </>
+          )}
         </span>
       </div>
       <div

@@ -88,6 +88,22 @@ function numberError(text: string, rule: Rule): string {
   return '';
 }
 
+// Python's round(), which the runner uses: halves go to the even neighbour.
+const roundHalfEven = (value: number) => (value % 1 === 0.5 ? 2 * Math.round(value / 2) : Math.round(value));
+
+// The per-island population the runner derives (dEA-runner's resolved_population_size): the island's share of the
+// budget over (generations + 1), divided again by the 7 offspring per parent that evolution strategies spend, at
+// least 4. Some presets' tournaments raise the runner's floor to 7, which only matters for very small budgets.
+export function populationOf(form: Form): number | null {
+  const budget = Number(form.text.evaluation_budget);
+  const generations = Number(form.text.target_generations);
+  if (!Number.isInteger(budget) || !Number.isInteger(generations) || budget < 1 || generations < 1) return null;
+
+  const budgetPerIsland = Math.max(1, Math.floor(budget / form.islands));
+  const offspring = form.preset.algorithm === 'es' ? 7 : 1;
+  return Math.max(4, roundHalfEven(budgetPerIsland / ((generations + 1) * offspring)));
+}
+
 const intRule = (spec: OverrideSpec | undefined): Rule =>
   spec?.type === 'int' ? { int: true, min: spec.min, max: spec.max, optional: spec.optional } : { int: true };
 
@@ -125,6 +141,10 @@ export function validate(form: Form, overrides: Presets['overrides']): Record<st
     if (!errors['migration.interval'] && !errors.target_generations && intervalTooLong)
       flag('migration.interval', 'Must not exceed target generations');
     if (form.topology === 'torus' && form.islands !== TORUS_ISLANDS) flag('topology', `A torus needs ${TORUS_ISLANDS} islands.`);
+    // The runner refuses to send a whole population.
+    const population = populationOf(form);
+    if (!errors['migration.num_migrants'] && population !== null && Number(form.text['migration.num_migrants']) >= population)
+      flag('migration.num_migrants', `Must be below the island's population of ${population}`);
   }
 
   const clustering = form.clustering;

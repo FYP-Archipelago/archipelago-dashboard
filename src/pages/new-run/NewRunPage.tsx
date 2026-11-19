@@ -11,6 +11,7 @@ import './newrun.css';
 import ClusteringSection from './ClusteringSection.tsx';
 import {
   DEFAULT_CLUSTERING,
+  populationOf,
   presetSettings,
   randomName,
   toNewRun,
@@ -40,11 +41,15 @@ function NewRunForm({ presets }: { presets: Presets }) {
   const patch = (change: Partial<Form>) => setForm((prev) => ({ ...prev, ...change }));
   const setText = (key: SettingKey) => (value: string) => setForm((prev) => ({ ...prev, text: { ...prev.text, [key]: value } }));
 
-  // Both schedule values stay at least 1, and the interval may not pass the target generations.
+  // Both schedule values stay at least 1; the interval may not pass the target generations, and the migrants
+  // must stay below the island's population.
   const step = (key: ScheduleKey, delta: number) =>
     setForm((prev) => {
       const generations = Number(prev.text.target_generations);
-      const max = key === 'migration.interval' && Number.isInteger(generations) && generations > 0 ? generations : Infinity;
+      const population = populationOf(prev);
+      let max = Infinity;
+      if (key === 'migration.interval' && Number.isInteger(generations) && generations > 0) max = generations;
+      if (key === 'migration.num_migrants' && population !== null) max = population - 1;
       const current = Number(prev.text[key]);
       const next = Math.min(max, Math.max(1, (Number.isFinite(current) ? Math.round(current) : 1) + delta));
       return { ...prev, text: { ...prev.text, [key]: String(next) } };
