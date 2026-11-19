@@ -143,6 +143,23 @@
   margin-top: 12px;
   font-size: 13px;
 }
+/* Shown in place of Load more once every run is loaded. */
+.table-end {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 16px 0 0;
+  width: min(360px, 100%);
+  color: var(--muted);
+  font-size: 12.5px;
+  white-space: nowrap;
+}
+.table-end::before,
+.table-end::after {
+  content: '';
+  flex: 1;
+  border-top: 1px solid var(--border);
+}
 
 @media (prefers-reduced-motion: no-preference) {
   .table tbody tr {
