@@ -91,7 +91,7 @@ export default function Summary({ form, errors, submit, patch, onLaunch }: Summa
           {submit.error}
         </p>
       )}
-      <StartButton phase={submit.phase} disabled={errorCount > 0 || submit.phase !== 'idle'} islands={form.islands} onLaunch={onLaunch} />
+      <StartButton phase={submit.phase} disabled={errorCount > 0 || submit.phase !== 'idle'} onLaunch={onLaunch} />
     </aside>
   );
 }
