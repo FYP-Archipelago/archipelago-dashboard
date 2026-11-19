@@ -1,10 +1,9 @@
 import { memo, type ReactNode } from 'react';
 
 import Icon from '@/components/Icon.tsx';
+import { presetSettings, type Form, type Patch } from '@/pages/new-run/form.ts';
+import { seeded, vars, type Pt } from '@/pages/new-run/shared.ts';
 import type { Preset } from '@/types.ts';
-
-import { presetSettings, type Form, type Patch } from './form.ts';
-import { seeded, vars, type Pt } from './shared.ts';
 
 import './problem.css';
 

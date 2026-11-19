@@ -1,10 +1,10 @@
 import { Fragment } from 'react';
 
 import Icon from '@/components/Icon.tsx';
+import { ADVANCED, DETAIL_MAX, DETAIL_MIN, STAGES, type AdvancedKey, type ClusterForm, type Stage } from '@/pages/new-run/form.ts';
+import { seeded, vars, type Pt } from '@/pages/new-run/shared.ts';
 
 import { NumberField, Switch } from './fields.tsx';
-import { ADVANCED, DETAIL_MAX, DETAIL_MIN, STAGES, type AdvancedKey, type ClusterForm, type Stage } from './form.ts';
-import { seeded, vars, type Pt } from './shared.ts';
 
 import './clustering.css';
 

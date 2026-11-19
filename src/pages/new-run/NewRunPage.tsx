@@ -8,7 +8,6 @@ import type { Presets } from '@/types.ts';
 // The page's shared styles load before the sections' own, which build on them.
 import './newrun.css';
 
-import ClusteringSection from './ClusteringSection.tsx';
 import {
   DEFAULT_CLUSTERING,
   populationOf,
@@ -22,12 +21,13 @@ import {
   type ScheduleKey,
   type SettingKey,
 } from './form.ts';
-import MigrationSection from './MigrationSection.tsx';
-import ModeSection from './ModeSection.tsx';
-import ProblemSection from './ProblemSection.tsx';
-import SearchSection from './SearchSection.tsx';
-import type { StartPhase } from './StartButton.tsx';
-import Summary from './Summary.tsx';
+import ClusteringSection from './sections/ClusteringSection.tsx';
+import MigrationSection from './sections/MigrationSection.tsx';
+import ModeSection from './sections/ModeSection.tsx';
+import ProblemSection from './sections/ProblemSection.tsx';
+import SearchSection from './sections/SearchSection.tsx';
+import type { StartPhase } from './summary/StartButton.tsx';
+import Summary from './summary/Summary.tsx';
 
 function NewRunForm({ presets }: { presets: Presets }) {
   const [form, setForm] = useState<Form>(() => ({
