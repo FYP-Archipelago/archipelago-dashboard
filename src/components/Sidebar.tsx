@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import { api } from '@/api.ts';
 import { newRunHref, runHref, runsHref, type Route } from '@/route.ts';
@@ -11,9 +11,6 @@ import Link from './Link.tsx';
 import Unavailable from './Unavailable.tsx';
 
 import './sidebar.css';
-
-// How many of the newest runs the sidebar lists.
-const RECENT_COUNT = 12;
 
 // A reachable backend with Postgres or Redis down cannot serve runs either, so it counts as unavailable.
 function backendState(health: Health | undefined, error: string): { dot: string; label: string } {
@@ -36,7 +33,24 @@ export default function Sidebar({ route }: { route: Route }) {
     );
     return () => controller.abort();
   }, []);
-  const runs = recent.data?.runs.slice(0, RECENT_COUNT);
+  // As many of the newest runs as fit whole in the list's height, measured from the first run's row.
+  const list = useRef<HTMLElement>(null);
+  const [fit, setFit] = useState<number | null>(null);
+  const hasRuns = Boolean(recent.data?.runs.length);
+  useEffect(() => {
+    const nav = list.current;
+    if (!nav || !hasRuns) return;
+    const observer = new ResizeObserver(() => {
+      // A row with no height has not been laid out yet, so there is nothing to measure.
+      const row = nav.querySelector('a');
+      if (!row?.offsetHeight) return;
+      const gap = parseFloat(getComputedStyle(nav).rowGap) || 0;
+      setFit(Math.floor((nav.clientHeight + gap) / (row.offsetHeight + gap)));
+    });
+    observer.observe(nav);
+    return () => observer.disconnect();
+  }, [hasRuns]);
+  const runs = fit === null ? recent.data?.runs : recent.data?.runs.slice(0, fit);
   const state = backendState(health.data, health.error);
   return (
     <aside className="sidebar">
@@ -55,7 +69,7 @@ export default function Sidebar({ route }: { route: Route }) {
           <Icon name="arrowR" size={12} stroke={2} />
         </Link>
       </div>
-      <nav className="recent" aria-label="Recent runs">
+      <nav ref={list} className="recent" aria-label="Recent runs">
         {runs?.map((run) => (
           <Link
             key={run.run_id}
