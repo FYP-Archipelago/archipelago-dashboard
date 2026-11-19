@@ -43,10 +43,16 @@ function previewClusters(detail: number) {
     near.y = near.points.reduce((sum, member) => sum + member[1], 0) / near.points.length;
   }
 
-  return clusters.map((cluster) => ({
-    ...cluster,
-    radius: Math.max(...cluster.points.map((member) => Math.hypot(member[0] - cluster.x, member[1] - cluster.y))) + 5,
-  }));
+  return clusters.map((cluster) => {
+    const offsets = cluster.points.map((member) => [member[0] - cluster.x, member[1] - cluster.y] as Pt);
+    const aspect = (Math.max(...offsets.map(([dx]) => Math.abs(dx))) + 1) / (Math.max(...offsets.map(([, dy]) => Math.abs(dy))) + 1);
+    const scale = Math.max(...offsets.map(([dx, dy]) => Math.hypot(dx / aspect, dy)));
+    return {
+      ...cluster,
+      rx: Math.min(aspect * scale + 5, cluster.x - 1, 279 - cluster.x),
+      ry: Math.min(scale + 5, cluster.y - 1, 83 - cluster.y),
+    };
+  });
 }
 
 function DetailPreview({ detail, active }: { detail: number; active: boolean }) {
@@ -56,7 +62,7 @@ function DetailPreview({ detail, active }: { detail: number; active: boolean }) 
     <div className={`detail-preview${active ? '' : ' unused'}`}>
       <svg viewBox="0 0 280 84" aria-hidden="true">
         {clusters.map((cluster, i) => (
-          <circle key={`c${i}`} className="dp-cluster" cx={cluster.x} cy={cluster.y} r={cluster.radius} />
+          <ellipse key={`c${i}`} className="dp-cluster" cx={cluster.x} cy={cluster.y} rx={cluster.rx} ry={cluster.ry} />
         ))}
         {PREVIEW_POINTS.map(([x, y], i) => (
           <circle key={i} className="dp-point" cx={x} cy={y} r={1.8} />

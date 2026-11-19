@@ -261,7 +261,8 @@ input[type='range']::-moz-range-thumb {
   transition:
     cx 0.45s var(--ease),
     cy 0.45s var(--ease),
-    r 0.45s var(--ease);
+    rx 0.45s var(--ease),
+    ry 0.45s var(--ease);
 }
 
 .dp-point {
