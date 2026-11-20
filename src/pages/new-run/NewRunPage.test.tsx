@@ -322,7 +322,7 @@ describe('NewRunPage form', () => {
 
     const interval = control('Generations between migrations');
     expect(interval.value).toBe('40');
-    expect(interval.closest('.q-head')!.textContent).toContain('5 migrations');
+    expect(interval.closest('.q-head')!.textContent).toContain('5 migration events');
   });
 });
 

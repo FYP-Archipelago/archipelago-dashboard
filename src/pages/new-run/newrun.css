@@ -169,11 +169,6 @@
   border-bottom-color: var(--accent);
 }
 
-.inline-num.preview {
-  color: var(--ink-2);
-  border-bottom-style: dashed;
-}
-
 .inline-num.invalid {
   border-bottom-color: var(--critical);
 }

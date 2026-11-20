@@ -36,14 +36,13 @@ type InlineNumberProps = {
   onChange: (value: string) => void;
   onStep: (delta: number) => void;
   invalid?: boolean;
-  preview?: boolean;
 };
 
 // A number typed straight into a sentence, on an underline that grows with it. Up and down arrows step it.
-export function InlineNumber({ label, value, onChange, onStep, invalid, preview }: InlineNumberProps) {
+export function InlineNumber({ label, value, onChange, onStep, invalid }: InlineNumberProps) {
   return (
     <input
-      className={`inline-num num${invalid ? ' invalid' : ''}${preview ? ' preview' : ''}`}
+      className={`inline-num num${invalid ? ' invalid' : ''}`}
       inputMode="numeric"
       aria-label={label}
       aria-invalid={invalid}
