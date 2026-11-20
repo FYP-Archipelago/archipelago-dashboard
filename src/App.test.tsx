@@ -59,6 +59,27 @@ describe('App', () => {
     expect(allRunsRequests(fetchMock)).toHaveLength(2);
   });
 
+  it('polls only the first page of All once the runs page is left, even after Load more', async () => {
+    vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval', 'Date'] });
+    const fetchMock = await openApp('/runs', {
+      'GET /runs': (url) => ({
+        body: url.searchParams.has('cursor') ? { runs: [makeRun('run-2')], next_cursor: null } : { runs: [makeRun('run-1')], next_cursor: 'page-2' },
+      }),
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Load more' }));
+    await act(async () => {});
+
+    fireEvent.click(screen.getByText('New Run').closest('a')!);
+    await act(async () => {});
+    const before = allRunsRequests(fetchMock).length;
+    await act(() => vi.advanceTimersByTimeAsync(10000));
+
+    const cursors = allRunsRequests(fetchMock)
+      .slice(before)
+      .map(([input]) => new URL(input).searchParams.get('cursor'));
+    expect(cursors).toEqual([null]);
+  });
+
   it('refetches the sidebar runs immediately after a successful start', async () => {
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'setInterval', 'clearInterval', 'Date'] });
     const fetchMock = await openApp('/runs/new', {
