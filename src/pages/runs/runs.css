@@ -85,8 +85,9 @@
 .table .preset-part {
   overflow-wrap: anywhere;
 }
-.table .created {
+.table .duration {
   white-space: nowrap;
+  font-variant-numeric: tabular-nums;
 }
 .table tbody tr.click {
   cursor: pointer;

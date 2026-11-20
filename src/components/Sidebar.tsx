@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 
 import { api } from '@/api.ts';
+import { ago } from '@/format.ts';
 import { newRunHref, runHref, runsHref, type Route } from '@/route.ts';
-import { ago } from '@/runs.ts';
 import type { Health } from '@/types.ts';
 import { usePoll } from '@/usePoll.ts';
 
