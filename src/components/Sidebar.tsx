@@ -12,8 +12,8 @@ import Unavailable from './Unavailable.tsx';
 import './sidebar.css';
 
 // A reachable backend with Postgres or Redis down cannot serve runs either, so it counts as unavailable.
-function backendState(health: Health | undefined, error: string): { dot: string; label: string } {
-  if (error) return { dot: 'failed', label: 'Unavailable' };
+function backendState(health: Health | undefined, failing: boolean): { dot: string; label: string } {
+  if (failing) return { dot: 'failed', label: 'Unavailable' };
   if (!health) return { dot: 'queued', label: 'Checking status' };
   if (health.ready) return { dot: 'done', label: 'All Systems Go' };
   if (health.status === 'ok') return { dot: 'warning', label: 'Runner disconnected' };
@@ -42,7 +42,10 @@ export default function Sidebar({ route }: { route: Route }) {
   }, [hasRuns]);
 
   const runs = fit === null ? recent.data?.runs : recent.data?.runs.slice(0, fit);
-  const state = backendState(health.data, health.error?.message ?? '');
+
+  // The run list polls more often than /health, so a failed req there indicates backend being down.
+  const failing = health.isError || recent.isLoadingError || recent.isRefetchError;
+  const state = backendState(health.data, failing);
 
   return (
     <aside className="sidebar">
@@ -89,7 +92,7 @@ export default function Sidebar({ route }: { route: Route }) {
         <div className="backend-line">
           <span className={`dot ${state.dot}`} />
           <span>{state.label}</span>
-          {health.data && !health.error && <span className="mono">v{health.data.version}</span>}
+          {health.data && !failing && <span className="mono">v{health.data.version}</span>}
         </div>
       </div>
     </aside>

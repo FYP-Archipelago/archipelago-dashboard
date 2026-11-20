@@ -69,6 +69,27 @@ describe('Sidebar backend status', () => {
     await act(() => vi.advanceTimersByTimeAsync(60000));
     expect(statusLine()).toBe('Unavailable');
   });
+
+  it('turns unavailable when the run list fails, without waiting for the next health check, and recovers with it', async () => {
+    vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval', 'Date'] });
+    let runsUp = true;
+    const fetchMock = mockBackend({
+      'GET /health': () => ({ body: { status: 'ok', version: '0.2.0', ready: true } }),
+      'GET /runs': () => (runsUp ? { body: { runs: [makeRun('run-1')], next_cursor: null } } : { status: 500 }),
+    });
+    renderWithQuery(<Sidebar route={{ name: 'runs' }} />);
+    await act(async () => {});
+    expect(statusLine()).toBe('All Systems Go' + 'v0.2.0');
+
+    runsUp = false;
+    await act(() => vi.advanceTimersByTimeAsync(10000));
+    expect(statusLine()).toBe('Unavailable');
+    expect(fetchMock.mock.calls.filter(([input]) => input.endsWith('/health'))).toHaveLength(1);
+
+    runsUp = true;
+    await act(() => vi.advanceTimersByTimeAsync(10000));
+    expect(statusLine()).toBe('All Systems Go' + 'v0.2.0');
+  });
 });
 
 describe('Sidebar recent runs', () => {
