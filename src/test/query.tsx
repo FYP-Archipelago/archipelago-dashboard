@@ -5,6 +5,6 @@ import type { ReactElement } from 'react';
 notifyManager.setScheduler(queueMicrotask);
 
 export function renderWithQuery(ui: ReactElement) {
-  const client = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: Infinity } } });
+  const client = new QueryClient({ defaultOptions: { queries: { retry: 1, gcTime: Infinity } } });
   return { ...render(<QueryClientProvider client={client}>{ui}</QueryClientProvider>), client };
 }

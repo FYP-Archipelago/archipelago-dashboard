@@ -370,12 +370,16 @@ describe('NewRunPage detail preview', () => {
 });
 
 describe('NewRunPage loading', () => {
-  it('says the backend is unavailable when presets cannot load', async () => {
+  it('retries presets once, then says the backend is unavailable', async () => {
     vi.useFakeTimers();
-    mockBackend({ 'GET /presets': () => ({ status: 500 }) });
+    const fetchMock = mockBackend({ 'GET /presets': () => ({ status: 500 }) });
     renderWithQuery(<NewRunPage />);
     await wait(0);
+    expect(screen.queryByText('Currently Unavailable')).toBeNull();
 
+    await wait(1000);
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
     expect(screen.getByText('Currently Unavailable')).toBeTruthy();
   });
 
