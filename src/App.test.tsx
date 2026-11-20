@@ -1,25 +1,8 @@
 import { act, fireEvent, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
-import { mockBackend } from './test/backend.ts';
-import { makeRun, PRESETS } from './test/fixtures.ts';
-import { renderWithQuery } from './test/query.tsx';
-
-// App sends / to the runs list as it loads, so each test imports a fresh copy after setting the address.
-async function openApp(path: string, routes?: Parameters<typeof mockBackend>[0]) {
-  window.history.replaceState(null, '', path);
-  const fetchMock = mockBackend({
-    'GET /health': () => ({ body: { status: 'ok', version: '0.2.0', ready: true } }),
-    'GET /runs': () => ({ body: { runs: [makeRun('run-1')], next_cursor: null } }),
-    'GET /presets': () => ({ body: PRESETS }),
-    ...routes,
-  });
-  vi.resetModules();
-  const { default: App } = await import('./App.tsx');
-  renderWithQuery(<App />);
-  await act(async () => {});
-  return fetchMock;
-}
+import { openApp } from './test/app.tsx';
+import { makeRun } from './test/fixtures.ts';
 
 const allRunsRequests = (fetchMock: Awaited<ReturnType<typeof openApp>>) =>
   fetchMock.mock.calls.filter(([input, init]) => {
