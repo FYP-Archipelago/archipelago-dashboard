@@ -49,7 +49,7 @@ describe('Sidebar backend status', () => {
     expect(statusLine()).toBe('Unavailable');
   });
 
-  it('updates backend status on each poll, including after an earlier success', async () => {
+  it('updates backend status every 60 s, including after an earlier success', async () => {
     vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval', 'Date'] });
     let health = { body: { status: 'ok', version: '0.2.0', ready: true } };
     let reachable = true;
@@ -62,11 +62,11 @@ describe('Sidebar backend status', () => {
     expect(statusLine()).toContain('All Systems Go');
 
     health = { body: { ...health.body, ready: false } };
-    await act(() => vi.advanceTimersByTimeAsync(10000));
+    await act(() => vi.advanceTimersByTimeAsync(60000));
     expect(statusLine()).toContain('Runner disconnected');
 
     reachable = false;
-    await act(() => vi.advanceTimersByTimeAsync(10000));
+    await act(() => vi.advanceTimersByTimeAsync(60000));
     expect(statusLine()).toBe('Unavailable');
   });
 });
