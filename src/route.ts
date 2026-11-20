@@ -1,15 +1,22 @@
 import { useSyncExternalStore } from 'react';
 
-export type Route = { name: 'runs' } | { name: 'new' } | { name: 'run'; id: string };
+// A run page's tabs in display order; the first is where a run opens.
+export const RUN_TABS = ['overview', 'network', 'migration', 'convergence', 'divergence', 'attribution', 'details'] as const;
+
+export type RunTab = (typeof RUN_TABS)[number];
+
+export type Route = { name: 'runs' } | { name: 'new' } | { name: 'run'; id: string; tab: RunTab };
 
 export const runsHref = '/runs';
 export const newRunHref = '/runs/new';
-export const runHref = (id: string) => `/runs/${encodeURIComponent(id)}`;
+export const runHref = (id: string, tab?: RunTab) => `/runs/${encodeURIComponent(id)}${tab ? `/${tab}` : ''}`;
+
+const isRunTab = (value: string | undefined): value is RunTab => RUN_TABS.includes(value as RunTab);
 
 function parseRoute(pathname: string): Route {
-  const [first, second] = pathname.split('/').filter(Boolean);
+  const [first, second, third] = pathname.split('/').filter(Boolean);
   if (first === 'runs' && second === 'new') return { name: 'new' };
-  if (first === 'runs' && second) return { name: 'run', id: decodeURIComponent(second) };
+  if (first === 'runs' && second) return { name: 'run', id: decodeURIComponent(second), tab: isRunTab(third) ? third : RUN_TABS[0] };
   return { name: 'runs' };
 }
 

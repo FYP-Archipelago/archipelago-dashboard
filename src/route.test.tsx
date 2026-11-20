@@ -2,7 +2,7 @@ import { act, fireEvent, render, renderHook, screen } from '@testing-library/rea
 import { describe, expect, it } from 'vitest';
 
 import Link from './components/Link.tsx';
-import { navigate, newRunHref, runHref, useRoute } from './route.ts';
+import { navigate, newRunHref, RUN_TABS, runHref, useRoute } from './route.ts';
 
 describe('routing', () => {
   it('reads the new run page as its own route, not as a run named "new"', () => {
@@ -11,11 +11,19 @@ describe('routing', () => {
     expect(renderHook(useRoute).result.current).toEqual({ name: 'new' });
   });
 
-  it('round-trips run ids that need escaping', () => {
+  it('round-trips run ids that need escaping, with and without a tab', () => {
     const id = 'run 1/a?b#c';
-    window.history.replaceState(null, '', runHref(id));
+    window.history.replaceState(null, '', runHref(id, 'details'));
+    expect(renderHook(useRoute).result.current).toEqual({ name: 'run', id, tab: 'details' });
 
-    expect(renderHook(useRoute).result.current).toEqual({ name: 'run', id });
+    window.history.replaceState(null, '', runHref(id));
+    expect(renderHook(useRoute).result.current).toEqual({ name: 'run', id, tab: RUN_TABS[0] });
+  });
+
+  it("opens a run's first tab for a tab it does not have", () => {
+    window.history.replaceState(null, '', '/runs/run-1/nonsense');
+
+    expect(renderHook(useRoute).result.current).toEqual({ name: 'run', id: 'run-1', tab: RUN_TABS[0] });
   });
 
   it('falls back to the runs list for unknown paths', () => {
@@ -29,7 +37,7 @@ describe('routing', () => {
     const { result } = renderHook(useRoute);
 
     act(() => navigate(runHref('run-1')));
-    expect(result.current).toEqual({ name: 'run', id: 'run-1' });
+    expect(result.current).toEqual({ name: 'run', id: 'run-1', tab: RUN_TABS[0] });
 
     act(() => {
       window.history.replaceState(null, '', '/runs');

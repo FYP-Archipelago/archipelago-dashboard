@@ -1,11 +1,20 @@
-import { infiniteQueryOptions, useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import {
+  infiniteQueryOptions,
+  useInfiniteQuery,
+  useMutation,
+  useQuery,
+  useQueryClient,
+  type InfiniteData,
+  type QueryClient,
+} from '@tanstack/react-query';
 import { useEffect } from 'react';
 
-import type { NewRun, RunStatusName } from '@/types.ts';
+import type { NewRun, Run, RunPage, RunStatusName } from '@/types.ts';
 
+import { isNotFound } from './client.ts';
 import { getHealth } from './health.ts';
 import { getPresets } from './presets.ts';
-import { createRun, getRuns } from './runs.ts';
+import { createRun, getRun, getRuns } from './runs.ts';
 
 function runList(status?: RunStatusName) {
   return infiniteQueryOptions({
@@ -47,5 +56,35 @@ export function useCreateRun() {
     mutationFn: (body: NewRun) => createRun(body),
     // Not awaited, so the start button does not wait on the lists refreshing.
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: ['runs'] }),
+  });
+}
+
+const FINISHED: RunStatusName[] = ['done', 'failed', 'cancelled'];
+
+// The run's row from the most recently fetched runs list that has it, and when that list was fetched.
+function listedRun(queryClient: QueryClient, id: string): { run: Run; at: number } | null {
+  let found: { run: Run; at: number } | null = null;
+  for (const [key, data] of queryClient.getQueriesData<InfiniteData<RunPage>>({ queryKey: ['runs', 'list'] })) {
+    const run = data?.pages.flatMap((page) => page.runs).find((row) => row.run_id === id);
+    const at = queryClient.getQueryState(key)?.dataUpdatedAt ?? 0;
+    if (run && (!found || at > found.at)) found = { run, at };
+  }
+  return found;
+}
+
+// Opened from the runs list or the sidebar, the run's row is already loaded. A finished run's row can no longer
+// change, so it is used as is and /runs/{id} is never asked; an unfinished one is fetched at once and polled until
+// it finishes. Opened from a typed or shared URL, nothing is loaded, so the run is fetched first.
+// A failed first load keeps trying too, unless the run does not exist.
+export function useRun(id: string) {
+  const queryClient = useQueryClient();
+  return useQuery({
+    queryKey: ['run', id],
+    queryFn: ({ signal }) => getRun(id, signal),
+    initialData: () => listedRun(queryClient, id)?.run,
+    initialDataUpdatedAt: () => listedRun(queryClient, id)?.at,
+    staleTime: ({ state }) => (state.data && FINISHED.includes(state.data.status) ? Infinity : 0),
+    refetchInterval: ({ state }) => ((state.data ? !FINISHED.includes(state.data.status) : !isNotFound(state.error)) ? 5000 : false),
+    retry: (failures, error) => failures < 1 && !isNotFound(error),
   });
 }

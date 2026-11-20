@@ -10,6 +10,10 @@ export const TOPOLOGIES: Record<string, string> = {
 
 export const numberFormat = new Intl.NumberFormat('en');
 
+const dateTimeFormat = new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+
+export const dateTime = (iso: string) => dateTimeFormat.format(new Date(iso));
+
 export function ago(iso: string): string {
   const minutes = Math.round((Date.now() - Date.parse(iso)) / 60000);
   if (minutes < 1) return 'just now';
