@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 
-import { api } from '@/api.ts';
+import { getRuns } from '@/api/runs.ts';
 import Icon from '@/components/Icon.tsx';
 import Link from '@/components/Link.tsx';
 import Unavailable from '@/components/Unavailable.tsx';
@@ -98,7 +98,7 @@ export default function RunsPage() {
   const [q, setQ] = useState('');
   const query = { status: status === 'all' ? undefined : status };
   const key = status;
-  const head = usePoll(key, (signal) => api.listRuns(query, signal));
+  const head = usePoll(key, (signal) => getRuns(query, signal));
   const [stored, setTail] = useState<Tail | null>(null);
   const tail = stored?.key === key ? stored : null;
   const loadSeq = useRef(0);
@@ -127,7 +127,7 @@ export default function RunsPage() {
     const before = tail?.runs ?? [];
     setTail({ key, runs: before, cursor, loading: true, failed: false });
     try {
-      const page = await api.listRuns({ ...query, cursor });
+      const page = await getRuns({ ...query, cursor });
       if (seq === loadSeq.current) setTail({ key, runs: [...before, ...page.runs], cursor: page.next_cursor, loading: false, failed: false });
     } catch {
       if (seq === loadSeq.current) setTail({ key, runs: before, cursor, loading: false, failed: true });

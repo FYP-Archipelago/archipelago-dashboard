@@ -1,6 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react';
 
-import { api } from '@/api.ts';
+import { getPresets } from '@/api/presets.ts';
+import { createRun } from '@/api/runs.ts';
 import Unavailable from '@/components/Unavailable.tsx';
 import { navigate, runHref } from '@/route.ts';
 import type { Presets } from '@/types.ts';
@@ -64,7 +65,7 @@ function NewRunForm({ presets }: { presets: Presets }) {
   const start = async () => {
     setSubmit({ phase: 'busy', error: '', runId: '' });
     try {
-      const run = await api.createRun(toNewRun(form));
+      const run = await createRun(toNewRun(form));
       setSubmit({ phase: 'done', error: '', runId: run.run_id });
     } catch (reason) {
       setSubmit({ phase: 'failed', error: (reason as Error).message, runId: '' });
@@ -103,7 +104,7 @@ export default function NewRunPage() {
 
   useEffect(() => {
     const controller = new AbortController();
-    api.listPresets(controller.signal).then(
+    getPresets(controller.signal).then(
       (data) => setPresets({ data, error: '' }),
       (reason: Error) => !controller.signal.aborted && setPresets({ error: reason.message })
     );

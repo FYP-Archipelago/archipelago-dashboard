@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 
-import { api } from '@/api.ts';
+import { getHealth } from '@/api/health.ts';
+import { getRuns } from '@/api/runs.ts';
 import { ago } from '@/format.ts';
 import { newRunHref, runHref, runsHref, type Route } from '@/route.ts';
 import type { Health } from '@/types.ts';
@@ -22,8 +23,8 @@ function backendState(health: Health | undefined, error: string): { dot: string;
 }
 
 export default function Sidebar({ route }: { route: Route }) {
-  const recent = usePoll('recent', (signal) => api.listRuns({}, signal));
-  const health = usePoll('health', (signal) => api.health(signal));
+  const recent = usePoll('recent', (signal) => getRuns({}, signal));
+  const health = usePoll('health', getHealth);
 
   const list = useRef<HTMLElement>(null);
   const [fit, setFit] = useState<number | null>(null);
