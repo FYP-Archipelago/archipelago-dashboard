@@ -1,19 +1,16 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 
-import { getRuns } from '@/api/runs.ts';
+import { useRuns } from '@/api/queries.ts';
 import Icon from '@/components/Icon.tsx';
 import Link from '@/components/Link.tsx';
 import Unavailable from '@/components/Unavailable.tsx';
 import { duration } from '@/format.ts';
 import { navigate, runHref } from '@/route.ts';
 import type { Run, RunStatusName } from '@/types.ts';
-import { usePoll } from '@/usePoll.ts';
 
 import './runs.css';
 
 type StatusFilter = 'all' | RunStatusName;
-
-type Tail = { key: string; runs: Run[]; cursor: string | null; loading: boolean; failed: boolean };
 
 const STATUS_FILTERS: StatusFilter[] = ['all', 'queued', 'running', 'clustering', 'done', 'failed', 'cancelled'];
 
@@ -96,12 +93,7 @@ function RunRow({ run }: { run: Run }) {
 export default function RunsPage() {
   const [status, setStatus] = useState<StatusFilter>('all');
   const [q, setQ] = useState('');
-  const query = { status: status === 'all' ? undefined : status };
-  const key = status;
-  const head = usePoll(key, (signal) => getRuns(query, signal));
-  const [stored, setTail] = useState<Tail | null>(null);
-  const tail = stored?.key === key ? stored : null;
-  const loadSeq = useRef(0);
+  const runs = useRuns(status === 'all' ? undefined : status);
   const search = useRef<HTMLInputElement>(null);
   // Ctrl+K (Cmd+K on macOS) jumps to the search bar.
   useEffect(() => {
@@ -115,27 +107,20 @@ export default function RunsPage() {
     return () => window.removeEventListener('keydown', onKey);
   }, []);
 
-  const headIds = new Set(head.data?.runs.map((run) => run.run_id));
-  const loaded = [...(head.data?.runs ?? []), ...(tail?.runs.filter((run) => !headIds.has(run.run_id)) ?? [])];
-  const cursor = tail ? tail.cursor : (head.data?.next_cursor ?? null);
+  const seen = new Set<string>();
+  const loaded =
+    runs.data?.pages.flatMap((page) =>
+      page.runs.filter((run) => {
+        if (seen.has(run.run_id)) return false;
+        seen.add(run.run_id);
+        return true;
+      })
+    ) ?? [];
   const needle = q.trim().toLowerCase();
   const shown = needle ? loaded.filter((run) => matches(run, needle)) : loaded;
 
-  const loadMore = async () => {
-    if (!cursor) return;
-    const seq = ++loadSeq.current;
-    const before = tail?.runs ?? [];
-    setTail({ key, runs: before, cursor, loading: true, failed: false });
-    try {
-      const page = await getRuns({ ...query, cursor });
-      if (seq === loadSeq.current) setTail({ key, runs: [...before, ...page.runs], cursor: page.next_cursor, loading: false, failed: false });
-    } catch {
-      if (seq === loadSeq.current) setTail({ key, runs: before, cursor, loading: false, failed: true });
-    }
-  };
-
   let placeholder: ReactNode = null;
-  if (!head.data) placeholder = head.error ? <Unavailable /> : 'Loading runs…';
+  if (!runs.data) placeholder = runs.isError ? <Unavailable /> : 'Loading runs…';
   else if (!shown.length) placeholder = needle || status !== 'all' ? 'No runs match these filters.' : 'No runs yet.';
 
   return (
@@ -205,10 +190,10 @@ export default function RunsPage() {
         </table>
       </div>
       <div className="table-foot">
-        {tail?.failed && <Unavailable />}
-        {cursor ? (
-          <button className="btn" disabled={tail?.loading} onClick={loadMore}>
-            {tail?.loading ? 'Loading…' : 'Load more'}
+        {runs.isFetchNextPageError && <Unavailable />}
+        {runs.hasNextPage ? (
+          <button className="btn" disabled={runs.isFetchingNextPage} onClick={() => runs.fetchNextPage()}>
+            {runs.isFetchingNextPage ? 'Loading…' : 'Load more'}
           </button>
         ) : (
           !placeholder && <p className="table-end">{loaded.length === 1 ? '1 run loaded' : `${loaded.length} runs loaded`}</p>

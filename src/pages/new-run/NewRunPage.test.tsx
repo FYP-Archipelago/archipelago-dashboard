@@ -1,8 +1,9 @@
-import { act, fireEvent, render, screen, within } from '@testing-library/react';
+import { act, fireEvent, screen, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 import { bodyOf, mockBackend } from '@/test/backend.ts';
 import { makeRun, PRESETS } from '@/test/fixtures.ts';
+import { renderWithQuery } from '@/test/query.tsx';
 import type { Presets } from '@/types.ts';
 
 import NewRunPage from './NewRunPage.tsx';
@@ -20,7 +21,7 @@ async function renderPage({
     'GET /presets': () => ({ body: presets }),
     'POST /runs': () => replies.shift() ?? { status: 500, body: { detail: 'no more replies' } },
   });
-  render(<NewRunPage />);
+  renderWithQuery(<NewRunPage />);
   await act(() => vi.advanceTimersByTimeAsync(0));
   return fetchMock;
 }
@@ -372,7 +373,7 @@ describe('NewRunPage loading', () => {
   it('says the backend is unavailable when presets cannot load', async () => {
     vi.useFakeTimers();
     mockBackend({ 'GET /presets': () => ({ status: 500 }) });
-    render(<NewRunPage />);
+    renderWithQuery(<NewRunPage />);
     await wait(0);
 
     expect(screen.getByText('Currently Unavailable')).toBeTruthy();
