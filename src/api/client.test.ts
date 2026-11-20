@@ -3,9 +3,10 @@ import { describe, expect, it, vi } from 'vitest';
 import { bodyOf, mockBackend } from '@/test/backend.ts';
 import { makeRun } from '@/test/fixtures.ts';
 
+import { isNotFound } from './client.ts';
 import { getHealth } from './health.ts';
 import { getPresets } from './presets.ts';
-import { createRun, getRuns } from './runs.ts';
+import { createRun, getRun, getRuns } from './runs.ts';
 
 describe('api', () => {
   it("shows FastAPI's message for an HTTPException", async () => {
@@ -94,5 +95,20 @@ describe('api', () => {
     const init = fetchMock.mock.calls[0]![1]!;
     expect((init.headers as Record<string, string>)['content-type']).toBe('application/json');
     expect(bodyOf(fetchMock.mock.calls[0]!)).toMatchObject({ run_name: 'x', preset: 'DE_Rastrigin' });
+  });
+
+  // The run page tells a run that does not exist from a backend that is down by this.
+  it('marks only a 404 answer as not found', async () => {
+    mockBackend({
+      'GET /runs/run-gone': () => ({ status: 404, body: { detail: 'run not found' } }),
+      'GET /runs/run-down': () => ({ status: 500 }),
+      'GET /runs/run-away': () => {
+        throw new TypeError('Failed to fetch');
+      },
+    });
+
+    const reasons = await Promise.all(['run-gone', 'run-down', 'run-away'].map((id) => getRun(id).catch((reason: unknown) => reason)));
+
+    expect(reasons.map(isNotFound)).toEqual([true, false, false]);
   });
 });

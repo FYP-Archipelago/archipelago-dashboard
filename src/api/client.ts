@@ -1,5 +1,17 @@
 type RequestOptions = { body?: unknown; signal?: AbortSignal; tolerate?: number };
 
+// An answer the backend gave with an error status; errors without an answer (unreachable, timeout) stay plain Errors.
+class ApiError extends Error {
+  constructor(
+    message: string,
+    readonly status: number
+  ) {
+    super(message);
+  }
+}
+
+export const isNotFound = (error: unknown) => error instanceof ApiError && error.status === 404;
+
 const TIMEOUT_MS = 15000;
 const base = (import.meta.env.VITE_BACKEND_URL || 'http://127.0.0.1:8000').replace(/\/+$/, '');
 
@@ -28,7 +40,8 @@ export async function request<T>(method: 'GET' | 'POST', path: string, { body, s
     throw new Error(timeout.aborted ? 'Backend request timed out.' : 'Cannot reach the backend.');
   }
   const payload: unknown = await response.json().catch(() => null);
-  if (!response.ok && response.status !== tolerate) throw new Error(detail(payload) ?? `Backend request failed (HTTP ${response.status}).`);
+  if (!response.ok && response.status !== tolerate)
+    throw new ApiError(detail(payload) ?? `Backend request failed (HTTP ${response.status}).`, response.status);
   if (payload === null) throw new Error('Backend returned a non-JSON response.');
   return payload as T;
 }

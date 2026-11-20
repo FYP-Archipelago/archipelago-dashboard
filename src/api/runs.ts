@@ -12,3 +12,9 @@ export function getRuns(query: RunQuery, signal?: AbortSignal): Promise<RunPage>
 export function createRun(body: NewRun): Promise<Run> {
   return request<Run>('POST', '/runs', { body });
 }
+
+const runPath = (id: string) => `/runs/${encodeURIComponent(id)}`;
+
+export function getRun(id: string, signal?: AbortSignal): Promise<Run> {
+  return request<Run>('GET', runPath(id), { signal });
+}
