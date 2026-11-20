@@ -16,7 +16,7 @@ function runList(status?: RunStatusName) {
   });
 }
 
-export const useHealth = () => useQuery({ queryKey: ['health'], queryFn: ({ signal }) => getHealth(signal), refetchInterval: 10000 });
+export const useHealth = () => useQuery({ queryKey: ['health'], queryFn: ({ signal }) => getHealth(signal), refetchInterval: 60000 });
 
 export const useRuns = (status?: RunStatusName) => useInfiniteQuery(runList(status));
 
