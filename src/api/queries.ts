@@ -14,7 +14,7 @@ import type { NewRun, Run, RunPage, RunStatusName } from '@/types.ts';
 import { isNotFound } from './client.ts';
 import { getHealth } from './health.ts';
 import { getPresets } from './presets.ts';
-import { createRun, getRun, getRuns } from './runs.ts';
+import { cancelRun, createRun, getRun, getRuns } from './runs.ts';
 
 function runList(status?: RunStatusName) {
   return infiniteQueryOptions({
@@ -86,5 +86,16 @@ export function useRun(id: string) {
     staleTime: ({ state }) => (state.data && FINISHED.includes(state.data.status) ? Infinity : 0),
     refetchInterval: ({ state }) => ((state.data ? !FINISHED.includes(state.data.status) : !isNotFound(state.error)) ? 5000 : false),
     retry: (failures, error) => failures < 1 && !isNotFound(error),
+  });
+}
+
+export function useCancelRun(id: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => cancelRun(id),
+    onSuccess: (run) => {
+      queryClient.setQueryData(['run', id], run);
+      void queryClient.invalidateQueries({ queryKey: ['runs'] });
+    },
   });
 }

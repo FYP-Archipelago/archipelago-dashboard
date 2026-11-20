@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 
 import { isNotFound } from '@/api/client.ts';
-import { useRun } from '@/api/queries.ts';
+import { useCancelRun, useRun } from '@/api/queries.ts';
 import Icon from '@/components/Icon.tsx';
 import Link from '@/components/Link.tsx';
 import Unavailable from '@/components/Unavailable.tsx';
@@ -74,6 +74,43 @@ function CopyId({ id }: { id: string }) {
   );
 }
 
+// Cancelling takes a second click within a few seconds, so a stray click cannot stop a long run.
+function CancelButton({ run }: { run: Run }) {
+  const cancel = useCancelRun(run.run_id);
+  const [armed, setArmed] = useState(false);
+  useEffect(() => {
+    if (!armed) return;
+    const timer = setTimeout(() => setArmed(false), 4000);
+    return () => clearTimeout(timer);
+  }, [armed]);
+
+  if (run.status === 'cancelling')
+    return (
+      <button className="btn" disabled>
+        <span className="dot cancelling" />
+        Cancelling…
+      </button>
+    );
+  const onClick = () => {
+    if (!armed) return setArmed(true);
+    setArmed(false);
+    cancel.mutate();
+  };
+  return (
+    <>
+      {cancel.isError && (
+        <span className="action-error" title={cancel.error.message}>
+          Couldn&apos;t cancel the run
+        </span>
+      )}
+      <button className={`btn${armed ? ' btn-danger' : ''}`} disabled={cancel.isPending} onClick={onClick}>
+        <Icon name="x" size={14} stroke={2} />
+        {cancel.isPending ? 'Cancelling…' : armed ? 'Confirm cancel' : 'Cancel run'}
+      </button>
+    </>
+  );
+}
+
 // The underline slides between tabs; it is placed without a transition the first time.
 function Tabs({ id, tab }: { id: string; tab: RunTab }) {
   const nav = useRef<HTMLElement>(null);
@@ -133,6 +170,7 @@ function Header({ run, tab }: { run: Run; tab: RunTab }) {
             <span className="status">{run.status}</span>
           </span>
           <CopyId id={run.run_id} />
+          <div className="run-actions">{!isFinished(run.status) && <CancelButton run={run} />}</div>
         </div>
         <div className="run-facts">
           {facts.map((fact, i) => (

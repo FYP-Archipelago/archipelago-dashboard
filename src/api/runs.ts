@@ -18,3 +18,7 @@ const runPath = (id: string) => `/runs/${encodeURIComponent(id)}`;
 export function getRun(id: string, signal?: AbortSignal): Promise<Run> {
   return request<Run>('GET', runPath(id), { signal });
 }
+
+export function cancelRun(id: string): Promise<Run> {
+  return request<Run>('POST', `${runPath(id)}/cancel`);
+}
