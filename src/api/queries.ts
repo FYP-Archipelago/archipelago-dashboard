@@ -14,10 +14,11 @@ function runList(status?: RunStatusName) {
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (page) => page.next_cursor ?? undefined,
     refetchInterval: 10000,
+    retry: false,
   });
 }
 
-export const useHealth = () => useQuery({ queryKey: ['health'], queryFn: ({ signal }) => getHealth(signal), refetchInterval: 60000 });
+export const useHealth = () => useQuery({ queryKey: ['health'], queryFn: ({ signal }) => getHealth(signal), refetchInterval: 60000, retry: false });
 
 export function useRuns(status?: RunStatusName) {
   const queryClient = useQueryClient();
