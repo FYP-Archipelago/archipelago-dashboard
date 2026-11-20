@@ -23,25 +23,16 @@ function backendState(health: Health | undefined, error: string): { dot: string;
 
 export default function Sidebar({ route }: { route: Route }) {
   const recent = usePoll('recent', (signal) => api.listRuns({}, signal));
-  // Checked once per page load; the polled run list is what shows live changes.
-  const [health, setHealth] = useState<{ data?: Health; error: string }>({ error: '' });
-  useEffect(() => {
-    const controller = new AbortController();
-    api.health(controller.signal).then(
-      (data) => setHealth({ data, error: '' }),
-      (reason: Error) => !controller.signal.aborted && setHealth({ error: reason.message })
-    );
-    return () => controller.abort();
-  }, []);
-  // As many of the newest runs as fit whole in the list's height, measured from the first run's row.
+  const health = usePoll('health', (signal) => api.health(signal));
+
   const list = useRef<HTMLElement>(null);
   const [fit, setFit] = useState<number | null>(null);
   const hasRuns = Boolean(recent.data?.runs.length);
+
   useEffect(() => {
     const nav = list.current;
     if (!nav || !hasRuns) return;
     const observer = new ResizeObserver(() => {
-      // A row with no height has not been laid out yet, so there is nothing to measure.
       const row = nav.querySelector('a');
       if (!row?.offsetHeight) return;
       const gap = parseFloat(getComputedStyle(nav).rowGap) || 0;
@@ -50,8 +41,10 @@ export default function Sidebar({ route }: { route: Route }) {
     observer.observe(nav);
     return () => observer.disconnect();
   }, [hasRuns]);
+
   const runs = fit === null ? recent.data?.runs : recent.data?.runs.slice(0, fit);
   const state = backendState(health.data, health.error);
+
   return (
     <aside className="sidebar">
       <Link className="brand" href={runsHref}>
