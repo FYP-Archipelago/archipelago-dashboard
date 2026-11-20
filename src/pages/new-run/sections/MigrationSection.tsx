@@ -1,8 +1,10 @@
 import { useRef, useState, type KeyboardEvent, type PointerEvent } from 'react';
 
+import { ISLAND_COLORS } from '@/colors.ts';
 import Icon from '@/components/Icon.tsx';
+import { TOPOLOGIES } from '@/format.ts';
 import { populationOf, torusGrid, torusNeeds, type Form, type Patch, type ScheduleKey, type SetText } from '@/pages/new-run/form.ts';
-import { ISLAND_COLORS, TOPOLOGIES, type Pt } from '@/pages/new-run/shared.ts';
+import type { Pt } from '@/pages/new-run/shared.ts';
 import type { Presets } from '@/types.ts';
 
 import { InlineNumber } from './fields.tsx';
@@ -107,7 +109,6 @@ function IntervalCalendar({ form, errors, setText, step }: ScheduleProps) {
   // At most 250 squares; longer runs give each square several generations.
   const perSquare = Math.max(1, Math.ceil(totalGenerations / 250));
   const squares = Math.ceil(totalGenerations / perSquare);
-  // A hovered day previews its interval everywhere, the readout included, until the pointer leaves.
   const shownInterval = hovered || (intervalValid ? interval : 0);
   const migrationCount = shownInterval > 0 ? Math.floor(totalGenerations / shownInterval) : 0;
   const shownError = hovered ? undefined : errors['migration.interval'];

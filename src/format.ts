@@ -1,3 +1,15 @@
+export const TOPOLOGIES: Record<string, string> = {
+  ring: 'Ring',
+  bidirectional_ring: 'Bidirectional Ring',
+  fully_connected: 'Fully Connected',
+  lattice: 'Lattice',
+  random: 'Random',
+  star: 'Star',
+  torus: 'Torus',
+};
+
+export const numberFormat = new Intl.NumberFormat('en');
+
 export function ago(iso: string): string {
   const minutes = Math.round((Date.now() - Date.parse(iso)) / 60000);
   if (minutes < 1) return 'just now';

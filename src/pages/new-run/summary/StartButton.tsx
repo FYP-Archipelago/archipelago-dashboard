@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 
+import { ISLAND_COLORS } from '@/colors.ts';
 import Icon from '@/components/Icon.tsx';
-import { ISLAND_COLORS, vars } from '@/pages/new-run/shared.ts';
+import { vars } from '@/pages/new-run/shared.ts';
 
 import './start.css';
 

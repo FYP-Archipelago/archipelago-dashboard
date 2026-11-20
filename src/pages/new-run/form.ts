@@ -1,8 +1,7 @@
 import { adjectives, animals, colors, uniqueNamesGenerator } from 'unique-names-generator';
 
+import { numberFormat } from '@/format.ts';
 import type { Clustering, NewRun, OverrideSpec, Preset, Presets, RunSettings } from '@/types.ts';
-
-import { numberFormat } from './shared.ts';
 
 // Clustering stages in pipeline order.
 export const STAGES = [

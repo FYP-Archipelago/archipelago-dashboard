@@ -1,19 +1,5 @@
 import type { CSSProperties } from 'react';
 
-export const TOPOLOGIES: Record<string, string> = {
-  ring: 'Ring',
-  bidirectional_ring: 'Bidirectional Ring',
-  fully_connected: 'Fully Connected',
-  lattice: 'Lattice',
-  random: 'Random',
-  star: 'Star',
-  torus: 'Torus',
-};
-
-export const ISLAND_COLORS = ['#3987e5', '#d95926', '#199e70', '#c98500', '#d55181', '#008300'];
-
-export const numberFormat = new Intl.NumberFormat('en');
-
 export type Pt = [number, number];
 
 // A small random generator seeded by text, so a drawing comes out the same on every render.

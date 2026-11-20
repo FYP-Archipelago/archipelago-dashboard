@@ -1,7 +1,9 @@
 import type { ReactNode } from 'react';
 
+import { ISLAND_COLORS } from '@/colors.ts';
+import { numberFormat } from '@/format.ts';
 import type { Form, Patch, SetText, SettingKey } from '@/pages/new-run/form.ts';
-import { ISLAND_COLORS, numberFormat, vars } from '@/pages/new-run/shared.ts';
+import { vars } from '@/pages/new-run/shared.ts';
 import type { Presets } from '@/types.ts';
 
 import type { FieldProps } from './fields.tsx';

@@ -1,8 +1,8 @@
 import { useState } from 'react';
 
 import Icon from '@/components/Icon.tsx';
+import { numberFormat, TOPOLOGIES } from '@/format.ts';
 import { NAME_MAX, randomName, STAGES, type Form, type Patch } from '@/pages/new-run/form.ts';
-import { numberFormat, TOPOLOGIES } from '@/pages/new-run/shared.ts';
 
 import StartButton, { type StartPhase } from './StartButton.tsx';
 
