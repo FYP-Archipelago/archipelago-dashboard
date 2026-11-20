@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react';
 
-import { api } from '@/api.ts';
+import { useCreateRun, usePresets } from '@/api/queries.ts';
 import Unavailable from '@/components/Unavailable.tsx';
 import { navigate, runHref } from '@/route.ts';
 import type { Presets } from '@/types.ts';
@@ -30,6 +30,7 @@ import type { StartPhase } from './summary/StartButton.tsx';
 import Summary from './summary/Summary.tsx';
 
 function NewRunForm({ presets }: { presets: Presets }) {
+  const createRun = useCreateRun();
   const [form, setForm] = useState<Form>(() => ({
     ...presetSettings(presets.presets[0]!),
     clustering: DEFAULT_CLUSTERING,
@@ -64,7 +65,7 @@ function NewRunForm({ presets }: { presets: Presets }) {
   const start = async () => {
     setSubmit({ phase: 'busy', error: '', runId: '' });
     try {
-      const run = await api.createRun(toNewRun(form));
+      const run = await createRun.mutateAsync(toNewRun(form));
       setSubmit({ phase: 'done', error: '', runId: run.run_id });
     } catch (reason) {
       setSubmit({ phase: 'failed', error: (reason as Error).message, runId: '' });
@@ -99,21 +100,12 @@ function NewRunForm({ presets }: { presets: Presets }) {
 }
 
 export default function NewRunPage() {
-  const [presets, setPresets] = useState<{ data?: Presets; error: string }>({ error: '' });
-
-  useEffect(() => {
-    const controller = new AbortController();
-    api.listPresets(controller.signal).then(
-      (data) => setPresets({ data, error: '' }),
-      (reason: Error) => !controller.signal.aborted && setPresets({ error: reason.message })
-    );
-    return () => controller.abort();
-  }, []);
+  const presets = usePresets();
 
   let body: ReactNode;
   if (presets.data?.presets.length) body = <NewRunForm presets={presets.data} />;
   else if (presets.data) body = <div className="page-state">The runner has no presets to start from.</div>;
-  else if (presets.error)
+  else if (presets.isError)
     body = (
       <div className="page-state">
         <Unavailable />

@@ -1,8 +1,9 @@
-import { act, fireEvent, render, screen, within } from '@testing-library/react';
+import { act, fireEvent, screen, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 import { mockBackend } from '@/test/backend.ts';
 import { makeRun } from '@/test/fixtures.ts';
+import { renderWithQuery } from '@/test/query.tsx';
 import type { Run } from '@/types.ts';
 
 import RunsPage from './RunsPage.tsx';
@@ -32,7 +33,7 @@ const settle = () => act(async () => {});
 describe('RunsPage', () => {
   it("splits the preset into algorithm and problem at the first underscore only, and opens a run's page on a row click", async () => {
     serveRuns({ '|': { runs: [makeRun('run-1', { preset: 'GA_TSP_Berlin52', run_name: 'grand-tan-pigeon' })], next_cursor: null } });
-    render(<RunsPage />);
+    renderWithQuery(<RunsPage />);
     await settle();
 
     const cells = within(screen.getAllByRole('row')[1]!).getAllByRole('cell');
@@ -58,7 +59,7 @@ describe('RunsPage', () => {
         next_cursor: null,
       },
     });
-    render(<RunsPage />);
+    renderWithQuery(<RunsPage />);
     await settle();
 
     const durations = screen
@@ -74,7 +75,7 @@ describe('RunsPage', () => {
       '|': { runs: [makeRun('a'), makeRun('b')], next_cursor: null },
       'failed|': { runs: [makeRun('c', { status: 'failed' })], next_cursor: null },
     });
-    render(<RunsPage />);
+    renderWithQuery(<RunsPage />);
     await settle();
 
     fireEvent.click(screen.getByRole('button', { name: 'failed' }));
@@ -90,7 +91,7 @@ describe('RunsPage', () => {
       // A new run pushed "b" from the first page onto the second while the list was open.
       '|page-2': { runs: [makeRun('b'), makeRun('c')], next_cursor: null },
     });
-    render(<RunsPage />);
+    renderWithQuery(<RunsPage />);
     await settle();
 
     fireEvent.click(screen.getByRole('button', { name: 'Load more' }));
@@ -102,18 +103,25 @@ describe('RunsPage', () => {
   });
 
   it("drops the extra pages when the filter changes, so the previous filter's runs do not linger", async () => {
-    serveRuns({
-      '|': { runs: [makeRun('a')], next_cursor: 'page-2' },
-      '|page-2': { runs: [makeRun('b')], next_cursor: null },
-      'done|': { runs: [makeRun('d')], next_cursor: null },
+    let finishFilter!: (page: Page) => void;
+    const filteredPage = new Promise<Page>((resolve) => (finishFilter = resolve));
+    mockBackend({
+      'GET /runs': async (url) => {
+        if (url.searchParams.has('status')) return { body: await filteredPage };
+        if (url.searchParams.has('cursor')) return { body: { runs: [makeRun('b')], next_cursor: null } };
+        return { body: { runs: [makeRun('a')], next_cursor: 'page-2' } };
+      },
     });
-    render(<RunsPage />);
+    renderWithQuery(<RunsPage />);
     await settle();
     fireEvent.click(screen.getByRole('button', { name: 'Load more' }));
     await settle();
 
     fireEvent.click(screen.getByRole('button', { name: 'done' }));
-    await settle();
+    expect(screen.getByText('Loading runs…')).toBeTruthy();
+    expect(shownNames()).toEqual([]);
+
+    await act(async () => finishFilter({ runs: [makeRun('d')], next_cursor: null }));
 
     expect(shownNames()).toEqual(['name-d']);
   });
@@ -124,7 +132,7 @@ describe('RunsPage', () => {
     mockBackend({
       'GET /runs': (url) => ({ body: url.searchParams.get('cursor') ? { runs: [makeRun('b')], next_cursor: null } : head }),
     });
-    render(<RunsPage />);
+    renderWithQuery(<RunsPage />);
     await act(() => vi.advanceTimersByTimeAsync(0));
     fireEvent.click(screen.getByRole('button', { name: 'Load more' }));
     await act(() => vi.advanceTimersByTimeAsync(0));
@@ -136,9 +144,45 @@ describe('RunsPage', () => {
     expect(screen.getAllByRole('row')[1]!.textContent).toContain('done');
   });
 
+  it('keeps showing runs when a background poll fails', async () => {
+    vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval', 'Date'] });
+    const pages: Record<string, Page | 'down'> = { '|': { runs: [makeRun('a')], next_cursor: null } };
+    const fetchMock = serveRuns(pages);
+    renderWithQuery(<RunsPage />);
+    await settle();
+    expect(shownNames()).toEqual(['name-a']);
+
+    pages['|'] = 'down';
+    await act(() => vi.advanceTimersByTimeAsync(10000));
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(shownNames()).toEqual(['name-a']);
+    expect(screen.queryByText('Currently Unavailable')).toBeNull();
+  });
+
+  it('refreshes loaded pages with fresh cursors so a run pushed off page one stays visible', async () => {
+    vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval', 'Date'] });
+    const pages = {
+      '|': { runs: [makeRun('a'), makeRun('b')], next_cursor: 'page-2' },
+      '|page-2': { runs: [makeRun('c')], next_cursor: null },
+      '|page-2b': { runs: [makeRun('b'), makeRun('c')], next_cursor: null },
+    };
+    serveRuns(pages);
+    renderWithQuery(<RunsPage />);
+    await settle();
+    fireEvent.click(screen.getByRole('button', { name: 'Load more' }));
+    await settle();
+    expect(shownNames()).toEqual(['name-a', 'name-b', 'name-c']);
+
+    pages['|'] = { runs: [makeRun('new'), makeRun('a')], next_cursor: 'page-2b' };
+    await act(() => vi.advanceTimersByTimeAsync(10000));
+
+    expect(shownNames()).toEqual(['name-new', 'name-a', 'name-b', 'name-c']);
+  });
+
   it('focuses the search with Ctrl+K, as its hint says', async () => {
     serveRuns({ '|': { runs: [], next_cursor: null } });
-    render(<RunsPage />);
+    renderWithQuery(<RunsPage />);
     await settle();
 
     fireEvent.keyDown(window, { key: 'k', ctrlKey: true });
@@ -148,7 +192,7 @@ describe('RunsPage', () => {
 
   it('keeps the loaded runs and the Load more button when a further page fails', async () => {
     serveRuns({ '|': { runs: [makeRun('a')], next_cursor: 'page-2' }, '|page-2': 'down' });
-    render(<RunsPage />);
+    renderWithQuery(<RunsPage />);
     await settle();
 
     fireEvent.click(screen.getByRole('button', { name: 'Load more' }));
@@ -169,7 +213,7 @@ describe('RunsPage', () => {
         next_cursor: null,
       },
     });
-    render(<RunsPage />);
+    renderWithQuery(<RunsPage />);
     await settle();
     const search = screen.getByPlaceholderText(/Search by Name/);
 
@@ -185,7 +229,7 @@ describe('RunsPage', () => {
 
   it('says so when the backend is down', async () => {
     serveRuns({ '|': 'down' });
-    render(<RunsPage />);
+    renderWithQuery(<RunsPage />);
     await settle();
 
     expect(screen.getByText('Currently Unavailable')).toBeTruthy();

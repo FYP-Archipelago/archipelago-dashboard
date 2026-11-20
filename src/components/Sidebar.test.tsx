@@ -1,8 +1,9 @@
-import { act, render, screen } from '@testing-library/react';
+import { act, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 import { mockBackend } from '@/test/backend.ts';
 import { makeRun } from '@/test/fixtures.ts';
+import { renderWithQuery } from '@/test/query.tsx';
 
 import Sidebar from './Sidebar.tsx';
 
@@ -16,7 +17,7 @@ async function renderWith(health: Health, runs = [makeRun('run-1')]) {
     },
     'GET /runs': () => ({ body: { runs, next_cursor: null } }),
   });
-  render(<Sidebar route={{ name: 'runs' }} />);
+  renderWithQuery(<Sidebar route={{ name: 'runs' }} />);
   await act(async () => {});
 }
 
@@ -45,6 +46,27 @@ describe('Sidebar backend status', () => {
   it('is unavailable, without a version, when the backend cannot be reached', async () => {
     await renderWith('unreachable');
 
+    expect(statusLine()).toBe('Unavailable');
+  });
+
+  it('updates backend status every 60 s, including after an earlier success', async () => {
+    vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval', 'Date'] });
+    let health = { body: { status: 'ok', version: '0.2.0', ready: true } };
+    let reachable = true;
+    mockBackend({
+      'GET /health': () => (reachable ? health : { status: 500 }),
+      'GET /runs': () => ({ body: { runs: [], next_cursor: null } }),
+    });
+    renderWithQuery(<Sidebar route={{ name: 'runs' }} />);
+    await act(async () => {});
+    expect(statusLine()).toContain('All Systems Go');
+
+    health = { body: { ...health.body, ready: false } };
+    await act(() => vi.advanceTimersByTimeAsync(60000));
+    expect(statusLine()).toContain('Runner disconnected');
+
+    reachable = false;
+    await act(() => vi.advanceTimersByTimeAsync(60000));
     expect(statusLine()).toBe('Unavailable');
   });
 });

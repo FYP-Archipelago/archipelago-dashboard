@@ -1,10 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 
-import { api } from '@/api.ts';
+import { useHealth, useRecentRuns } from '@/api/queries.ts';
 import { ago } from '@/format.ts';
 import { newRunHref, runHref, runsHref, type Route } from '@/route.ts';
 import type { Health } from '@/types.ts';
-import { usePoll } from '@/usePoll.ts';
 
 import Icon from './Icon.tsx';
 import Link from './Link.tsx';
@@ -22,8 +21,8 @@ function backendState(health: Health | undefined, error: string): { dot: string;
 }
 
 export default function Sidebar({ route }: { route: Route }) {
-  const recent = usePoll('recent', (signal) => api.listRuns({}, signal));
-  const health = usePoll('health', (signal) => api.health(signal));
+  const recent = useRecentRuns();
+  const health = useHealth();
 
   const list = useRef<HTMLElement>(null);
   const [fit, setFit] = useState<number | null>(null);
@@ -43,7 +42,7 @@ export default function Sidebar({ route }: { route: Route }) {
   }, [hasRuns]);
 
   const runs = fit === null ? recent.data?.runs : recent.data?.runs.slice(0, fit);
-  const state = backendState(health.data, health.error);
+  const state = backendState(health.data, health.error?.message ?? '');
 
   return (
     <aside className="sidebar">
@@ -80,7 +79,7 @@ export default function Sidebar({ route }: { route: Route }) {
           </Link>
         ))}
         {runs?.length === 0 && <p className="recent-note">No runs yet.</p>}
-        {!runs && recent.error && (
+        {!runs && recent.isError && (
           <p className="recent-note">
             <Unavailable />
           </p>
