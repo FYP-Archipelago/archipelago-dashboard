@@ -325,6 +325,20 @@ describe('NewRunPage form', () => {
     expect(interval.value).toBe('40');
     expect(interval.closest('.q-head')!.textContent).toContain('5 migration events');
   });
+
+  it('previews a hovered calendar day in the readout, and goes back to the chosen interval on leaving', async () => {
+    await renderPage();
+    fireEvent.click(control('Generation 40'));
+    const interval = control('Generations between migrations');
+
+    fireEvent.pointerEnter(control('Generation 25'));
+    expect(interval.value).toBe('25');
+    expect(interval.closest('.q-head')!.textContent).toContain('8 migration events');
+
+    fireEvent.pointerLeave(control('Interval'));
+    expect(interval.value).toBe('40');
+    expect(interval.closest('.q-head')!.textContent).toContain('5 migration events');
+  });
 });
 
 describe('NewRunPage unknown presets', () => {

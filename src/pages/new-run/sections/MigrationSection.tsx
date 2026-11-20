@@ -107,8 +107,10 @@ function IntervalCalendar({ form, errors, setText, step }: ScheduleProps) {
   // At most 250 squares; longer runs give each square several generations.
   const perSquare = Math.max(1, Math.ceil(totalGenerations / 250));
   const squares = Math.ceil(totalGenerations / perSquare);
-  const migrationCount = intervalValid ? Math.floor(totalGenerations / interval) : 0;
+  // A hovered day previews its interval everywhere, the readout included, until the pointer leaves.
   const shownInterval = hovered || (intervalValid ? interval : 0);
+  const migrationCount = shownInterval > 0 ? Math.floor(totalGenerations / shownInterval) : 0;
+  const shownError = hovered ? undefined : errors['migration.interval'];
 
   return (
     <div>
@@ -124,8 +126,8 @@ function IntervalCalendar({ form, errors, setText, step }: ScheduleProps) {
           every
           <InlineNumber
             label="Generations between migrations"
-            value={form.text['migration.interval']}
-            invalid={Boolean(errors['migration.interval'])}
+            value={hovered ? String(hovered) : form.text['migration.interval']}
+            invalid={Boolean(shownError)}
             onChange={setText('migration.interval')}
             onStep={(delta) => step('migration.interval', delta)}
           />
@@ -133,8 +135,8 @@ function IntervalCalendar({ form, errors, setText, step }: ScheduleProps) {
           <span className="mg-readout-arrow">
             <Icon name="arrowR" size={13} />
           </span>
-          {errors['migration.interval'] ? (
-            <span className="field-error">{errors['migration.interval']}</span>
+          {shownError ? (
+            <span className="field-error">{shownError}</span>
           ) : generations === null ? (
             'set target generations first'
           ) : (
