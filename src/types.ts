@@ -36,6 +36,8 @@ export type Run = {
   clustering: Clustering;
   error: { phase: 'runner' | 'clustering' | 'internal'; message: string } | null;
   created_at: string;
+  started_at: string | null;
+  finished_at: string | null;
 };
 
 export type NewRun = {

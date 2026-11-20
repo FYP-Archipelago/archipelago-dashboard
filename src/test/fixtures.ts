@@ -96,5 +96,7 @@ export const makeRun = (id: string, change: Partial<Run> = {}): Run => ({
   clustering: CLUSTERING,
   error: null,
   created_at: new Date().toISOString(),
+  started_at: null,
+  finished_at: null,
   ...change,
 });

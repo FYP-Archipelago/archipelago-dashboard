@@ -4,8 +4,8 @@ import { api } from '@/api.ts';
 import Icon from '@/components/Icon.tsx';
 import Link from '@/components/Link.tsx';
 import Unavailable from '@/components/Unavailable.tsx';
+import { duration } from '@/format.ts';
 import { navigate, runHref } from '@/route.ts';
-import { ago } from '@/runs.ts';
 import type { Run, RunStatusName } from '@/types.ts';
 import { usePoll } from '@/usePoll.ts';
 
@@ -13,9 +13,9 @@ import './runs.css';
 
 type StatusFilter = 'all' | RunStatusName;
 
-const STATUS_FILTERS: StatusFilter[] = ['all', 'queued', 'running', 'clustering', 'done', 'failed', 'cancelled'];
-
 type Tail = { key: string; runs: Run[]; cursor: string | null; loading: boolean; failed: boolean };
+
+const STATUS_FILTERS: StatusFilter[] = ['all', 'queued', 'running', 'clustering', 'done', 'failed', 'cancelled'];
 
 // Clustering stages in pipeline order.
 const STAGES = [
@@ -27,6 +27,23 @@ const STAGES = [
 const compact = new Intl.NumberFormat('en', { notation: 'compact', maximumFractionDigits: 1 });
 
 const matches = (run: Run, q: string) => [run.run_name, run.run_id, run.preset].some((field) => field.toLowerCase().includes(q));
+
+// Done runs show their final time; started but unfinished ones count up, and failed or cancelled ones show how long they lasted.
+function DurationCell({ run }: { run: Run }) {
+  const counting = run.started_at !== null && run.finished_at === null;
+  const [now, setNow] = useState(Date.now);
+  useEffect(() => {
+    if (!counting) return;
+    const timer = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, [counting]);
+
+  const start = run.started_at ? Date.parse(run.started_at) : null;
+  const end = run.finished_at ? Date.parse(run.finished_at) : counting ? now : null;
+  return (
+    <td className={`r duration ${run.status === 'done' ? 'ink-2' : 'muted'}`}>{start !== null && end !== null ? duration(end - start) : '—'}</td>
+  );
+}
 
 function RunRow({ run }: { run: Run }) {
   // Preset names are <algorithm>_<problem>.
@@ -68,9 +85,7 @@ function RunRow({ run }: { run: Run }) {
           ))}
         </div>
       </td>
-      <td className="ink-2 created" title={run.created_at}>
-        {ago(run.created_at)}
-      </td>
+      <DurationCell run={run} />
       <td className="r muted">
         <Icon name="chevR" size={15} />
       </td>
@@ -172,7 +187,7 @@ export default function RunsPage() {
               <th className="r">Budget</th>
               <th>Mode</th>
               <th>Clustering Stages</th>
-              <th>Created</th>
+              <th className="r">Duration</th>
               <th />
             </tr>
           </thead>

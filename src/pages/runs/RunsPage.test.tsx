@@ -42,6 +42,33 @@ describe('RunsPage', () => {
     expect(window.location.pathname).toBe('/runs/run-1');
   });
 
+  it('shows how long each run took, counts a live one from its start, and a dash for runs without times', async () => {
+    const now = Date.parse('2026-11-20T12:00:00Z');
+    vi.spyOn(Date, 'now').mockReturnValue(now);
+    const at = (seconds: number) => new Date(now + seconds * 1000).toISOString();
+    serveRuns({
+      '|': {
+        runs: [
+          makeRun('done', { started_at: at(-1000), finished_at: at(-748) }),
+          makeRun('failed', { status: 'failed', started_at: at(-10), finished_at: at(-7) }),
+          makeRun('running', { status: 'running', started_at: at(-65) }),
+          makeRun('queued', { status: 'queued' }),
+          makeRun('old', { status: 'done' }),
+        ],
+        next_cursor: null,
+      },
+    });
+    render(<RunsPage />);
+    await settle();
+
+    const durations = screen
+      .getAllByRole('row')
+      .slice(1)
+      .map((row) => within(row).getAllByRole('cell')[8]!.textContent);
+    expect(durations).toEqual(['4m 12s', '3s', '1m 05s', '—', '—']);
+    vi.restoreAllMocks();
+  });
+
   it('asks the backend for the chosen status and shows only its answer', async () => {
     const fetchMock = serveRuns({
       '|': { runs: [makeRun('a'), makeRun('b')], next_cursor: null },
