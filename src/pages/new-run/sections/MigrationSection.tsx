@@ -107,8 +107,8 @@ function IntervalCalendar({ form, errors, setText, step }: ScheduleProps) {
   // At most 250 squares; longer runs give each square several generations.
   const perSquare = Math.max(1, Math.ceil(totalGenerations / 250));
   const squares = Math.ceil(totalGenerations / perSquare);
+  const migrationCount = intervalValid ? Math.floor(totalGenerations / interval) : 0;
   const shownInterval = hovered || (intervalValid ? interval : 0);
-  const migrationCount = shownInterval ? Math.floor(totalGenerations / shownInterval) : 0;
 
   return (
     <div>
@@ -121,12 +121,11 @@ function IntervalCalendar({ form, errors, setText, step }: ScheduleProps) {
           ·
         </span>
         <span className="mg-readout">
-          {hovered ? 'click to migrate ' : ''}every
+          every
           <InlineNumber
             label="Generations between migrations"
-            value={hovered ? String(hovered) : form.text['migration.interval']}
+            value={form.text['migration.interval']}
             invalid={Boolean(errors['migration.interval'])}
-            preview={hovered > 0}
             onChange={setText('migration.interval')}
             onStep={(delta) => step('migration.interval', delta)}
           />
@@ -140,7 +139,7 @@ function IntervalCalendar({ form, errors, setText, step }: ScheduleProps) {
             'set target generations first'
           ) : (
             <>
-              <b className="num">{migrationCount}</b> {migrationCount === 1 ? 'migration' : 'migrations'}
+              <b className="num">{migrationCount}</b> {migrationCount === 1 ? 'migration event' : 'migration events'}
             </>
           )}
         </span>
@@ -191,7 +190,7 @@ function IntervalCalendar({ form, errors, setText, step }: ScheduleProps) {
   );
 }
 
-// One island's population as bars of fitness, best first: drag the cut to choose how many of the best are sent.
+// One island's population, best first: drag the cut to choose how many of the best are sent.
 function MigrantRanked({ form, errors, setText, step }: ScheduleProps) {
   const [hovered, setHovered] = useState(0);
   const dragging = useRef(false);
@@ -199,12 +198,11 @@ function MigrantRanked({ form, errors, setText, step }: ScheduleProps) {
   const key = 'migration.num_migrants';
   const population = populationOf(form);
   const migrants = errors[key] ? 0 : Number(form.text[key]);
-  const shown = hovered || migrants;
   // The chart draws at most 160 individuals.
   const bars = Math.min(population ?? 40, 160);
   // Sending the whole population is not allowed.
   const max = population ? Math.min(bars, population - 1) : bars;
-  const cut = Math.min(shown, bars);
+  const cut = Math.min(migrants, bars);
 
   const countAt = (event: PointerEvent<HTMLDivElement>) => {
     const box = event.currentTarget.getBoundingClientRect();
@@ -222,12 +220,11 @@ function MigrantRanked({ form, errors, setText, step }: ScheduleProps) {
           ·
         </span>
         <span className="mg-readout">
-          {hovered ? 'click to send ' : 'sends '}its best
+          sends its best
           <InlineNumber
             label="Migrants per route"
-            value={hovered ? String(hovered) : form.text[key]}
+            value={form.text[key]}
             invalid={Boolean(errors[key])}
-            preview={hovered > 0}
             onChange={setText(key)}
             onStep={(delta) => step(key, delta)}
           />
@@ -241,7 +238,7 @@ function MigrantRanked({ form, errors, setText, step }: ScheduleProps) {
             'population depends on budget and generations'
           ) : (
             <>
-              <b className="num">{Math.round((shown / population) * 100)}%</b> of about <b className="num">{population}</b>
+              <b className="num">{Math.round((migrants / population) * 100)}%</b> of about <b className="num">{population}</b>
             </>
           )}
         </span>
@@ -259,6 +256,7 @@ function MigrantRanked({ form, errors, setText, step }: ScheduleProps) {
           if (!form.migration) return;
           event.currentTarget.setPointerCapture(event.pointerId);
           dragging.current = true;
+          setHovered(0);
           setText(key)(String(countAt(event)));
         }}
         onPointerMove={(event) => {
@@ -272,33 +270,29 @@ function MigrantRanked({ form, errors, setText, step }: ScheduleProps) {
         {Array.from({ length: bars }, (_, i) => (
           <span
             key={i}
-            className={`ranked-bar${i < cut ? ' sent' : ''}${hovered && i < hovered ? ' preview' : ''}${i >= max ? ' locked' : ''}`}
-            // A smooth falling fitness curve, best on the left.
-            style={{ height: `${100 - 78 * (i / Math.max(1, bars - 1)) ** 0.6}%` }}
+            className={`ranked-bar${i < cut ? ' sent' : ''}${hovered && i < hovered && i >= cut ? ' preview' : ''}${i >= max ? ' locked' : ''}`}
           />
         ))}
         {cut > 0 && (
-          <span className="ranked-cut" style={{ left: `${(cut / bars) * 100}%` }}>
+          <span className={`ranked-cut${cut / bars > 0.75 ? ' flip' : ''}`} style={{ left: `${(cut / bars) * 100}%` }}>
             <span className="ranked-tag">
-              best <b className="num">{shown}</b> sent
+              best <b className="num">{migrants}</b> sent
               <Icon name="arrowR" size={11} />
             </span>
           </span>
         )}
       </div>
       <div className="cal-legend">
-        <span>best</span>
+        <span>best migrants</span>
         <span className="pop-arrow">
           <Icon name="arrowR" size={11} />
         </span>
-        <span>worst</span>
-        <span className="num">
-          {population === null
-            ? 'population size depends on budget and generations'
-            : population > bars
-              ? `showing the best ${bars} of about ${population}`
-              : `about ${population} per island, ranked by fitness`}
-        </span>
+        <span>worst migrants</span>
+        {population !== null && population > bars && (
+          <span className="num">
+            showing the best {bars} of about {population}
+          </span>
+        )}
       </div>
     </div>
   );
