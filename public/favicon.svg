@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <rect width="32" height="32" rx="7.5" fill="#000"/>
+  <g transform="translate(16 16) scale(1.243) translate(-15.78 -15.97)">
+    <path d="M15.96 7.00A9.0 9.0 0 0 1 21.45 8.84" fill="none" stroke="#ededed" stroke-opacity=".8" stroke-width="0.67" stroke-linecap="round"/>
+    <path d="M24.99 15.49A9.0 9.0 0 0 1 24.30 19.48" fill="none" stroke="#ededed" stroke-opacity=".8" stroke-width="0.67" stroke-linecap="round"/>
+    <path d="M16.43 24.99A9.0 9.0 0 0 1 11.40 23.74" fill="none" stroke="#ededed" stroke-opacity=".8" stroke-width="0.67" stroke-linecap="round"/>
+    <g transform="translate(10.84 8.63) scale(1.25) translate(-10.26 -7.81)">
+      <circle cx="11.03" cy="7.81" r=".78" fill="#3987e5"/>
+      <circle cx="9.29" cy="8.70" r=".78" fill="#3987e5"/>
+      <circle cx="10.41" cy="6.11" r=".78" fill="#3987e5"/>
+      <circle cx="11.49" cy="9.41" r=".78" fill="#3987e5"/>
+      <circle cx="8.02" cy="7.41" r=".78" fill="#3987e5"/>
+      <circle cx="12.39" cy="6.45" r=".78" fill="#3987e5"/>
+      <circle cx="9.55" cy="10.46" r=".78" fill="#3987e5"/>
+      <circle cx="8.91" cy="5.19" r=".78" fill="#3987e5"/>
+      <circle cx="13.21" cy="8.89" r=".78" fill="#3987e5"/>
+    </g>
+    <g transform="translate(23.95 11.77) scale(1.25) translate(-24.83 -11.31)">
+      <circle cx="25.87" cy="12.12" r=".78" fill="#199e70"/>
+      <circle cx="25.61" cy="10.18" r=".78" fill="#199e70"/>
+      <circle cx="23.74" cy="10.52" r=".78" fill="#199e70"/>
+      <circle cx="24.10" cy="12.40" r=".78" fill="#199e70"/>
+    </g>
+    <g transform="translate(21.16 23.37) scale(1.25) translate(-21.74 -24.19)">
+      <circle cx="22.47" cy="24.19" r=".78" fill="#d55181"/>
+      <circle cx="20.80" cy="25.05" r=".78" fill="#d55181"/>
+      <circle cx="21.88" cy="22.55" r=".78" fill="#d55181"/>
+      <circle cx="22.92" cy="25.74" r=".78" fill="#d55181"/>
+      <circle cx="19.56" cy="23.81" r=".78" fill="#d55181"/>
+      <circle cx="23.80" cy="22.88" r=".78" fill="#d55181"/>
+      <circle cx="21.05" cy="26.76" r=".78" fill="#d55181"/>
+      <circle cx="20.42" cy="21.66" r=".78" fill="#d55181"/>
+    </g>
+    <g transform="translate(8.37 20.77) scale(1.25) translate(-7.52 -21.30)">
+      <circle cx="9.36" cy="21.72" r=".78" fill="#c98500"/>
+      <circle cx="8.21" cy="19.79" r=".78" fill="#c98500"/>
+      <circle cx="6.31" cy="20.02" r=".78" fill="#c98500"/>
+      <circle cx="5.87" cy="21.92" r=".78" fill="#c98500"/>
+      <circle cx="7.86" cy="23.05" r=".78" fill="#c98500"/>
+    </g>
+  </g>
+</svg>

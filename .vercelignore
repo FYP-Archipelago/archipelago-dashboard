@@ -1,8 +1,6 @@
-node_modules
-dist
-*.log
-.env
-.env.*
-src/test/
-**/*.test.js
-**/*.test.jsx
+**/*.test.ts
+**/*.test.tsx
+src/test-setup.ts
+.idea/
+.vscode/
+.DS_Store

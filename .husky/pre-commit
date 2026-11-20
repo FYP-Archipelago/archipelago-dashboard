@@ -1,2 +1,5 @@
 bun run lint
+bun run typecheck
+bun run knip
 bun run format
+bun run test
