@@ -73,7 +73,7 @@ export type GenerationSummary = {
   diversity_sample_size: number | null;
 };
 
-type StageDiagnostic = number | string | boolean | number[] | null;
+export type StageDiagnostic = number | string | boolean | number[] | null;
 
 // A Shapley player: an island, or a [source, destination] migration route.
 export type Player = number | [number, number];

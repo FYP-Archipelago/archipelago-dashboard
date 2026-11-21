@@ -27,6 +27,8 @@ describe('DetailsTab', () => {
     expect(row('Stages').textContent).toContain('LSH → BIRCH');
     expect(row('DenStream epsilon').className).toBe('off');
     expect(row('DenStream epsilon').querySelector('dd')?.textContent).toBe('—');
+    expect(screen.getByText('BIRCH')).toBeTruthy();
+    expect(screen.queryByText('DenStream', { selector: 'h4' })).toBeNull();
   });
 
   it('lists run settings it has no label for, so new runner settings still show', async () => {
@@ -34,5 +36,13 @@ describe('DetailsTab', () => {
     await renderWorkspace('details', { run: { ...run, run_settings: { ...run.run_settings, mutation_rate: 0.05 } as typeof run.run_settings } });
 
     expect(row('Mutation rate').textContent).toContain('0.05');
+  });
+
+  it('flags warnings and malformed rows instead of calling the data clean', async () => {
+    await renderWorkspace('details', { result: makeResult({ warnings: ['3 rows had no genome'], malformed_rows: 2 }) });
+
+    expect(screen.getByText('2 issues')).toBeTruthy();
+    expect(screen.getByText('3 rows had no genome')).toBeTruthy();
+    expect(screen.queryByText('Clean')).toBeNull();
   });
 });
