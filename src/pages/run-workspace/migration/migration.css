@@ -91,6 +91,20 @@
   transform: translateX(3px);
 }
 
+.route-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+.table .better {
+  color: var(--good);
+}
+.table .worse,
+.table .same {
+  color: var(--muted);
+}
+
 @media (max-width: 1200px) {
   .migration-grid {
     grid-template-columns: minmax(0, 1fr);

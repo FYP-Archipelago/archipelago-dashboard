@@ -1,4 +1,4 @@
-import { useRef, useState, type PointerEvent } from 'react';
+import { useMemo, useRef, useState, type PointerEvent } from 'react';
 
 import { heatColor, heatInk, islandColor } from '@/colors.ts';
 import Icon from '@/components/Icon.tsx';
@@ -140,6 +140,114 @@ function RouteMatrix({ islands, routes, hovered, onHover }: { islands: number[];
   );
 }
 
+type Arrival = {
+  key: number;
+  from: number;
+  to: number;
+  fromIsland: number;
+  toIsland: number;
+  fromBest: number | null;
+  toBest: number | null;
+  migrants: number;
+};
+
+// Each migration link joins the cluster migrants left to the one they arrived in. Rows show the busiest first.
+function arrivalsOf(graph: RunResult['graph']): Arrival[] {
+  const index = new Map(graph.nodes.id.map((id, i) => [id, i]));
+  return graph.migrations.id
+    .flatMap((key, i) => {
+      const from = index.get(graph.migrations.source[i]!);
+      const to = index.get(graph.migrations.target[i]!);
+      if (from === undefined || to === undefined) return [];
+      const node = (at: number) => ({ island: graph.nodes.island[at]!, best: graph.nodes.best_fitness[at] ?? null });
+      return [
+        {
+          key,
+          from: graph.nodes.id[from]!,
+          to: graph.nodes.id[to]!,
+          fromIsland: node(from).island,
+          toIsland: node(to).island,
+          fromBest: node(from).best,
+          toBest: node(to).best,
+          migrants: graph.migrations.count[i]!,
+        },
+      ];
+    })
+    .sort((a, b) => b.migrants - a.migrants);
+}
+
+// How the arrival cluster's best compares with the best of the cluster the migrants left.
+function comparison(arrival: Arrival, maximising: boolean): { label: string; tone: 'better' | 'worse' | 'same' } | null {
+  if (arrival.fromBest === null || arrival.toBest === null) return null;
+  const gap = arrival.toBest - arrival.fromBest;
+  if (gap === 0) return { label: 'Same', tone: 'same' };
+  const better = maximising ? gap > 0 : gap < 0;
+  return { label: `${better ? 'Better' : 'Worse'} by ${fitness(Math.abs(gap))}`, tone: better ? 'better' : 'worse' };
+}
+
+function Arrivals({ graph, maximising }: { graph: RunResult['graph']; maximising: boolean }) {
+  const arrivals = useMemo(() => arrivalsOf(graph), [graph]);
+  const [showAll, setShowAll] = useState(false);
+  if (!arrivals.length) return null;
+  const better = arrivals.filter((arrival) => comparison(arrival, maximising)?.tone === 'better').length;
+  const shown = showAll ? arrivals : arrivals.slice(0, 10);
+  const cluster = (id: number, best: number | null) => (
+    <>
+      #{id} <span className="muted">· {fitness(best)}</span>
+    </>
+  );
+  return (
+    <>
+      <h2 className="section-title">Where migrants landed</h2>
+      <p className="section-sub">
+        Migrants moved along {numberFormat.format(arrivals.length)} links between search clusters. {numberFormat.format(better)} of them arrived in a
+        cluster whose best beat the one they left.
+      </p>
+      <section className="card table-card">
+        <table className="table">
+          <thead>
+            <tr>
+              <th>Route</th>
+              <th>From cluster</th>
+              <th>To cluster</th>
+              <th className="r">Migrants</th>
+              <th className="r">Arrival cluster&apos;s best</th>
+            </tr>
+          </thead>
+          <tbody>
+            {shown.map((arrival) => {
+              const compared = comparison(arrival, maximising);
+              return (
+                <tr key={arrival.key}>
+                  <td>
+                    <span className="route-name">
+                      <i className="swatch" style={{ background: islandColor(arrival.fromIsland) }} />
+                      {arrival.fromIsland} →
+                      <i className="swatch" style={{ background: islandColor(arrival.toIsland) }} />
+                      {arrival.toIsland}
+                    </span>
+                  </td>
+                  <td>{cluster(arrival.from, arrival.fromBest)}</td>
+                  <td>{cluster(arrival.to, arrival.toBest)}</td>
+                  <td className="r">{arrival.migrants}</td>
+                  <td className={`r ${compared?.tone ?? ''}`}>{compared?.label ?? '—'}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </section>
+      {arrivals.length > shown.length && (
+        <div className="table-foot">
+          <button className="btn" onClick={() => setShowAll(true)}>
+            Show all {numberFormat.format(arrivals.length)} links
+          </button>
+        </div>
+      )}
+    </>
+  );
+}
+
 function Migration({ run, result }: { run: Run; result: RunResult }) {
   // The hovered route, and the pointer's place when it is hovered on the map; the matrix only highlights.
   const [hover, setHover] = useState<{ key: string; at: { x: number; y: number; width: number } | null } | null>(null);
@@ -264,6 +372,8 @@ function Migration({ run, result }: { run: Run; result: RunResult }) {
           </span>
         </Link>
       )}
+
+      <Arrivals graph={result.graph} maximising={result.run.maximising} />
     </>
   );
 }
