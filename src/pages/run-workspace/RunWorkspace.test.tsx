@@ -2,6 +2,7 @@ import { act, fireEvent, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 import { openApp } from '@/test/app.tsx';
+import { bodyOf } from '@/test/backend.ts';
 import { makeResult, makeRun } from '@/test/fixtures.ts';
 import { button, link } from '@/test/workspace.tsx';
 
@@ -116,6 +117,7 @@ describe('RunWorkspace cancel', () => {
     await settle();
     expect(requests(fetchMock, 'POST', '/runs/run-1/cancel')).toBe(1);
     expect(button('Cancelling…')).toHaveProperty('disabled', true);
+    expect(screen.queryByText('Re-run with same settings')).toBeNull();
   });
 
   it('forgets a first click after a few seconds', async () => {
@@ -127,5 +129,67 @@ describe('RunWorkspace cancel', () => {
     await act(() => vi.advanceTimersByTimeAsync(4000));
 
     expect(button('Cancel run')).toBeTruthy();
+  });
+});
+
+describe('RunWorkspace re-run', () => {
+  it.each(['done', 'failed', 'cancelled'] as const)('offers to re-run a %s run', async (status) => {
+    await openApp('/runs/run-1', {
+      'GET /runs/run-1': () => ({ body: makeRun('run-1', { status }) }),
+      'GET /runs/run-1/result': () => ({ body: makeResult() }),
+    });
+    await settle();
+
+    expect(link('Re-run with same settings').getAttribute('href')).toBe('/runs/new?from=run-1');
+    expect(screen.queryByText('Cancel run')).toBeNull();
+  });
+
+  it('opens an editable form with the saved settings and sends them when Start Run is clicked', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] });
+    const original = makeRun('run-1');
+    const run = makeRun('run-1', {
+      status: 'failed',
+      stream: false,
+      run_settings: {
+        ...original.run_settings,
+        num_islands: 4,
+        evaluation_budget: 80000,
+        'migration.enabled': false,
+        'migration.topology': 'star',
+        seed: 42,
+      },
+      clustering: { ...original.clustering, lsh: false, detail: 1.5, denstream_epsilon: 0.25, seed: 9 },
+    });
+    const fetchMock = await openApp('/runs/run-1', {
+      'GET /runs/run-1': () => ({ body: run }),
+      'POST /runs': () => ({ status: 202, body: makeRun('run-new') }),
+    });
+    await settle();
+
+    fireEvent.click(link('Re-run with same settings'));
+    await settle();
+
+    expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('New Run');
+    expect(screen.getByText('TSP Berlin52').closest('button')?.getAttribute('aria-checked')).toBe('true');
+    expect(requests(fetchMock, 'POST', '/runs')).toBe(0);
+    const name = document.querySelector<HTMLInputElement>('#run-name')!;
+    expect(name.value).not.toBe(run.run_name);
+    fireEvent.change(name, { target: { value: 're-run' } });
+    fireEvent.click(button('Start Run'));
+    await act(() => vi.advanceTimersByTimeAsync(400));
+
+    const post = fetchMock.mock.calls.find(([input, init]) => init?.method === 'POST' && new URL(input).pathname === '/runs');
+    expect(post).toBeDefined();
+    expect(bodyOf(post!)).toMatchObject({
+      run_name: 're-run',
+      preset: run.preset,
+      stream: run.stream,
+      run_settings: run.run_settings,
+      clustering: { lsh: false, birch: true, denstream: true, detail: 1.5, denstream_epsilon: 0.25, birch_threshold: null, seed: 9 },
+    });
+
+    fireEvent.click(link('New Run'));
+    expect(window.location.search).toBe('');
+    expect(screen.getByText('Rastrigin').closest('button')?.getAttribute('aria-checked')).toBe('true');
   });
 });

@@ -19,7 +19,7 @@ export default function App() {
       <Sidebar route={route} />
       <main className="main">
         {route.name === 'runs' && <RunsPage />}
-        {route.name === 'new' && <NewRunPage />}
+        {route.name === 'new' && <NewRunPage sourceId={route.sourceId} />}
         {/* Keyed by run, so moving to another run starts from fresh view state. */}
         {route.name === 'run' && <RunWorkspace key={route.id} id={route.id} tab={route.tab} />}
       </main>

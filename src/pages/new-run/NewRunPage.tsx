@@ -1,15 +1,17 @@
 import { useEffect, useState, type ReactNode } from 'react';
 
-import { useCreateRun, usePresets } from '@/api/queries.ts';
+import { isNotFound } from '@/api/client.ts';
+import { useCreateRun, usePresets, useRun } from '@/api/queries.ts';
 import Unavailable from '@/components/Unavailable.tsx';
 import { navigate, runHref } from '@/route.ts';
-import type { Presets } from '@/types.ts';
+import type { Preset, Presets, Run } from '@/types.ts';
 
 // The page's shared styles load before the sections' own, which build on them.
 import './newrun.css';
 
 import {
   DEFAULT_CLUSTERING,
+  clusteringSettings,
   populationOf,
   presetSettings,
   randomName,
@@ -29,12 +31,12 @@ import SearchSection from './sections/SearchSection.tsx';
 import type { StartPhase } from './summary/StartButton.tsx';
 import Summary from './summary/Summary.tsx';
 
-function NewRunForm({ presets }: { presets: Presets }) {
+function NewRunForm({ presets, preset, source }: { presets: Presets; preset: Preset; source?: Run }) {
   const createRun = useCreateRun();
   const [form, setForm] = useState<Form>(() => ({
-    ...presetSettings(presets.presets[0]!),
-    clustering: DEFAULT_CLUSTERING,
-    stream: true,
+    ...presetSettings(preset, source?.run_settings),
+    clustering: source ? clusteringSettings(source.clustering) : DEFAULT_CLUSTERING,
+    stream: source?.stream ?? true,
     name: randomName(),
   }));
   const [submit, setSubmit] = useState<{ phase: StartPhase; error: string; runId: string }>({ phase: 'idle', error: '', runId: '' });
@@ -99,11 +101,35 @@ function NewRunForm({ presets }: { presets: Presets }) {
   );
 }
 
-export default function NewRunPage() {
+function RerunForm({ id, presets }: { id: string; presets: Presets }) {
+  const source = useRun(id);
+  const run = source.data;
+  if (!run) {
+    if (source.isError)
+      return <div className="page-state">{isNotFound(source.error) ? 'The original run could not be found.' : <Unavailable />}</div>;
+    return (
+      <div className="page-state" role="status">
+        <span className="page-spinner" aria-hidden="true" />
+        Loading original run settings…
+      </div>
+    );
+  }
+
+  const preset = presets.presets.find(({ preset }) => preset === run.preset);
+  if (!preset) return <div className="page-state">The runner no longer offers the original preset ({run.preset}).</div>;
+  return <NewRunForm presets={presets} preset={preset} source={run} />;
+}
+
+export default function NewRunPage({ sourceId }: { sourceId?: string }) {
   const presets = usePresets();
 
   let body: ReactNode;
-  if (presets.data?.presets.length) body = <NewRunForm presets={presets.data} />;
+  if (presets.data?.presets.length)
+    body = sourceId ? (
+      <RerunForm key={sourceId} id={sourceId} presets={presets.data} />
+    ) : (
+      <NewRunForm presets={presets.data} preset={presets.data.presets[0]!} />
+    );
   else if (presets.data) body = <div className="page-state">The runner has no presets to start from.</div>;
   else if (presets.isError)
     body = (

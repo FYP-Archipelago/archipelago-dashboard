@@ -21,6 +21,7 @@ export type Form = {
   preset: Preset;
   islands: number;
   migration: boolean;
+  migrationDefaults: Pick<RunSettings, 'migration.topology' | ScheduleKey>;
   topology: string;
   text: Record<SettingKey, string>;
   clustering: ClusterForm;
@@ -121,21 +122,34 @@ export function populationOf(form: Form): number | null {
 const intRule = (spec: OverrideSpec | undefined): Rule =>
   spec?.type === 'int' ? { int: true, min: spec.min, max: spec.max, optional: spec.optional } : { int: true };
 
-export function presetSettings(preset: Preset): Pick<Form, 'preset' | 'islands' | 'migration' | 'topology' | 'text'> {
-  const defaults = preset.defaults;
+export function presetSettings(
+  preset: Preset,
+  savedSettings?: Partial<RunSettings>
+): Pick<Form, 'preset' | 'islands' | 'migration' | 'migrationDefaults' | 'topology' | 'text'> {
+  const defaults = { ...preset.defaults, ...savedSettings };
   return {
     preset,
     islands: defaults.num_islands,
     migration: defaults['migration.enabled'],
+    migrationDefaults: defaults,
     topology: defaults['migration.topology'],
     text: {
       evaluation_budget: String(defaults.evaluation_budget),
       target_generations: String(defaults.target_generations),
       'migration.interval': String(defaults['migration.interval']),
       'migration.num_migrants': String(defaults['migration.num_migrants']),
-      seed: defaults.seed === undefined ? '' : String(defaults.seed),
+      seed: defaults.seed == null ? '' : String(defaults.seed),
     },
   };
+}
+
+export function clusteringSettings({ lsh, birch, denstream, detail, ...settings }: Clustering): ClusterForm {
+  const text = { ...DEFAULT_CLUSTERING.text };
+  for (const { key } of ADVANCED) {
+    const value = settings[key];
+    if (value !== undefined) text[key] = value === null ? '' : String(value);
+  }
+  return { lsh, birch, denstream, detail, text };
 }
 
 export function validate(form: Form, overrides: Presets['overrides']): Record<string, string> {
@@ -171,7 +185,7 @@ export function validate(form: Form, overrides: Presets['overrides']): Record<st
 
 export function toNewRun(form: Form): NewRun {
   const numberOf = (key: SettingKey) => Number(form.text[key]);
-  const defaults = form.preset.defaults;
+  const defaults = form.migrationDefaults;
   const clustering = form.clustering;
 
   const run_settings: RunSettings = {
@@ -179,7 +193,7 @@ export function toNewRun(form: Form): NewRun {
     evaluation_budget: numberOf('evaluation_budget'),
     target_generations: numberOf('target_generations'),
     'migration.enabled': form.migration,
-    // With migration off the runner ignores these, so send the preset's and drop any half-edited values.
+    // With migration off, use the starting values and drop any half-edited values.
     'migration.topology': form.migration ? form.topology : defaults['migration.topology'],
     'migration.interval': form.migration ? numberOf('migration.interval') : defaults['migration.interval'],
     'migration.num_migrants': form.migration ? numberOf('migration.num_migrants') : defaults['migration.num_migrants'],

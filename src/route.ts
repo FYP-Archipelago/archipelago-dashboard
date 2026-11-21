@@ -5,17 +5,21 @@ export const RUN_TABS = ['overview', 'network', 'migration', 'convergence', 'div
 
 export type RunTab = (typeof RUN_TABS)[number];
 
-export type Route = { name: 'runs' } | { name: 'new' } | { name: 'run'; id: string; tab: RunTab };
+export type Route = { name: 'runs' } | { name: 'new'; sourceId?: string } | { name: 'run'; id: string; tab: RunTab };
 
 export const runsHref = '/runs';
 export const newRunHref = '/runs/new';
+export const rerunHref = (id: string) => `${newRunHref}?${new URLSearchParams({ from: id })}`;
 export const runHref = (id: string, tab?: RunTab) => `/runs/${encodeURIComponent(id)}${tab ? `/${tab}` : ''}`;
 
 const isRunTab = (value: string | undefined): value is RunTab => RUN_TABS.includes(value as RunTab);
 
-function parseRoute(pathname: string): Route {
+function parseRoute({ pathname, searchParams }: URL): Route {
   const [first, second, third] = pathname.split('/').filter(Boolean);
-  if (first === 'runs' && second === 'new') return { name: 'new' };
+  if (first === 'runs' && second === 'new') {
+    const sourceId = searchParams.get('from');
+    return sourceId ? { name: 'new', sourceId } : { name: 'new' };
+  }
   if (first === 'runs' && second) return { name: 'run', id: decodeURIComponent(second), tab: isRunTab(third) ? third : RUN_TABS[0] };
   return { name: 'runs' };
 }
@@ -39,5 +43,5 @@ const subscribe = (onChange: () => void) => {
 };
 
 export function useRoute(): Route {
-  return parseRoute(useSyncExternalStore(subscribe, () => window.location.pathname));
+  return parseRoute(new URL(useSyncExternalStore(subscribe, () => window.location.href)));
 }

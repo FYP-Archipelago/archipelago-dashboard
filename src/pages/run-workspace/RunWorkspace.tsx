@@ -6,7 +6,7 @@ import Icon from '@/components/Icon.tsx';
 import Link from '@/components/Link.tsx';
 import Unavailable from '@/components/Unavailable.tsx';
 import { ago, dateTime, duration, TOPOLOGIES } from '@/format.ts';
-import { RUN_TABS, runHref, runsHref, type RunTab } from '@/route.ts';
+import { rerunHref, RUN_TABS, runHref, runsHref, type RunTab } from '@/route.ts';
 import type { Run } from '@/types.ts';
 
 import AttributionTab from './attribution/AttributionTab.tsx';
@@ -176,7 +176,16 @@ function Header({ run, tab }: { run: Run; tab: RunTab }) {
             <span className="status">{run.status}</span>
           </span>
           <CopyId id={run.run_id} />
-          <div className="run-actions">{!isFinished(run.status) && <CancelButton run={run} />}</div>
+          <div className="run-actions">
+            {isFinished(run.status) ? (
+              <Link className="btn" href={rerunHref(run.run_id)}>
+                <Icon name="rerun" size={14} />
+                Re-run with same settings
+              </Link>
+            ) : (
+              <CancelButton run={run} />
+            )}
+          </div>
         </div>
         <div className="run-facts">
           {facts.map((fact, i) => (
