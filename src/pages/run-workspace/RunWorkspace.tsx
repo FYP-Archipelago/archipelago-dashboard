@@ -11,6 +11,7 @@ import type { Run } from '@/types.ts';
 
 import AttributionTab from './attribution/AttributionTab.tsx';
 import ConvergenceTab from './convergence/ConvergenceTab.tsx';
+import DetailsTab from './details/DetailsTab.tsx';
 import DivergenceTab from './divergence/DivergenceTab.tsx';
 import MigrationTab from './migration/MigrationTab.tsx';
 
@@ -231,6 +232,7 @@ export default function RunWorkspace({ id, tab }: { id: string; tab: RunTab }) {
         {tab === 'migration' && <MigrationTab run={data} result={result} />}
         {tab === 'divergence' && <DivergenceTab run={data} result={result} />}
         {tab === 'attribution' && <AttributionTab run={data} result={result} />}
+        {tab === 'details' && <DetailsTab run={data} result={result} />}
       </div>
     </>
   );

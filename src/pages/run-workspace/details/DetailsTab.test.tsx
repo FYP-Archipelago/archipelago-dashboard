@@ -1,0 +1,38 @@
+import { screen } from '@testing-library/react';
+import { describe, expect, it } from 'vitest';
+
+import { makeResult, makeRun } from '@/test/fixtures.ts';
+import { renderWorkspace } from '@/test/workspace.tsx';
+
+const row = (label: string) => screen.getByText(label, { selector: 'dt' }).parentElement!;
+
+describe('DetailsTab', () => {
+  it('shows the value an automatic distance resolved to', async () => {
+    await renderWorkspace('details');
+
+    expect(row('BIRCH threshold').textContent).toBe('BIRCH threshold' + 'Auto → 0.354');
+  });
+
+  it('switches clustering time from seconds to minutes past a minute', async () => {
+    const result = makeResult();
+    await renderWorkspace('details', { result: { ...result, clustering: { ...result.clustering, elapsed_seconds: 75.8 } } });
+
+    expect(screen.getByText('Clustering time').nextElementSibling?.textContent).toBe('1m 15s');
+  });
+
+  it('goes by the stages that actually ran once there is a result, over the settings asked for', async () => {
+    // makeRun asks for every stage; the result ran only LSH and BIRCH.
+    await renderWorkspace('details');
+
+    expect(row('Stages').textContent).toContain('LSH → BIRCH');
+    expect(row('DenStream epsilon').className).toBe('off');
+    expect(row('DenStream epsilon').querySelector('dd')?.textContent).toBe('—');
+  });
+
+  it('lists run settings it has no label for, so new runner settings still show', async () => {
+    const run = makeRun('run-1');
+    await renderWorkspace('details', { run: { ...run, run_settings: { ...run.run_settings, mutation_rate: 0.05 } as typeof run.run_settings } });
+
+    expect(row('Mutation rate').textContent).toContain('0.05');
+  });
+});
