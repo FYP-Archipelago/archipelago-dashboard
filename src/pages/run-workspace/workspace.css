@@ -322,6 +322,15 @@
 .stat-strip > div + div {
   border-left: 1px solid var(--border);
 }
+.stat-strip.single-line {
+  display: flex;
+  flex-wrap: wrap;
+  row-gap: 16px;
+}
+.stat-strip.single-line > div {
+  flex: 1 1 auto;
+  white-space: nowrap;
+}
 .stat-strip strong {
   font-size: 22px;
   font-weight: 600;

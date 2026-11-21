@@ -111,8 +111,15 @@ function Divergence({ run, result }: { run: Run; result: RunResult }) {
   const migrationEnabled = settings['migration.enabled'];
   const changesByGeneration = new Map<number, { closer: string[]; apart: string[] }>();
   const lastGeneration = result.generation_history.reduce((last, row) => Math.max(last, row.generation), starts.at(-1) ?? 0);
-  if (migrationEnabled && pairSeries.length) {
-    for (const series of pairSeries) {
+  // The migrations after which the mean of all pairs jumped, marked on the chart with the pairs' and counted above it.
+  const meanMigrations = migrationEnabled ? notableMigrations(settings['migration.interval'], lastGeneration, starts, means) : [];
+  const migrationCount = Math.floor(lastGeneration / settings['migration.interval']);
+  const closerAfterMigration = meanMigrations.filter((migration) => migration.mark === 'down').length;
+  const apartAfterMigration = meanMigrations.length - closerAfterMigration;
+  // With the extra stat, the strip packs its columns to their content and shortens the notes so each stays on one line.
+  const meanStat = migrationEnabled && migrationCount > 0;
+  if (migrationEnabled && (pairSeries.length || meanMigrations.length)) {
+    for (const series of [mean, ...pairSeries]) {
       for (const { x, mark } of notableMigrations(settings['migration.interval'], lastGeneration, starts, series.ys)) {
         const change = changesByGeneration.get(x) ?? { closer: [], apart: [] };
         change[mark === 'down' ? 'closer' : 'apart'].push(series.label);
@@ -156,19 +163,21 @@ function Divergence({ run, result }: { run: Run; result: RunResult }) {
 
   return (
     <>
-      <section className="card stat-strip">
+      <section className={`card stat-strip${meanStat ? ' single-line' : ''}`}>
         <div>
           <span className="muted">Most different</span>
           <strong>Islands {pairName(most.a, most.b)}</strong>
           <span className="note">
-            {value(most.value)} over the whole run · <span>{verdict(most)}</span>
+            {value(most.value)}
+            {meanStat ? '' : ' over the whole run'} · <span>{verdict(most)}</span>
           </span>
         </div>
         <div>
           <span className="muted">Most alike</span>
           <strong>Islands {pairName(least.a, least.b)}</strong>
           <span className="note">
-            {value(least.value)} over the whole run · <span>{verdict(least)}</span>
+            {value(least.value)}
+            {meanStat ? '' : ' over the whole run'} · <span>{verdict(least)}</span>
           </span>
         </div>
         <div title="Pairs whose gap a generation-swap test finds unlikely to be chance (p below 0.05)">
@@ -177,8 +186,22 @@ function Divergence({ run, result }: { run: Run; result: RunResult }) {
             {real}
             <small>of {pairs.length} pairs</small>
           </strong>
-          <span className="note">{real === pairs.length ? 'Every pair searched its own region' : 'The rest overlap'}</span>
+          <span className="note">
+            {real === pairs.length ? (meanStat ? 'Each pair in its own region' : 'Every pair searched its own region') : 'The rest overlap'}
+          </span>
         </div>
+        {meanStat && (
+          <div title="Migrations after which the mean of all pairs moved by at least a quarter of its range over the run">
+            <span className="muted">Mean after migration</span>
+            <strong>
+              {meanMigrations.length}
+              <small>of {migrationCount} migrations</small>
+            </strong>
+            <span className="note">
+              {meanMigrations.length ? `${closerAfterMigration} drew closer · ${apartAfterMigration} moved apart` : 'None moved it much'}
+            </span>
+          </div>
+        )}
         {firstMean !== null && lastMean !== null && trend && (
           <div>
             <span className="muted">Mean per window, first → last</span>

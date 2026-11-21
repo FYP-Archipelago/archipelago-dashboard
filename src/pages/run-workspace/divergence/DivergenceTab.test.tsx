@@ -44,7 +44,7 @@ describe('DivergenceTab', () => {
     expect(screen.getByText(/From generation 10/)).toBeTruthy();
   });
 
-  it('combines picked pairs and their migration markers, sharing a guide when pairs move in opposite directions', async () => {
+  it('combines the mean, picked pairs and their migration markers, sharing a guide when they move in opposite directions', async () => {
     vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(600);
     vi.spyOn(HTMLElement.prototype, 'clientHeight', 'get').mockReturnValue(360);
     const run = makeRun('run-1');
@@ -77,12 +77,17 @@ describe('DivergenceTab', () => {
     const hoverTarget = chart.querySelector('rect')!;
     vi.spyOn(hoverTarget, 'getBoundingClientRect').mockReturnValue(DOMRect.fromRect({ width: 524, height: 302 }));
     fireEvent.pointerMove(hoverTarget, { clientX: 524, clientY: 40 });
-    expect(screen.getByText(/after migration at generation 10, Islands 1 ↔ 2 drew closer and Islands 0 ↔ 1 moved apart/)).toBeTruthy();
+    expect(
+      screen.getByText(/after migration at generation 10, Islands 1 ↔ 2 drew closer and Mean of all pairs, Islands 0 ↔ 1 moved apart/)
+    ).toBeTruthy();
 
+    // The mean moved apart too, so its mark stays with no pairs picked.
     fireEvent.click(button('None'));
     expect(count('.chart-line')).toBe(1);
-    expect(count('.chart-guides path')).toBe(0);
-    expect(screen.getByText('Mean of all pairs', { selector: '.chart-legend span' }).parentElement!.textContent).toBe('Mean of all pairs');
+    expect(count('.chart-guides path')).toBe(1);
+    expect(screen.getByText('Mean of all pairs', { selector: '.chart-legend span' }).parentElement!.textContent).toContain(
+      'Moved apart after migration'
+    );
   });
 
   it('explains when there are too few islands to compare', async () => {
