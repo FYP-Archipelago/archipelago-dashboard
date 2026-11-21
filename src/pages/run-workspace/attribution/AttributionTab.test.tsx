@@ -1,7 +1,7 @@
 import { fireEvent, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
-import { makeResult } from '@/test/fixtures.ts';
+import { makeResult, makeRun } from '@/test/fixtures.ts';
 import { button, renderWorkspace } from '@/test/workspace.tsx';
 import type { RunResult, ShapleyAttribution } from '@/types.ts';
 
@@ -46,6 +46,18 @@ describe('AttributionTab', () => {
     await renderWorkspace('attribution');
 
     expect(button('Migration route attribution').getAttribute('aria-pressed')).toBe('true');
+  });
+
+  it('hides route attribution when migration was off, but keeps island attribution', async () => {
+    const run = makeRun('run-1');
+    await renderWorkspace('attribution', { run: { ...run, run_settings: { ...run.run_settings, 'migration.enabled': false } } });
+
+    fireEvent.click(button('Migration route attribution'));
+    expect(screen.getByText('Migration was off')).toBeTruthy();
+    expect(screen.queryByText('Credit per route')).toBeNull();
+
+    fireEvent.click(button('Island attribution'));
+    expect(screen.getByText('Credit per island')).toBeTruthy();
   });
 
   it('finds what a picked group reaches whatever order it was picked in, and compares it with their credits', async () => {

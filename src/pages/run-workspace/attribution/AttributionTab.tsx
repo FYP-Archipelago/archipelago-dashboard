@@ -334,10 +334,11 @@ function Orders({ game }: { game: ShapleyGame }) {
   );
 }
 
-function Attribution({ shapley, maximising }: { shapley: ShapleyAttribution; maximising: boolean }) {
+function Attribution({ shapley, maximising, migrationEnabled }: { shapley: ShapleyAttribution; maximising: boolean; migrationEnabled: boolean }) {
   // The Migration tab links here with ?view=routes.
   const [view, setView] = useState<View>(() => (new URLSearchParams(window.location.search).get('view') === 'routes' ? 'routes' : 'islands'));
   const game = shapley[view];
+  const migrationOff = view === 'routes' && !migrationEnabled;
   const calculationLabel = game.sampled_orders
     ? `Estimated from ${numberFormat.format(game.sampled_orders)} sampled orders`
     : `Exact, from all ${numberFormat.format(game.coalitions.length)} groups`;
@@ -356,14 +357,20 @@ function Attribution({ shapley, maximising }: { shapley: ShapleyAttribution; max
             Migration route attribution
           </button>
         </div>
-        <span className="muted">{calculationLabel}</span>
+        {!migrationOff && <span className="muted">{calculationLabel}</span>}
       </div>
-      <Shared shapley={shapley} game={game} view={view} maximising={maximising} />
-      <div className="attribution-grid">
-        <Credit key={`credit-${view}`} game={game} view={view} />
-        <Coalitions key={`coalitions-${view}`} game={game} view={view} />
-      </div>
-      <Orders key={`orders-${view}`} game={game} />
+      {migrationOff ? (
+        <EmptyState icon="migrationOff" title="Migration was off" />
+      ) : (
+        <>
+          <Shared shapley={shapley} game={game} view={view} maximising={maximising} />
+          <div className="attribution-grid">
+            <Credit key={`credit-${view}`} game={game} view={view} />
+            <Coalitions key={`coalitions-${view}`} game={game} view={view} />
+          </div>
+          <Orders key={`orders-${view}`} game={game} />
+        </>
+      )}
     </>
   );
 }
@@ -372,5 +379,5 @@ export default function AttributionTab({ run, result }: { run: Run; result: Resu
   if (!result.data) return <NoResult run={run} result={result} />;
   const { shapley } = result.data.explainability;
   if (shapley.status === 'unavailable') return <EmptyState icon="alert" title="No attribution for this run" detail={shapley.detail} />;
-  return <Attribution shapley={shapley} maximising={result.data.run.maximising} />;
+  return <Attribution shapley={shapley} maximising={result.data.run.maximising} migrationEnabled={run.run_settings['migration.enabled']} />;
 }
