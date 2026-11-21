@@ -1,11 +1,12 @@
 import { useMemo, useState } from 'react';
 
 import { heatColor, heatGradient, heatInk, islandColor, pairColor } from '@/colors.ts';
-import LineChart from '@/pages/run-workspace/charts/LineChart.tsx';
+import Icon from '@/components/Icon.tsx';
+import LineChart, { type Guide } from '@/pages/run-workspace/charts/LineChart.tsx';
 import { EmptyState, NoResult, type ResultQuery } from '@/pages/run-workspace/shared.tsx';
 import type { Run, RunResult } from '@/types.ts';
 
-import { describeTrend, meanOf, pairKey, wholeRunPairs, windowValues, type Pair } from './divergence.ts';
+import { describeTrend, meanOf, notableMigrations, pairKey, wholeRunPairs, windowValues, type Pair } from './divergence.ts';
 
 import './divergence.css';
 
@@ -72,7 +73,7 @@ function Matrix({
   );
 }
 
-function Divergence({ result }: { result: RunResult }) {
+function Divergence({ run, result }: { run: Run; result: RunResult }) {
   const { separation } = result;
   const islands = result.run.islands;
   const pairs = useMemo(() => wholeRunPairs(separation), [separation]);
@@ -106,6 +107,24 @@ function Divergence({ result }: { result: RunResult }) {
       xs: starts,
       ys: windows.map((window) => window.get(p.key) ?? null),
     }));
+  const settings = run.run_settings;
+  const migrationEnabled = settings['migration.enabled'];
+  const changesByGeneration = new Map<number, { closer: string[]; apart: string[] }>();
+  const lastGeneration = result.generation_history.reduce((last, row) => Math.max(last, row.generation), starts.at(-1) ?? 0);
+  if (migrationEnabled && pairSeries.length) {
+    for (const series of pairSeries) {
+      for (const { x, mark } of notableMigrations(settings['migration.interval'], lastGeneration, starts, series.ys)) {
+        const change = changesByGeneration.get(x) ?? { closer: [], apart: [] };
+        change[mark === 'down' ? 'closer' : 'apart'].push(series.label);
+        changesByGeneration.set(x, change);
+      }
+    }
+  }
+  const migrationChanges = [...changesByGeneration].sort(([a], [b]) => a - b);
+  const guides: Guide[] = migrationChanges.map(([x, { closer, apart }]) => ({
+    x,
+    mark: closer.length && apart.length ? 'both' : closer.length ? 'down' : 'up',
+  }));
   // Selecting a pair in the matrix also puts it on the chart.
   const select = (key: string) => {
     setSelected(key);
@@ -121,7 +140,18 @@ function Divergence({ result }: { result: RunResult }) {
 
   const windowLabel = (index: number) =>
     index < starts.length - 1 ? `Generations ${starts[index]} to ${starts[index + 1]! - 1}` : `From generation ${starts[index]}`;
-  const hoverTitle = (x: number) => windowLabel(starts.indexOf(x));
+  // The window just after a marked migration says what the migration was followed by.
+  const hoverTitle = (x: number) => {
+    const index = starts.indexOf(x);
+    const migrations = migrationChanges.filter(([generation]) => generation > (starts[index - 1] ?? -Infinity) && generation <= x);
+    const details = migrations.map(([generation, { closer, apart }]) => {
+      const directions = [closer.length ? `${closer.join(', ')} drew closer` : '', apart.length ? `${apart.join(', ')} moved apart` : ''].filter(
+        Boolean
+      );
+      return `after migration at generation ${generation}, ${directions.join(' and ')}`;
+    });
+    return [windowLabel(index), ...details].join(' · ');
+  };
   const verdict = (p: Pair) => (p.p < REAL_DIFFERENCE ? 'Real difference' : 'Could be chance');
 
   return (
@@ -197,12 +227,25 @@ function Divergence({ result }: { result: RunResult }) {
             marker={null}
             replayKey="divergence"
             onHoverX={(x) => setWindowIndex(starts.indexOf(x))}
+            guides={guides}
           />
           <div className="chart-legend">
             <span>
               <i className="legend-line muted-line" />
               Mean of all pairs
             </span>
+            {guides.length > 0 && (
+              <>
+                <span>▼ Drew closer after migration</span>
+                <span>▲ Moved apart after migration</span>
+              </>
+            )}
+            {pairSeries.length > 0 && guides.length === 0 && (
+              <span>
+                <Icon name={migrationEnabled ? 'info' : 'migrationOff'} size={13} />
+                {migrationEnabled ? 'No picked pair had a big change after migration' : 'Migration was off'}
+              </span>
+            )}
           </div>
           <p className="hint">
             Each window{starts.length > 1 && ` (${starts[1]! - starts[0]!} generations)`} is measured against how spread out the population was at
@@ -273,5 +316,5 @@ function Divergence({ result }: { result: RunResult }) {
 export default function DivergenceTab({ run, result }: { run: Run; result: ResultQuery }) {
   if (!result.data) return <NoResult run={run} result={result} />;
   if (!result.data.separation.pairs.a.length) return <EmptyState icon="alert" title="Nothing to compare" />;
-  return <Divergence result={result.data} />;
+  return <Divergence run={run} result={result.data} />;
 }

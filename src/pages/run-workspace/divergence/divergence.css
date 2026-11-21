@@ -16,6 +16,9 @@
   align-items: center;
   gap: 7px;
 }
+.chart-legend svg {
+  flex: none;
+}
 .legend-line {
   width: 14px;
   height: 2px;

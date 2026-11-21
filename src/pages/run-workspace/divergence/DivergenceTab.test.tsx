@@ -1,7 +1,7 @@
 import { fireEvent, screen } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
-import { makeResult } from '@/test/fixtures.ts';
+import { makeResult, makeRun } from '@/test/fixtures.ts';
 import { button, findButton, renderWorkspace } from '@/test/workspace.tsx';
 
 const fact = (label: string) => screen.getByText(label, { selector: 'dt' }).nextElementSibling!.textContent;
@@ -42,6 +42,47 @@ describe('DivergenceTab', () => {
     expect(button('Islands 0 ↔ 1: 0.6')).toBeTruthy();
     expect(findButton(/^Islands 0 ↔ 2:/)).toBeUndefined();
     expect(screen.getByText(/From generation 10/)).toBeTruthy();
+  });
+
+  it('combines picked pairs and their migration markers, sharing a guide when pairs move in opposite directions', async () => {
+    vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(600);
+    vi.spyOn(HTMLElement.prototype, 'clientHeight', 'get').mockReturnValue(360);
+    const run = makeRun('run-1');
+    const result = makeResult();
+    await renderWorkspace('divergence', {
+      run: { ...run, run_settings: { ...run.run_settings, 'migration.interval': 10 } },
+      result: {
+        ...result,
+        separation: {
+          ...result.separation,
+          window_pairs: { window: [0, 0, 0, 1, 1], a: [0, 0, 1, 0, 1], b: [1, 2, 2, 1, 2], mmd2: [0.4, 0.2, 0.45, 0.6, 0.15] },
+        },
+      },
+    });
+    const chart = screen.getByLabelText('Divergence per window of generations');
+    const count = (selector: string) => chart.querySelectorAll(selector).length;
+
+    expect(screen.queryByRole('group', { name: 'Chart variant' })).toBeNull();
+    expect(count('.chart-line')).toBe(3);
+    expect(count('.chart-guides path')).toBe(1);
+
+    fireEvent.click(button('Islands 1 ↔ 2: 0.2'));
+    expect(button('1 ↔ 2').getAttribute('aria-pressed')).toBe('true');
+    expect(count('.chart-line')).toBe(4);
+    expect(count('.chart-guides line')).toBe(1);
+    expect(count('.chart-guides path')).toBe(2);
+    expect(screen.getByText('▼ Drew closer after migration')).toBeTruthy();
+    expect(screen.getByText('▲ Moved apart after migration')).toBeTruthy();
+
+    const hoverTarget = chart.querySelector('rect')!;
+    vi.spyOn(hoverTarget, 'getBoundingClientRect').mockReturnValue(DOMRect.fromRect({ width: 524, height: 302 }));
+    fireEvent.pointerMove(hoverTarget, { clientX: 524, clientY: 40 });
+    expect(screen.getByText(/after migration at generation 10, Islands 1 ↔ 2 drew closer and Islands 0 ↔ 1 moved apart/)).toBeTruthy();
+
+    fireEvent.click(button('None'));
+    expect(count('.chart-line')).toBe(1);
+    expect(count('.chart-guides path')).toBe(0);
+    expect(screen.getByText('Mean of all pairs', { selector: '.chart-legend span' }).parentElement!.textContent).toBe('Mean of all pairs');
   });
 
   it('explains when there are too few islands to compare', async () => {

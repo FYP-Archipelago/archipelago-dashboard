@@ -32,3 +32,29 @@ export function describeTrend(means: (number | null)[], starts: number[]): strin
   if (peak.mean > 1.5 * Math.max(first, last)) return `Peak around gen ${peak.start} · ${last < first ? 'closer vs start' : 'then fell'}`;
   return last < first ? 'Islands drew together' : 'Islands drifted apart';
 }
+
+// How far a pair's divergence must move across a migration, as a share of its whole range over the run, for the
+// migration to be marked on the chart. Lower marks more migrations.
+const NOTABLE_SHIFT = 0.25;
+type PairMigration = { x: number; mark: 'up' | 'down' };
+
+// The migrations (every `interval` generations) after which a pair's divergence jumped: its value in the last window
+// wholly before the migration against the first window starting at or after it. A window straddling a migration
+// mixes before and after, so it is skipped. `values` holds the pair's value per window, in the order of `starts`.
+export function notableMigrations(interval: number, lastGeneration: number, starts: number[], values: (number | null)[]): PairMigration[] {
+  const present = values.filter((value) => value !== null);
+  const range = present.length ? Math.max(...present) - Math.min(...present) : 0;
+  if (!(interval >= 1) || range <= 0) return [];
+  const guides: PairMigration[] = [];
+  let afterIndex = 0;
+  for (let generation = interval; generation <= lastGeneration; generation += interval) {
+    while (afterIndex < starts.length && starts[afterIndex]! < generation) afterIndex++;
+    if (afterIndex === starts.length) break;
+    const beforeIndex = afterIndex - (starts[afterIndex] === generation ? 1 : 2);
+    const before = values[beforeIndex] ?? null;
+    const after = values[afterIndex] ?? null;
+    if (before === null || after === null || Math.abs(after - before) < NOTABLE_SHIFT * range) continue;
+    guides.push({ x: generation, mark: after < before ? 'down' : 'up' });
+  }
+  return guides;
+}

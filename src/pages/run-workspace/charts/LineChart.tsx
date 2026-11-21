@@ -21,12 +21,16 @@ type Props = {
   replayKey: string;
   // Called with the x the crosshair snaps to, so other views can follow it.
   onHoverX?: (x: number) => void;
+  // Events along x, each a vertical line with one or both arrows at the top.
+  guides?: Guide[];
   // Shaded from each x to the end of the axis, so overlapping shades stack darker. `label` goes in a pill above the
   // plot, merged with a neighbour too close to fit beside it; `note` labels a span from x to the end, below the axis.
   shades?: { x: number; label: string; note: string }[];
   // Hollow points, e.g. where a threshold was crossed.
   rings?: { x: number; y: number }[];
 };
+
+export type Guide = { x: number; mark: 'up' | 'down' | 'both' };
 
 const MARGIN = { top: 12, right: 16, bottom: 46, left: 60 };
 
@@ -102,6 +106,7 @@ export default function LineChart({
   marker,
   replayKey,
   onHoverX,
+  guides = [],
   shades = [],
   rings = [],
 }: Props) {
@@ -231,6 +236,32 @@ export default function LineChart({
             <text x={width - MARGIN.right} y={height - 2} textAnchor="end">
               {xTitle}
             </text>
+          </g>
+          <g className="chart-guides">
+            {guides
+              .filter((guide) => guide.x >= scales.x0 && guide.x <= scales.x1)
+              .map((guide) => {
+                const x = scales.sx(guide.x);
+                const marks = guide.mark === 'both' ? ['up', 'down'] : [guide.mark];
+                return (
+                  <g key={guide.x}>
+                    <line x1={x} x2={x} y1={scales.plotTop} y2={scales.plotBottom} />
+                    {marks.map((mark, index) => {
+                      const top = scales.plotTop + index * 9;
+                      return (
+                        <path
+                          key={mark}
+                          d={
+                            mark === 'down'
+                              ? `M${x - 4.5},${top} L${x + 4.5},${top} L${x},${top + 7}Z`
+                              : `M${x - 4.5},${top + 7} L${x + 4.5},${top + 7} L${x},${top}Z`
+                          }
+                        />
+                      );
+                    })}
+                  </g>
+                );
+              })}
           </g>
           {shades.length > 0 && (
             <g key={`shades-${replayKey}`} className="chart-shades">

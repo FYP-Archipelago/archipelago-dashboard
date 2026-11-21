@@ -33,6 +33,13 @@
     opacity 0.2s,
     stroke-width 0.2s;
 }
+.chart-guides line {
+  stroke: rgba(237, 237, 237, 0.35);
+  stroke-dasharray: 3 3;
+}
+.chart-guides path {
+  fill: var(--ink);
+}
 .chart-shades rect {
   fill: rgba(237, 237, 237, 0.045);
 }

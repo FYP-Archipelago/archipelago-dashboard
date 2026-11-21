@@ -26,6 +26,12 @@ const PATHS = {
       <path d="M12 7.5v5.5M12 16.5h.01" />
     </>
   ),
+  info: (
+    <>
+      <circle cx="12" cy="12" r="9.5" />
+      <path d="M12 7.5h.01M12 11v5.5" />
+    </>
+  ),
   check: <path d="m5 12 5 5L20 7" />,
   trend: <path d="m22 7-8.5 8.5-5-5L2 17M16 7h6v6" />,
   rerun: (
