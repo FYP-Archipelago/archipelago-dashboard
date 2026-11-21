@@ -1,10 +1,12 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 
 import { islandColor } from '@/colors.ts';
 import Icon from '@/components/Icon.tsx';
 import { fitness, numberFormat } from '@/format.ts';
 import { EmptyState, NoResult, type ResultQuery } from '@/pages/run-workspace/shared.tsx';
 import type { Player, Run, ShapleyAttribution, ShapleyGame } from '@/types.ts';
+
+import { waterfallSlots } from './attribution.ts';
 
 import './attribution.css';
 
@@ -150,6 +152,188 @@ function Credit({ game, view }: { game: ShapleyGame; view: View }) {
   );
 }
 
+const coalitionKey = (keys: Iterable<string>) => [...keys].sort().join('|');
+
+// The improvement a chosen subset of players reaches on its own. Each chip shows that player's marginal contribution to
+// the current coalition: what adding it (or removing it) changes. Route coalitions often move only when routes combine.
+function Coalitions({ game, view }: { game: ShapleyGame; view: View }) {
+  const players = [...game.players].sort((a, b) => b.value - a.value);
+  const [picked, setPicked] = useState<ReadonlySet<string>>(() => new Set(players.slice(0, 2).map((p) => playerKey(p.player))));
+  const values = useMemo(() => new Map(game.coalitions.map((c) => [coalitionKey(c.players.map(playerKey)), c.value])), [game]);
+  const shared = game.full_value - game.empty_value;
+  if (!game.coalitions.length)
+    return (
+      <section className="card">
+        <div className="card-head">
+          <h3>Coalitions</h3>
+        </div>
+        <p className="hint">
+          Sampled game ({numberFormat.format(game.sampled_orders ?? 0)} orders over {players.length} players), so coalition values were not computed.
+        </p>
+      </section>
+    );
+  const valueOf = (keys: ReadonlySet<string>) => (values.get(coalitionKey(keys)) ?? game.empty_value) - game.empty_value;
+  const reached = valueOf(picked);
+  const shapleySum = players.filter((p) => picked.has(playerKey(p.player))).reduce((sum, p) => sum + p.value, 0);
+  const flipped = (key: string) => {
+    const next = new Set(picked);
+    if (next.has(key)) next.delete(key);
+    else next.add(key);
+    return next;
+  };
+  return (
+    <section className="card">
+      <div className="card-head card-heading">
+        <h3>Coalitions</h3>
+        <span className="muted">Improvement a subset reaches on its own</span>
+      </div>
+      <div className="group-chips" role="group" aria-label="Coalition">
+        {players.map(({ player }) => {
+          const key = playerKey(player);
+          const change = (valueOf(flipped(key)) - reached) / shared || 0;
+          return (
+            <button
+              key={key}
+              className={`group-chip${picked.has(key) ? '' : ' off'}`}
+              aria-pressed={picked.has(key)}
+              aria-label={playerName(player)}
+              onClick={() => setPicked(flipped(key))}
+            >
+              <Swatch player={player} />
+              {playerName(player)}
+              <small className={change > 0 ? 'up' : change < 0 ? 'down' : undefined}>
+                {change === 0 ? '±0' : `${change > 0 ? '+' : '−'}${percent(Math.abs(change))}`}
+              </small>
+            </button>
+          );
+        })}
+      </div>
+      <div className="group-result">
+        <strong>{percent(reached / shared || 0)}</strong>
+        <span className="muted">
+          v(S) = {fitness(reached)} of {fitness(shared)}
+        </span>
+      </div>
+      <div className="meter">
+        <i style={{ width: `${Math.max(0, Math.min(1, reached / shared || 0)) * 100}%` }} />
+      </div>
+      <p className="hint">
+        {picked.size === 0
+          ? view === 'islands'
+            ? 'The empty coalition reaches no improvement.'
+            : `With no routes, only the ${fitness(game.empty_value)} reached without migration counts.`
+          : `Sum of the members' Shapley values: ${percent(shapleySum / shared || 0)}. ${
+              reached > shapleySum + 1e-9
+                ? 'The coalition reaches more, so its members complement each other.'
+                : reached < shapleySum - 1e-9
+                  ? 'The coalition reaches less, so part of their credit depends on players outside it.'
+                  : 'The coalition reaches exactly that.'
+            }`}{' '}
+        Each chip shows the change from adding or removing that player.
+      </p>
+    </section>
+  );
+}
+
+const factorial = (n: number): number => (n <= 1 ? 1 : n * factorial(n - 1));
+
+// One example order of players joining, as a waterfall: each bar is what that player adds when it joins.
+function Orders({ game }: { game: ShapleyGame }) {
+  const [index, setIndex] = useState(0);
+  const steps = game.orders[Math.min(index, game.orders.length - 1)] ?? [];
+  if (!steps.length) return null;
+  const width = 800;
+  const height = 240;
+  const top = 26;
+  const bottom = 46;
+  const lo = Math.min(game.empty_value, ...steps.map((s) => Math.min(s.before, s.after)));
+  const hi = Math.max(game.full_value, ...steps.map((s) => Math.max(s.before, s.after)));
+  const sy = (v: number) => top + (1 - (v - lo) / (hi - lo || 1)) * (height - top - bottom);
+  const slots = waterfallSlots(steps);
+  const slot = width / slots.length;
+  const bar = Math.min(64, slot * 0.55);
+  const noun = Array.isArray(steps[0]!.player) ? 'routes' : 'islands';
+  return (
+    <section className="card orders">
+      <div className="card-head">
+        <h3>Marginal contributions</h3>
+        {game.orders.length > 1 && (
+          <div className="seg push" role="group" aria-label="Example order">
+            {game.orders.map((_, i) => (
+              <button key={i} className={i === index ? 'on' : ''} aria-pressed={i === index} onClick={() => setIndex(i)}>
+                π{i + 1}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+      <p className="section-sub">
+        Players join one at a time in order π{index + 1}. Each bar is a player&apos;s marginal contribution given those already present; its Shapley
+        value is the mean over{' '}
+        {game.sampled_orders
+          ? `${numberFormat.format(game.sampled_orders)} sampled orders`
+          : `all ${numberFormat.format(factorial(game.players.length))} orders`}
+        .
+      </p>
+      <svg viewBox={`0 0 ${width} ${height}`} className="waterfall" role="img" aria-label={`Order ${index + 1}, step by step`}>
+        <line className="waterfall-base" x1={0} x2={width} y1={sy(lo)} y2={sy(lo)} />
+        {slots.map((entry, i) => {
+          const x = slot * (i + 0.5);
+          const level = entry.kind === 'step' ? entry.step.after : entry.steps[0]!.after;
+          const next = i < slots.length - 1 && (
+            <line className="waterfall-link" x1={x + bar / 2} x2={slot * (i + 1.5) - bar / 2} y1={sy(level)} y2={sy(level)} />
+          );
+          if (entry.kind === 'zeros') {
+            const single = entry.steps.length === 1;
+            return (
+              <g key={i} className="waterfall-zeros">
+                <title>{entry.steps.map((step) => playerName(step.player)).join(', ')} added nothing</title>
+                {next}
+                <line x1={x - bar / 2} x2={x + bar / 2} y1={sy(level)} y2={sy(level)} />
+                <text className="waterfall-added" x={x} y={sy(level) - 8} textAnchor="middle">
+                  +0
+                </text>
+                <text className="waterfall-name" x={x} y={height - bottom + 20} textAnchor="middle">
+                  {single ? playerName(entry.steps[0]!.player) : `${entry.steps.length} ${noun}`}
+                </text>
+                <text className="waterfall-step" x={x} y={height - bottom + 36} textAnchor="middle">
+                  {single ? `step ${entry.first}` : `steps ${entry.first}–${entry.last}`}
+                </text>
+              </g>
+            );
+          }
+          const { step } = entry;
+          const y = sy(Math.max(step.before, step.after));
+          const added = step.after - step.before;
+          return (
+            <g key={i}>
+              {next}
+              <rect
+                x={x - bar / 2}
+                y={y}
+                width={bar}
+                height={Math.max(2, Math.abs(sy(step.after) - sy(step.before)))}
+                rx={4}
+                fill={playerColor(step.player)}
+              />
+              <text className="waterfall-added" x={x} y={y - 8} textAnchor="middle">
+                {added >= 0 ? '+' : '−'}
+                {credit(Math.abs(added))}
+              </text>
+              <text className="waterfall-name" x={x} y={height - bottom + 20} textAnchor="middle">
+                {playerName(step.player)}
+              </text>
+              <text className="waterfall-step" x={x} y={height - bottom + 36} textAnchor="middle">
+                step {entry.number}
+              </text>
+            </g>
+          );
+        })}
+      </svg>
+    </section>
+  );
+}
+
 function Attribution({ shapley, maximising }: { shapley: ShapleyAttribution; maximising: boolean }) {
   // The Migration tab links here with ?view=routes.
   const [view, setView] = useState<View>(() => (new URLSearchParams(window.location.search).get('view') === 'routes' ? 'routes' : 'islands'));
@@ -177,7 +361,9 @@ function Attribution({ shapley, maximising }: { shapley: ShapleyAttribution; max
       <Shared shapley={shapley} game={game} view={view} maximising={maximising} />
       <div className="attribution-grid">
         <Credit key={`credit-${view}`} game={game} view={view} />
+        <Coalitions key={`coalitions-${view}`} game={game} view={view} />
       </div>
+      <Orders key={`orders-${view}`} game={game} />
     </>
   );
 }

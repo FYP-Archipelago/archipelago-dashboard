@@ -3,12 +3,17 @@ import { describe, expect, it } from 'vitest';
 
 import { makeResult } from '@/test/fixtures.ts';
 import { button, renderWorkspace } from '@/test/workspace.tsx';
+import type { RunResult, ShapleyAttribution } from '@/types.ts';
+
+const shapleyOf = (result: RunResult) => result.explainability.shapley as ShapleyAttribution;
 
 const creditRows = () =>
   [...document.querySelectorAll('.credit-row')].map((row) => [
     row.querySelector('.credit-name')!.textContent,
     row.querySelector('.credit-value b')!.textContent,
   ]);
+
+const groupText = () => document.querySelector('.group-result')!.textContent!;
 
 describe('AttributionTab', () => {
   it("shares each island's credit out of the whole improvement, highest first", async () => {
@@ -41,6 +46,58 @@ describe('AttributionTab', () => {
     await renderWorkspace('attribution');
 
     expect(button('Migration route attribution').getAttribute('aria-pressed')).toBe('true');
+  });
+
+  it('finds what a picked group reaches whatever order it was picked in, and compares it with their credits', async () => {
+    await renderWorkspace('attribution');
+
+    // Islands 0 and 1 start picked: together 34 of 40, while their credits add up to 35 of 40.
+    expect(groupText()).toContain('85%');
+    expect(screen.getByText(/The coalition reaches less/)).toBeTruthy();
+
+    fireEvent.click(button('Island 0'));
+    fireEvent.click(button('Island 2'));
+    fireEvent.click(button('Island 0'));
+    expect(groupText()).toContain('100%');
+
+    fireEvent.click(button('Migration route attribution'));
+    // Routes 0 -> 1 and 1 -> 2 start picked: they reach 40, the whole 20 that needed migrants.
+    expect(groupText()).toContain('100%');
+  });
+
+  it('marks each coalition chip with what adding or removing that player changes', async () => {
+    await renderWorkspace('attribution');
+    fireEvent.click(button('Migration route attribution'));
+
+    // Routes 0 -> 1 and 1 -> 2 are picked and reach the whole 20. Without 0 -> 1 they keep 5, without 1 -> 2 they keep 15.
+    const marks = Object.fromEntries(
+      [...document.querySelectorAll('.group-chip')].map((chip) => [chip.getAttribute('aria-label'), chip.querySelector('small')!.textContent])
+    );
+    expect(marks).toEqual({ '0 → 1': '−75%', '1 → 2': '−25%', '1 → 0': '±0' });
+  });
+
+  it('shows the error of sampled credit, and says why groups cannot be tried', async () => {
+    const result = makeResult();
+    const shapley = shapleyOf(result);
+    await renderWorkspace('attribution', {
+      result: {
+        ...result,
+        explainability: {
+          shapley: {
+            ...shapley,
+            islands: {
+              ...shapley.islands,
+              sampled_orders: 1024,
+              coalitions: [],
+              players: shapley.islands.players.map((p) => ({ ...p, standard_error: 1.5 })),
+            },
+          },
+        },
+      },
+    });
+
+    expect(document.querySelector('.credit-row small')!.textContent).toBe('22 ± 1.5');
+    expect(screen.getByText(/Sampled game \(1,024 orders over 3 players\)/)).toBeTruthy();
   });
 
   it("says when a run could not be attributed, with the analysis's reason on hover", async () => {

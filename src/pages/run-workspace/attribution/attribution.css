@@ -160,11 +160,120 @@
   gap: 2px;
 }
 
+.group-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.group-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 28px;
+  padding: 0 11px 0 9px;
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 500;
+  transition:
+    background 0.2s,
+    color 0.2s,
+    border-color 0.2s;
+}
+.group-chip:hover {
+  background: var(--hover);
+}
+.group-chip.off {
+  border-color: var(--border);
+  color: var(--muted);
+}
+.group-chip.off .swatch {
+  opacity: 0.3;
+}
+.group-result {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  margin-top: 20px;
+  font-size: 13px;
+}
+.group-result strong {
+  font-size: 28px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+.attribution-grid .meter {
+  height: 8px;
+  margin-top: 10px;
+  border-radius: 4px;
+  background: var(--surface-3);
+  overflow: hidden;
+}
+.attribution-grid .meter i {
+  display: block;
+  height: 100%;
+  background: var(--ink);
+  transition: width 0.4s var(--ease);
+}
+
+.orders {
+  margin-top: 16px;
+}
+.orders .section-sub {
+  margin-bottom: 8px;
+}
+.waterfall {
+  display: block;
+  width: 100%;
+  height: auto;
+  font-size: 10.5px;
+}
+.waterfall-base,
+.waterfall-link {
+  stroke: var(--axis);
+}
+.waterfall {
+  overflow: visible;
+}
+.waterfall-zeros > line:last-of-type {
+  stroke: var(--border-strong);
+  stroke-width: 2;
+  stroke-dasharray: 3 3;
+}
+.waterfall-zeros .waterfall-added {
+  fill: var(--muted);
+  font-weight: 500;
+}
+.waterfall-added {
+  fill: var(--ink);
+  font-weight: 600;
+}
+.waterfall-name {
+  fill: var(--ink-2);
+}
+.waterfall-step {
+  fill: var(--muted);
+  font-size: 9.5px;
+}
+
 .shared-warnings {
   margin: 10px 0 0;
   padding-left: 18px;
   color: var(--warning);
   font-size: 12.5px;
+}
+.group-chip small {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+.group-chip small.up {
+  color: var(--good);
+}
+.group-chip small.down {
+  color: #f08a8a;
 }
 
 @media (max-width: 1200px) {
