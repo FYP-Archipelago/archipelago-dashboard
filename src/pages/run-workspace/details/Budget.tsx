@@ -3,11 +3,11 @@ import { useState } from 'react';
 import { islandColor } from '@/colors.ts';
 import { numberFormat } from '@/format.ts';
 import { historyByIsland } from '@/pages/run-workspace/convergence/convergence.ts';
-import type { Run, RunResult } from '@/types.ts';
+import type { IslandEnd, Run, RunResult, TerminationReason } from '@/types.ts';
 
 import './budget.css';
 
-type IslandUse = { island: number; generations: number; evaluations: number | null };
+type IslandUse = { island: number; generations: number; evaluations: number | null; end: IslandEnd | null };
 
 // Islands whose dots stopped close enough to overlap, drawn as one stack at their mean that fans out on hover.
 type Cluster = { at: number; islands: IslandUse[] };
@@ -15,8 +15,9 @@ type Cluster = { at: number; islands: IslandUse[] };
 const percent = (share: number) => `${Math.floor(share * 100)}%`;
 const width = (share: number) => `${Math.min(share, 1) * 100}%`;
 
-// Split the evaluation budget evenly between the islands.
-const budgetPerIsland = (run: Run, result: RunResult) => run.run_settings.evaluation_budget / Math.max(1, result.run.islands.length);
+// The runner's own per-island budget when the result has it, otherwise an even split.
+const budgetPerIsland = (run: Run, result: RunResult) =>
+  result.run.budget_per_island ?? run.run_settings.evaluation_budget / Math.max(1, result.run.islands.length);
 
 function islandUse(result: RunResult): IslandUse[] {
   return historyByIsland(result.generation_history).map((history) => ({
@@ -24,7 +25,32 @@ function islandUse(result: RunResult): IslandUse[] {
     // Generations count from 0.
     generations: (history.generation.at(-1) ?? 0) + 1,
     evaluations: history.evaluations.at(-1) ?? null,
+    end: result.island_ends.find((end) => end.island_id === history.island) ?? null,
   }));
+}
+
+// What each stop reason says about one island or several, and the marker it gets on the generations track: hollow for
+// stopping early on stagnation, filled for using up the budget, a square for the generation cap, a bullseye for the
+// target, and a dot crossed out for a stop that cut the island short.
+const REASONS: Record<TerminationReason, { one: string; many: string; marker: string }> = {
+  stagnation: { one: 'stagnated', many: 'stagnated', marker: 'hollow' },
+  max_evaluations: { one: 'spent its budget', many: 'spent their budget', marker: 'filled' },
+  max_generations: { one: 'hit the generation cap', many: 'hit the generation cap', marker: 'square' },
+  target_fitness_reached: { one: 'reached the target', many: 'reached the target', marker: 'target' },
+  time_limit: { one: 'ran out of time', many: 'ran out of time', marker: 'halted' },
+  error: { one: 'failed', many: 'failed', marker: 'halted' },
+  aborted: { one: 'was cancelled', many: 'were cancelled', marker: 'halted' },
+};
+const reasonPhrase = (reason: TerminationReason, count: number) => (count === 1 ? REASONS[reason].one : REASONS[reason].many);
+// An island with no island_end, which the runner skips for one that crashed, gets a striped dot.
+const markerOf = (end: IslandEnd | null) => (end ? REASONS[end.termination_reason].marker : 'missing');
+
+// One island's stop as a sentence, e.g. "Stagnated after 50 generations without improvement".
+function stopText(end: IslandEnd): string {
+  const phrase = reasonPhrase(end.termination_reason, 1);
+  const text = phrase.charAt(0).toUpperCase() + phrase.slice(1);
+  const since = end.generations_since_improvement;
+  return end.termination_reason === 'stagnation' && since !== null ? `${text} after ${since} generations without improvement` : text;
 }
 
 // Dots whose islands stopped within 3.5% of the target of a neighbour would overlap, so they form one cluster.
@@ -63,6 +89,16 @@ export default function Budget({ run, result }: { run: Run; result: RunResult })
   const shares = islands.map((island) => (island.evaluations ?? 0) / budget);
   const startOf = (index: number) => shares.slice(0, index).reduce((sum, value) => sum + value, 0);
   const clusters = clustersOf(islands, target);
+  const reasons = new Map<TerminationReason, number>();
+  for (const { end } of islands) if (end) reasons.set(end.termination_reason, (reasons.get(end.termination_reason) ?? 0) + 1);
+  const missing = islands.filter((island) => !island.end).length;
+  const keyEntries = [
+    ...[...reasons]
+      .sort((a, b) => b[1] - a[1])
+      .map(([reason, count]) => ({ marker: REASONS[reason].marker, count, phrase: reasonPhrase(reason, count) })),
+    ...(missing > 0 ? [{ marker: 'missing', count: missing, phrase: 'with no end recorded' }] : []),
+  ];
+
   const dim = (island: number) => (hover && hover.island !== island ? ' dim' : '');
   const hoverProps = (island: number, on: Hover['on']) => ({
     onPointerEnter: () => setHover({ island, on }),
@@ -150,7 +186,7 @@ export default function Budget({ run, result }: { run: Run; result: RunResult })
                   return (
                     <b
                       key={island.island}
-                      className={`budget-dot filled${hovered === island ? ' active' : ''}`}
+                      className={`budget-dot ${markerOf(island.end)}${hovered === island ? ' active' : ''}`}
                       style={{
                         left: `calc(50% + ${offset}px)`,
                         zIndex: hovered === island ? 2 : 1,
@@ -167,7 +203,7 @@ export default function Budget({ run, result }: { run: Run; result: RunResult })
                   >
                     {tipTitle(hovered.island)}
                     {hovered.generations} of {numberFormat.format(target)} generations
-                    <span>{percent(hovered.generations / target)} of the target</span>
+                    <span>{hovered.end ? stopText(hovered.end) : 'No end recorded; the island may have crashed'}</span>
                   </div>
                 )}
               </div>
@@ -175,11 +211,21 @@ export default function Budget({ run, result }: { run: Run; result: RunResult })
           })}
         </div>
       </div>
-      <div className="budget-legend">
+      <div className={`budget-legend${keyEntries.length ? ' with-reasons' : ''}`}>
         {islands.map((island) => (
           <span key={island.island} className={`budget-legend-island${dim(island.island)}`} {...hoverProps(island.island, 'legend')}>
             <i className="swatch" style={{ background: islandColor(island.island) }} />
             Island {island.island}
+          </span>
+        ))}
+        {/* Read as one sentence, so only the first entry names the islands: "1 island stagnated · 1 failed". */}
+        {keyEntries.map((entry, index) => (
+          <span key={entry.marker + entry.phrase} className={`budget-legend-reason${index === 0 ? ' first' : ''}`}>
+            <i className={`budget-key-dot ${entry.marker}`} aria-hidden="true" />
+            {index === 0 && entry.count === islands.length && entry.count > 1 ? 'All ' : ''}
+            {entry.count}
+            {index === 0 ? (entry.count === 1 ? ' island ' : ' islands ') : ' '}
+            {entry.phrase}
           </span>
         ))}
       </div>

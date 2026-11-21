@@ -127,6 +127,8 @@ export const makeResult = (change: Partial<RunResult> = {}): RunResult => ({
     migration_topology: 'ring',
     islands: [0, 1, 2],
     maximising: false,
+    budget_per_island: 50,
+    stagnation_generations: 2,
   },
   layout: { method: 'pca', variance_kept_2d: 0.5, variance_kept_3d: 0.6 },
   // Migrants went 10 -> 12 into a better cluster, back 12 -> 10 into a worse one, 13 -> 20 into an equal one, and
@@ -163,6 +165,12 @@ export const makeResult = (change: Partial<RunResult> = {}): RunResult => ({
     ...islandRows(0, [100, 80, 80, 60, 60], [120, 100, 90, 80, 70], [0.5, 0.4, 0.3, 0.2, 0.1]),
     ...islandRows(1, [100, 90, 60, 60, 60], [130, 110, 95, 85, 75], [0.6, 0.5, 0.4, 0.3, 0.2]),
     ...islandRows(2, [100, 95, 90, 85, 70], [50, 10, -5, -10, -20], [0.7, 0.6, 0.5, 0.4, 0.3]),
+  ],
+  // Islands 0 and 1 stopped on the stagnation rule; island 2 used its 50 evaluations.
+  island_ends: [
+    { island_id: 0, termination_reason: 'stagnation', generations_completed: 5, evaluations_total: 50, generations_since_improvement: 1 },
+    { island_id: 1, termination_reason: 'stagnation', generations_completed: 5, evaluations_total: 50, generations_since_improvement: 2 },
+    { island_id: 2, termination_reason: 'max_evaluations', generations_completed: 5, evaluations_total: 50, generations_since_improvement: 0 },
   ],
   // The islands share an improvement of 40: island 0 earns 22, island 1 13, island 2 5. Migration lifts what the islands
   // reach on their own (20) to 40, credited 15 to route 0 -> 1, 5 to 1 -> 2 and nothing to 1 -> 0.

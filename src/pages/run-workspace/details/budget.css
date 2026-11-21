@@ -83,6 +83,33 @@
   background: var(--island);
   box-shadow: 0 0 0 2px var(--surface);
 }
+.budget-dot.hollow {
+  background: var(--surface);
+  box-shadow:
+    inset 0 0 0 2.5px var(--island),
+    0 0 0 2px var(--surface);
+}
+.budget-dot.square {
+  border-radius: 3px;
+  background: var(--island);
+  box-shadow: 0 0 0 2px var(--surface);
+}
+.budget-dot.target {
+  background: radial-gradient(circle, var(--island) 0 2.5px, var(--surface) 3px 4.5px, var(--island) 5px);
+  box-shadow: 0 0 0 2px var(--surface);
+}
+.budget-dot.halted {
+  background:
+    linear-gradient(45deg, transparent 42%, var(--surface) 42% 58%, transparent 58%),
+    linear-gradient(-45deg, transparent 42%, var(--surface) 42% 58%, transparent 58%), var(--island);
+  box-shadow: 0 0 0 2px var(--surface);
+}
+.budget-dot.missing {
+  background: repeating-linear-gradient(45deg, var(--island) 0 2px, transparent 2px 4px);
+  box-shadow:
+    inset 0 0 0 1.5px var(--island),
+    0 0 0 2px var(--surface);
+}
 .budget-card .dim {
   opacity: 0.25;
 }
@@ -145,6 +172,47 @@
   cursor: default;
   transition: opacity 0.15s;
 }
+/* The stop reasons follow the islands on the right. The auto margin keeps the islands left, and reasons that do not
+   fit wrap one by one onto the next line, which flex-end keeps on the right. */
+.budget-legend.with-reasons {
+  justify-content: flex-end;
+}
+.budget-legend-reason.first {
+  margin-left: auto;
+}
+.budget-legend-reason {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+.budget-key-dot {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+}
+.budget-key-dot.filled {
+  background: var(--ink-2);
+}
+.budget-key-dot.hollow {
+  box-shadow: inset 0 0 0 2px var(--ink-2);
+}
+.budget-key-dot.square {
+  border-radius: 2px;
+  background: var(--ink-2);
+}
+.budget-key-dot.target {
+  background: radial-gradient(circle, var(--ink-2) 0 1.5px, transparent 2px 3px, var(--ink-2) 3.5px);
+}
+.budget-key-dot.halted {
+  background:
+    linear-gradient(45deg, transparent 44%, var(--surface) 44% 56%, transparent 56%),
+    linear-gradient(-45deg, transparent 44%, var(--surface) 44% 56%, transparent 56%), var(--ink-2);
+}
+.budget-key-dot.missing {
+  background: repeating-linear-gradient(45deg, var(--ink-2) 0 1.5px, transparent 1.5px 3px);
+  box-shadow: inset 0 0 0 1.2px var(--ink-2);
+}
+
 @media (prefers-reduced-motion: no-preference) {
   .budget-fill i {
     transform-origin: left;

@@ -126,6 +126,9 @@ export type RunResult = {
     migration_topology: string | null;
     islands: number[];
     maximising: boolean;
+    // From the runner's run_start; null for logs that lack them. 0 stagnation generations means the rule was off.
+    budget_per_island: number | null;
+    stagnation_generations: number | null;
   };
   layout: { method: 'pca' | 'mds' | 'none'; variance_kept_2d: number; variance_kept_3d: number };
   graph: {
@@ -158,4 +161,18 @@ export type RunResult = {
   };
   malformed_rows: number;
   warnings: string[];
+  // One per island that logged island_end, sorted by island; an island that crashed has none.
+  island_ends: IslandEnd[];
+};
+
+// The runner's TerminationReason values, which archipelago passes through as they are.
+export type TerminationReason = 'stagnation' | 'max_evaluations' | 'max_generations' | 'target_fitness_reached' | 'time_limit' | 'error' | 'aborted';
+
+// Why and when an island stopped, from the runner's island_end event.
+export type IslandEnd = {
+  island_id: number;
+  termination_reason: TerminationReason;
+  generations_completed: number;
+  evaluations_total: number;
+  generations_since_improvement: number | null;
 };

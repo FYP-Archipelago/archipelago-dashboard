@@ -38,6 +38,16 @@ describe('DetailsTab', () => {
     expect(row('Mutation rate').textContent).toContain('0.05');
   });
 
+  it('says why the islands stopped, and which island left no end behind', async () => {
+    const result = makeResult();
+    await renderWorkspace('details', { result: { ...result, island_ends: result.island_ends.slice(0, 2) } });
+
+    expect([...document.querySelectorAll('.budget-legend-reason')].map((reason) => reason.textContent)).toEqual([
+      '2 islands stagnated',
+      '1 with no end recorded',
+    ]);
+  });
+
   it('flags warnings and malformed rows instead of calling the data clean', async () => {
     await renderWorkspace('details', { result: makeResult({ warnings: ['3 rows had no genome'], malformed_rows: 2 }) });
 
