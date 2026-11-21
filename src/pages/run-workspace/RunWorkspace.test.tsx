@@ -2,7 +2,7 @@ import { act, fireEvent, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 import { openApp } from '@/test/app.tsx';
-import { makeRun } from '@/test/fixtures.ts';
+import { makeResult, makeRun } from '@/test/fixtures.ts';
 import { button } from '@/test/workspace.tsx';
 
 type FetchMock = Awaited<ReturnType<typeof openApp>>;
@@ -14,7 +14,26 @@ const settle = async () => {
   for (let i = 0; i < 3; i++) await act(async () => {});
 };
 
+const openFromList = async (fetchMock: FetchMock) => {
+  fireEvent.click(screen.getByText('name-run-1', { selector: '.run-cell a' }));
+  await settle();
+  return fetchMock;
+};
+
 describe('RunWorkspace loading', () => {
+  it('asks again for a run the list showed as unfinished, since it may have finished since', async () => {
+    const fetchMock = await openFromList(
+      await openApp('/runs', {
+        'GET /runs': () => ({ body: { runs: [makeRun('run-1', { status: 'running' })], next_cursor: null } }),
+        'GET /runs/run-1': () => ({ body: makeRun('run-1') }),
+        'GET /runs/run-1/result': () => ({ body: makeResult() }),
+      })
+    );
+
+    expect(requests(fetchMock, 'GET', '/runs/run-1')).toBe(1);
+    expect(requests(fetchMock, 'GET', '/runs/run-1/result')).toBe(1);
+  });
+
   it('says a run does not exist, without retrying or polling for it', async () => {
     vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval', 'Date'] });
     const fetchMock = await openApp('/runs/run-gone', { 'GET /runs/run-gone': () => ({ status: 404, body: { detail: 'run not found' } }) });

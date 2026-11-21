@@ -1,13 +1,15 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 
 import { isNotFound } from '@/api/client.ts';
-import { useCancelRun, useRun } from '@/api/queries.ts';
+import { useCancelRun, useRun, useRunResult } from '@/api/queries.ts';
 import Icon from '@/components/Icon.tsx';
 import Link from '@/components/Link.tsx';
 import Unavailable from '@/components/Unavailable.tsx';
 import { ago, dateTime, duration, TOPOLOGIES } from '@/format.ts';
 import { RUN_TABS, runHref, runsHref, type RunTab } from '@/route.ts';
 import type { Run } from '@/types.ts';
+
+import MigrationTab from './migration/MigrationTab.tsx';
 
 import './workspace.css';
 
@@ -187,6 +189,7 @@ function Header({ run, tab }: { run: Run; tab: RunTab }) {
 
 export default function RunWorkspace({ id, tab }: { id: string; tab: RunTab }) {
   const run = useRun(id);
+  const result = useRunResult(id, run.data?.status === 'done');
 
   if (!run.data)
     return (
@@ -221,6 +224,7 @@ export default function RunWorkspace({ id, tab }: { id: string; tab: RunTab }) {
             <span>{data.error.message}</span>
           </div>
         )}
+        {tab === 'migration' && <MigrationTab run={data} result={result} />}
       </div>
     </>
   );

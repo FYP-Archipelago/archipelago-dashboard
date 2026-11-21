@@ -10,6 +10,16 @@ export const TOPOLOGIES: Record<string, string> = {
 
 export const numberFormat = new Intl.NumberFormat('en');
 
+const fitnessFormat = new Intl.NumberFormat('en', { maximumSignificantDigits: 6 });
+
+// Fitness ranges from tour lengths in the thousands to errors near zero, so very large and very small values switch to e-notation.
+export function fitness(value: number | null): string {
+  if (value === null) return '—';
+  const size = Math.abs(value);
+  if (size !== 0 && (size >= 1e7 || size < 1e-3)) return value.toExponential(3);
+  return fitnessFormat.format(value);
+}
+
 const dateTimeFormat = new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 
 export const dateTime = (iso: string) => dateTimeFormat.format(new Date(iso));

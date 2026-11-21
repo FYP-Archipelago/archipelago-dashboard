@@ -1,4 +1,4 @@
-import type { NewRun, Run, RunPage, RunStatusName } from '@/types.ts';
+import type { NewRun, Run, RunPage, RunResult, RunStatusName } from '@/types.ts';
 
 import { request } from './client.ts';
 
@@ -17,6 +17,11 @@ const runPath = (id: string) => `/runs/${encodeURIComponent(id)}`;
 
 export function getRun(id: string, signal?: AbortSignal): Promise<Run> {
   return request<Run>('GET', runPath(id), { signal });
+}
+
+// Only a done run has a result; any other status answers 404.
+export function getRunResult(id: string, signal?: AbortSignal): Promise<RunResult> {
+  return request<RunResult>('GET', `${runPath(id)}/result`, { signal });
 }
 
 export function cancelRun(id: string): Promise<Run> {

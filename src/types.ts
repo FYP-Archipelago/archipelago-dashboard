@@ -57,3 +57,105 @@ export type Preset = { preset: string; algorithm: string; benchmark: string; des
 export type Presets = { overrides: Partial<Record<keyof RunSettings, OverrideSpec>>; presets: Preset[] };
 
 export type Health = { status: 'ok' | 'unavailable'; version: string; ready: boolean };
+
+// One island's generation_end statistics as the runner logged them; archipelago passes them through unchanged.
+export type GenerationSummary = {
+  island_id: number;
+  generation: number;
+  evaluations_total: number | null;
+  best_fitness: number | null;
+  best_so_far_fitness: number | null;
+  mean_fitness: number | null;
+  std_fitness: number | null;
+  diversity: number | null;
+  // The runner's diversity definition, which depends on the genome representation.
+  diversity_metric: string | null;
+  diversity_sample_size: number | null;
+};
+
+type StageDiagnostic = number | string | boolean | number[] | null;
+
+// A Shapley player: an island, or a [source, destination] migration route.
+type Player = number | [number, number];
+
+// Players' values add up to full_value - empty_value: the improvement the players are needed for. A coalition's value
+// is the best improvement reachable through lineages that stay inside it.
+type ShapleyGame = {
+  empty_value: number;
+  full_value: number;
+  // Null when every player order was used (exact); otherwise how many orders were sampled.
+  sampled_orders: number | null;
+  // Highest value first. standard_error is null for exact games.
+  players: { player: Player; value: number; standard_error: number | null }[];
+  // Every coalition when exact; empty when sampled.
+  coalitions: { players: Player[]; value: number }[];
+  // A few example orders, each the steps of adding one player at a time.
+  orders: { player: Player; before: number; after: number }[][];
+};
+
+type ShapleyAttribution = {
+  status: 'ready';
+  // Best fitness among the founders, the observed best, and the best whose whole ancestry was logged.
+  baseline_fitness: number;
+  observed_best_fitness: number;
+  supported_best_fitness: number;
+  coverage: { evaluations: number; supported: number };
+  warnings: string[];
+  islands: ShapleyGame;
+  routes: ShapleyGame;
+};
+
+// How far apart islands' populations sit in genome space, as MMD² between them (0 = the same).
+type Separation = {
+  // The run's typical distance between two genomes, the scale the whole-run values are measured at.
+  typical_distance: number | null;
+  // Each island pair over the whole run; p is a generation-swap test, small meaning a real difference.
+  pairs: { a: number[]; b: number[]; mmd2: number[]; p: number[] };
+  // Windows of generations, each measured at its own typical distance.
+  windows: { from_generation: number[]; typical_distance: number[] };
+  // One entry per window and pair with both islands present; window indexes into windows.
+  window_pairs: { window: number[]; a: number[]; b: number[]; mmd2: number[] };
+};
+
+// archipelago's Result, trimmed to the parts the run page reads so far.
+export type RunResult = {
+  run: {
+    run_id: string;
+    algorithm: string;
+    benchmark: string;
+    migration_topology: string | null;
+    islands: number[];
+    maximising: boolean;
+  };
+  layout: { method: 'pca' | 'mds' | 'none'; variance_kept_2d: number; variance_kept_3d: number };
+  graph: {
+    // Columns of the search clusters: cluster i is position i in each list.
+    nodes: { id: number[]; island: number[]; best_fitness: (number | null)[] };
+    edges: { id: number[] };
+    // Migrants that went from one cluster (source id) to another (target id), and how many.
+    migrations: { id: number[]; source: number[]; target: number[]; count: number[] };
+    overlap: number;
+  };
+  separation: Separation;
+  migration_routes: { source: number; destination: number; migrants: number }[];
+  clustering: {
+    stages: string[];
+    counts: { evaluations: number; rows_clustered: number; nodes: number; faded_nodes: number | null };
+    resolved: {
+      birch_threshold: number | null;
+      denstream_epsilon: number | null;
+      denstream_half_life: number | null;
+      lsh_bucket_width: number | null;
+    };
+    // Keyed by stage; each stage reports its own set of values, which also differs between batch and streamed runs.
+    diagnostics: Record<string, Record<string, StageDiagnostic>>;
+    elapsed_seconds: number;
+  };
+  // Sorted by island, then generation. Empty when the logs had no generation summaries.
+  generation_history: GenerationSummary[];
+  explainability: {
+    shapley: ShapleyAttribution | { status: 'unavailable'; detail: string };
+  };
+  malformed_rows: number;
+  warnings: string[];
+};

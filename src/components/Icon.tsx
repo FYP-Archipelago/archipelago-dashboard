@@ -40,10 +40,13 @@ const PATHS = {
     </>
   ),
   x: <path d="M18 6 6 18M6 6l12 12" />,
+  shuffle: <path d="M16 3h5v5M4 20 21 3M21 16v5h-5M15 15l6 6M4 4l5 5" />,
+  // The shuffle icon with one of its arrows ending in a cross, half a unit right of centre to balance it.
+  migrationOff: <path d="M15.5 4h5v5M4.5 20 20.5 4M4.5 4l5 5m6 6 5 5m0-5-5 5" />,
   cloudOff: <path d="m2 2 20 20M5.78 5.78A7 7 0 0 0 9 19h8.5a4.5 4.5 0 0 0 1.31-.19M21.53 16.5A4.5 4.5 0 0 0 17.5 10h-1.79A7 7 0 0 0 10 5.07" />,
 };
 
-type IconName = keyof typeof PATHS;
+export type IconName = keyof typeof PATHS;
 
 export default function Icon({ name, size = 16, stroke = 1.75 }: { name: IconName; size?: number; stroke?: number }) {
   return (

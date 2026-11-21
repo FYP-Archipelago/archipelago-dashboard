@@ -6,7 +6,7 @@ import { makeRun } from '@/test/fixtures.ts';
 import { isNotFound } from './client.ts';
 import { getHealth } from './health.ts';
 import { getPresets } from './presets.ts';
-import { createRun, getRun, getRuns } from './runs.ts';
+import { createRun, getRun, getRunResult, getRuns } from './runs.ts';
 
 describe('api', () => {
   it("shows FastAPI's message for an HTTPException", async () => {
@@ -110,5 +110,13 @@ describe('api', () => {
     const reasons = await Promise.all(['run-gone', 'run-down', 'run-away'].map((id) => getRun(id).catch((reason: unknown) => reason)));
 
     expect(reasons.map(isNotFound)).toEqual([true, false, false]);
+  });
+
+  it('escapes the run id in run paths', async () => {
+    const fetchMock = mockBackend({ 'GET /runs/a%2Fb%3Fc/result': () => ({ body: {} }) });
+
+    await getRunResult('a/b?c');
+
+    expect(new URL(fetchMock.mock.calls[0]![0]).pathname).toBe('/runs/a%2Fb%3Fc/result');
   });
 });

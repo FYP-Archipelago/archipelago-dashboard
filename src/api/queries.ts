@@ -14,7 +14,7 @@ import type { NewRun, Run, RunPage, RunStatusName } from '@/types.ts';
 import { isNotFound } from './client.ts';
 import { getHealth } from './health.ts';
 import { getPresets } from './presets.ts';
-import { cancelRun, createRun, getRun, getRuns } from './runs.ts';
+import { cancelRun, createRun, getRun, getRunResult, getRuns } from './runs.ts';
 
 function runList(status?: RunStatusName) {
   return infiniteQueryOptions({
@@ -88,6 +88,10 @@ export function useRun(id: string) {
     retry: (failures, error) => failures < 1 && !isNotFound(error),
   });
 }
+
+// A result never changes once stored. Its key sits outside ['runs'], so refreshing the lists never refetches it.
+export const useRunResult = (id: string, enabled: boolean) =>
+  useQuery({ queryKey: ['run-result', id], queryFn: ({ signal }) => getRunResult(id, signal), enabled, staleTime: Infinity });
 
 export function useCancelRun(id: string) {
   const queryClient = useQueryClient();

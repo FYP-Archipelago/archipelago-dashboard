@@ -1,4 +1,4 @@
-import type { Clustering, Presets, Run, RunSettings } from '@/types.ts';
+import type { Clustering, GenerationSummary, Presets, Run, RunResult, RunSettings } from '@/types.ts';
 
 // Shaped like the runner's real /presets answer, trimmed to three presets.
 export const PRESETS: Presets = {
@@ -98,5 +98,169 @@ export const makeRun = (id: string, change: Partial<Run> = {}): Run => ({
   created_at: new Date().toISOString(),
   started_at: null,
   finished_at: null,
+  ...change,
+});
+
+// Five generations for one island; null best-so-far values are generations the runner logged without one.
+function islandRows(island: number, bestSoFar: number[], mean: number[], diversity: number[]): GenerationSummary[] {
+  return bestSoFar.map((value, generation) => ({
+    island_id: island,
+    generation,
+    evaluations_total: (generation + 1) * 10,
+    best_fitness: value,
+    best_so_far_fitness: value,
+    mean_fitness: mean[generation]!,
+    std_fitness: 1,
+    diversity: diversity[generation]!,
+    diversity_metric: 'mean_pairwise_hamming_normalised',
+    diversity_sample_size: null,
+  }));
+}
+
+// A minimising three-island result. Islands 0 and 1 both end on 60: island 1 gets there first (generation 2,
+// 30 evaluations), island 0 a generation later. Island 2's mean goes negative, which a log scale cannot show.
+export const makeResult = (change: Partial<RunResult> = {}): RunResult => ({
+  run: {
+    run_id: 'run-1',
+    algorithm: 'ga',
+    benchmark: 'tsp',
+    migration_topology: 'ring',
+    islands: [0, 1, 2],
+    maximising: false,
+  },
+  layout: { method: 'pca', variance_kept_2d: 0.5, variance_kept_3d: 0.6 },
+  // Migrants went 10 -> 12 into a better cluster, back 12 -> 10 into a worse one, 13 -> 20 into an equal one, and
+  // 11 -> 99 into a cluster that has since faded out of the graph.
+  graph: {
+    nodes: { id: [10, 11, 12, 13, 20], island: [0, 0, 1, 1, 2], best_fitness: [80, 90, 60, 60, 60] },
+    edges: { id: [1, 2, 3] },
+    migrations: { id: [1, 2, 3, 4], source: [10, 12, 13, 11], target: [12, 10, 20, 99], count: [4, 2, 3, 1] },
+    overlap: 1.5,
+  },
+  clustering: {
+    stages: ['lsh', 'birch'],
+    counts: { evaluations: 150, rows_clustered: 150, nodes: 8, faded_nodes: null },
+    resolved: { birch_threshold: 0.354, denstream_epsilon: null, denstream_half_life: null, lsh_bucket_width: null },
+    diagnostics: {
+      lsh: { family: 'minhash', blocks: 10, clusters_after: 10 },
+      birch: { threshold: 0.354, threshold_checkpoints: [0.7, 0.5, 0.354], subclusters: 9, clusters_after: 8 },
+    },
+    elapsed_seconds: 2.5,
+  },
+  separation: {
+    typical_distance: 1,
+    pairs: { a: [0, 0, 1], b: [1, 2, 2], mmd2: [0.5, 0.1, 0.2], p: [0.003, 0.3, 0.01] },
+    windows: { from_generation: [0, 10], typical_distance: [2, 1] },
+    window_pairs: { window: [0, 0, 1, 1], a: [0, 0, 0, 1], b: [1, 2, 1, 2], mmd2: [0.4, 0.2, 0.6, 0.15] },
+  },
+  migration_routes: [
+    { source: 0, destination: 1, migrants: 6 },
+    { source: 1, destination: 0, migrants: 2 },
+    { source: 1, destination: 2, migrants: 4 },
+    { source: 2, destination: 0, migrants: 0 },
+  ],
+  generation_history: [
+    ...islandRows(0, [100, 80, 80, 60, 60], [120, 100, 90, 80, 70], [0.5, 0.4, 0.3, 0.2, 0.1]),
+    ...islandRows(1, [100, 90, 60, 60, 60], [130, 110, 95, 85, 75], [0.6, 0.5, 0.4, 0.3, 0.2]),
+    ...islandRows(2, [100, 95, 90, 85, 70], [50, 10, -5, -10, -20], [0.7, 0.6, 0.5, 0.4, 0.3]),
+  ],
+  // The islands share an improvement of 40: island 0 earns 22, island 1 13, island 2 5. Migration lifts what the islands
+  // reach on their own (20) to 40, credited 15 to route 0 -> 1, 5 to 1 -> 2 and nothing to 1 -> 0.
+  explainability: {
+    shapley: {
+      status: 'ready',
+      baseline_fitness: 100,
+      observed_best_fitness: 60,
+      supported_best_fitness: 60,
+      coverage: { evaluations: 150, supported: 120 },
+      warnings: [],
+      islands: {
+        empty_value: 0,
+        full_value: 40,
+        sampled_orders: null,
+        players: [
+          { player: 0, value: 22, standard_error: null },
+          { player: 1, value: 13, standard_error: null },
+          { player: 2, value: 5, standard_error: null },
+        ],
+        coalitions: [
+          { players: [], value: 0 },
+          { players: [0], value: 20 },
+          { players: [1], value: 10 },
+          { players: [2], value: 2 },
+          { players: [0, 1], value: 34 },
+          { players: [0, 2], value: 26 },
+          { players: [1, 2], value: 14 },
+          { players: [0, 1, 2], value: 40 },
+        ],
+        orders: [
+          [
+            { player: 0, before: 0, after: 20 },
+            { player: 1, before: 20, after: 34 },
+            { player: 2, before: 34, after: 40 },
+          ],
+          [
+            { player: 2, before: 0, after: 2 },
+            { player: 1, before: 2, after: 14 },
+            { player: 0, before: 14, after: 40 },
+          ],
+        ],
+      },
+      routes: {
+        empty_value: 20,
+        full_value: 40,
+        sampled_orders: null,
+        players: [
+          { player: [0, 1], value: 15, standard_error: null },
+          { player: [1, 2], value: 5, standard_error: null },
+          { player: [1, 0], value: 0, standard_error: null },
+        ],
+        coalitions: [
+          { players: [], value: 20 },
+          { players: [[0, 1]], value: 35 },
+          { players: [[1, 2]], value: 25 },
+          { players: [[1, 0]], value: 20 },
+          {
+            players: [
+              [0, 1],
+              [1, 2],
+            ],
+            value: 40,
+          },
+          {
+            players: [
+              [0, 1],
+              [1, 0],
+            ],
+            value: 35,
+          },
+          {
+            players: [
+              [1, 2],
+              [1, 0],
+            ],
+            value: 25,
+          },
+          {
+            players: [
+              [0, 1],
+              [1, 2],
+              [1, 0],
+            ],
+            value: 40,
+          },
+        ],
+        orders: [
+          [
+            { player: [0, 1], before: 20, after: 35 },
+            { player: [1, 2], before: 35, after: 40 },
+            { player: [1, 0], before: 40, after: 40 },
+          ],
+        ],
+      },
+    },
+  },
+  malformed_rows: 0,
+  warnings: [],
   ...change,
 });
