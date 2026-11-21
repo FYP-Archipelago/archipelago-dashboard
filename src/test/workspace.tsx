@@ -36,3 +36,9 @@ export function button(name: string | RegExp): HTMLButtonElement {
   if (!found) throw new Error(`No button named ${name}`);
   return found;
 }
+
+export function link(name: string): HTMLAnchorElement {
+  const found = named('a', name);
+  if (!found) throw new Error(`No link named ${name}`);
+  return found as HTMLAnchorElement;
+}

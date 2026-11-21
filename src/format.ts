@@ -10,6 +10,8 @@ export const TOPOLOGIES: Record<string, string> = {
 
 export const numberFormat = new Intl.NumberFormat('en');
 
+export const compactNumber = new Intl.NumberFormat('en', { notation: 'compact', maximumFractionDigits: 1 });
+
 const fitnessFormat = new Intl.NumberFormat('en', { maximumSignificantDigits: 6 });
 
 // Fitness ranges from tour lengths in the thousands to errors near zero, so very large and very small values switch to e-notation.
