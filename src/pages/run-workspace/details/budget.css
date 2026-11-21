@@ -1,0 +1,162 @@
+.budget-card {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 24px 56px;
+  margin-bottom: 16px;
+}
+@media (max-width: 900px) {
+  .budget-card {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.budget-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+}
+.budget-row strong {
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+.budget-row strong small {
+  margin-left: 6px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 400;
+  letter-spacing: 0;
+}
+.budget-bar {
+  position: relative;
+  height: 8px;
+  margin: 12px 0 4px;
+  border-radius: 999px;
+  background: var(--surface-3);
+}
+.budget-fill {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  border-radius: 999px;
+  overflow: hidden;
+}
+.budget-fill i {
+  flex: none;
+  height: 100%;
+  box-shadow: inset -1px 0 0 var(--surface);
+  transition: opacity 0.15s;
+}
+.budget-fill i.reached {
+  background: var(--ink-2);
+  box-shadow: none;
+}
+.budget-fill i.range {
+  background: var(--border-strong);
+  box-shadow: none;
+}
+
+/* A stack of dots for islands that stopped close together; it fans out while hovered. */
+.budget-cluster {
+  position: absolute;
+  top: 50%;
+  height: 22px;
+  margin-top: -11px;
+  transform: translateX(-50%);
+  transition:
+    left 0.25s var(--ease),
+    width 0.25s var(--ease);
+}
+.budget-dot {
+  position: absolute;
+  top: 50%;
+  width: 14px;
+  height: 14px;
+  margin: -7px 0 0 -7px;
+  border-radius: 50%;
+  transition:
+    left 0.25s var(--ease),
+    transform 0.2s var(--ease);
+}
+.budget-dot.filled {
+  background: var(--island);
+  box-shadow: 0 0 0 2px var(--surface);
+}
+.budget-card .dim {
+  opacity: 0.25;
+}
+.budget-cluster .dim {
+  opacity: 1;
+}
+.budget-dot.active {
+  transform: scale(1.25);
+}
+
+/* A small card over the hovered part or dot. Near either end of a bar it lines up with that end instead. */
+.budget-tip {
+  position: absolute;
+  bottom: calc(100% + 10px);
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 10px;
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  background: var(--surface-2);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+  font-size: 12.5px;
+  white-space: nowrap;
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+.budget-tip.pinned-left {
+  transform: translateX(-12px);
+}
+.budget-tip.pinned-right {
+  transform: translateX(calc(-100% + 12px));
+}
+.budget-tip b {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+.budget-tip span {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.budget-legend {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+  color: var(--ink-2);
+  font-size: 12.5px;
+}
+.budget-legend-island {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  cursor: default;
+  transition: opacity 0.15s;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .budget-fill i {
+    transform-origin: left;
+    animation: grow-x 0.9s var(--ease) 0.15s backwards;
+  }
+  .budget-cluster {
+    animation: budget-pop-in 0.45s var(--spring) 0.6s backwards;
+  }
+}
+@keyframes budget-pop-in {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) scale(0.4);
+  }
+}

@@ -7,6 +7,8 @@ import { Sparkline } from '@/pages/run-workspace/charts/LineChart.tsx';
 import { NoResult, type ResultQuery } from '@/pages/run-workspace/shared.tsx';
 import type { Run, RunResult, StageDiagnostic } from '@/types.ts';
 
+import Budget from './Budget.tsx';
+
 import './details.css';
 
 const significant = new Intl.NumberFormat('en', { maximumSignificantDigits: 3 });
@@ -337,6 +339,7 @@ export default function DetailsTab({ run, result }: { run: Run; result: ResultQu
   return (
     <>
       <Timing run={run} result={result.data} />
+      {result.data && <Budget run={run} result={result.data} />}
       <div className="settings-grid">
         <Settings title="Search settings" note={description} rows={searchRows(run)} />
         <Settings title="Clustering settings" rows={clusteringRows(run, result.data)} />
