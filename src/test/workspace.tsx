@@ -29,7 +29,7 @@ const named = (selector: string, name: string | RegExp) =>
     return typeof name === 'string' ? label === name : name.test(label);
   });
 
-const findButton = (name: string | RegExp) => named('button', name) as HTMLButtonElement | undefined;
+export const findButton = (name: string | RegExp) => named('button', name) as HTMLButtonElement | undefined;
 
 export function button(name: string | RegExp): HTMLButtonElement {
   const found = findButton(name);

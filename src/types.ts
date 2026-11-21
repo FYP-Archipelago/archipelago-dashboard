@@ -106,7 +106,7 @@ type ShapleyAttribution = {
 };
 
 // How far apart islands' populations sit in genome space, as MMD² between them (0 = the same).
-type Separation = {
+export type Separation = {
   // The run's typical distance between two genomes, the scale the whole-run values are measured at.
   typical_distance: number | null;
   // Each island pair over the whole run; p is a generation-swap test, small meaning a real difference.
