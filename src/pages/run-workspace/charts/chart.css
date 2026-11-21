@@ -33,6 +33,33 @@
     opacity 0.2s,
     stroke-width 0.2s;
 }
+.chart-shades rect {
+  fill: rgba(237, 237, 237, 0.045);
+}
+.chart-shades line {
+  stroke: rgba(237, 237, 237, 0.3);
+}
+.chart-pill path,
+.chart-span path {
+  fill: none;
+  stroke: rgba(237, 237, 237, 0.3);
+}
+.chart-pill rect {
+  fill: var(--surface-2);
+  stroke: var(--border-strong);
+}
+.chart-pill text {
+  fill: var(--ink);
+  font-weight: 500;
+}
+.chart-span text {
+  fill: var(--ink-2);
+}
+.chart-ring {
+  fill: var(--surface);
+  stroke: var(--ink);
+  stroke-width: 1.75;
+}
 .chart-marker {
   fill: var(--ink);
   stroke: var(--surface);
@@ -52,10 +79,35 @@
     stroke-dashoffset: 1;
     animation: draw-line var(--chart-draw-duration) var(--ease) forwards;
   }
+  /* After the lines have drawn, each shade sweeps out from where it starts to the end of the axis. */
+  .chart-shades rect {
+    transform-box: fill-box;
+    transform-origin: left;
+    animation: sweep-shade 0.7s var(--ease) var(--chart-draw-duration) both;
+  }
+  .chart-shades line,
+  .chart-pill,
+  .chart-span,
+  .chart-ring {
+    animation: reveal-after-draw 0.4s ease-out var(--chart-draw-duration) both;
+  }
 }
 @keyframes draw-line {
   to {
     stroke-dashoffset: 0;
+  }
+}
+@keyframes sweep-shade {
+  from {
+    transform: scaleX(0);
+  }
+}
+@keyframes reveal-after-draw {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
   }
 }
 

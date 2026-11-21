@@ -77,6 +77,11 @@
   color: var(--ink-2);
   font-size: 12px;
 }
+.chart-key svg {
+  flex: none;
+  align-self: center;
+  color: var(--muted);
+}
 .chart-key-marker {
   flex: none;
 }
@@ -89,6 +94,15 @@
   border-radius: 50%;
   background: var(--ink);
   transform: translateY(-1px);
+}
+
+.chart-key-ring {
+  flex: none;
+  width: 9px;
+  height: 9px;
+  border: 1.5px solid var(--ink);
+  border-radius: 50%;
+  transform: translateY(1px);
 }
 
 .islands-table {

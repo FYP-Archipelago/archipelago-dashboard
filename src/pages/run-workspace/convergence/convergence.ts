@@ -84,3 +84,51 @@ export function describeDiversity(rows: GenerationSummary[]): string | null {
   const words = metric.replaceAll('_', ' ');
   return words.charAt(0).toUpperCase() + words.slice(1);
 }
+
+// Where the run as a whole had made all but `remainingShare` of its improvement, from the best starting value to the
+// run's best: the first island to get that close, along the given axis. On a log scale the improvement is counted in
+// orders of magnitude, so the point sits where the log chart flattens.
+export function runProgress(
+  histories: IslandHistory[],
+  axis: 'generation' | 'evaluations',
+  maximising: boolean,
+  remainingShare: number,
+  log: boolean
+): { x: number; island: number; value: number } | null {
+  const scale = (value: number) => (log ? Math.log10(value) : value);
+  const better = (a: number, b: number) => (maximising ? a > b : a < b);
+  const starts = histories.map((history) => history.bestSoFar.find((value) => value !== null)).filter((value) => value != null);
+  if (!starts.length) return null;
+  const start = starts.reduce((a, b) => (better(a, b) ? a : b));
+  const final = histories
+    .flatMap((history) => history.bestSoFar)
+    .filter((value) => value !== null)
+    .reduce((a, b) => (better(a, b) ? a : b));
+  const gain = Math.abs(scale(final) - scale(start));
+  if (gain === 0) return null;
+  const threshold = scale(final) + (maximising ? -gain : gain) * remainingShare;
+
+  let first: { x: number; island: number; value: number } | null = null;
+  for (const history of histories) {
+    const index = history.bestSoFar.findIndex((value) => value !== null && (maximising ? scale(value) >= threshold : scale(value) <= threshold));
+    const x = history[axis][index];
+    if (x == null) continue;
+    if (!first || x < first.x) first = { x, island: history.island, value: history.bestSoFar[index]! };
+  }
+  return first;
+}
+
+// The share of all islands' generations or evaluations that came after x.
+export function shareAfter(histories: IslandHistory[], axis: 'generation' | 'evaluations', x: number): number {
+  let after = 0;
+  let total = 0;
+  for (const history of histories) {
+    const xs = (history[axis] as (number | null)[]).filter((value) => value !== null);
+    const first = xs[0];
+    const last = xs.at(-1);
+    if (first === undefined || last === undefined) continue;
+    after += Math.max(0, last - Math.max(x, first));
+    total += last - first;
+  }
+  return total ? after / total : 0;
+}

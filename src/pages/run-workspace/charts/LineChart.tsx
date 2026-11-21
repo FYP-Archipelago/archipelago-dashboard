@@ -21,6 +21,11 @@ type Props = {
   replayKey: string;
   // Called with the x the crosshair snaps to, so other views can follow it.
   onHoverX?: (x: number) => void;
+  // Shaded from each x to the end of the axis, so overlapping shades stack darker. `label` goes in a pill above the
+  // plot, merged with a neighbour too close to fit beside it; `note` labels a span from x to the end, below the axis.
+  shades?: { x: number; label: string; note: string }[];
+  // Hollow points, e.g. where a threshold was crossed.
+  rings?: { x: number; y: number }[];
 };
 
 const MARGIN = { top: 12, right: 16, bottom: 46, left: 60 };
@@ -97,10 +102,15 @@ export default function LineChart({
   marker,
   replayKey,
   onHoverX,
+  shades = [],
+  rings = [],
 }: Props) {
   const [ref, size] = useSize();
   const width = size.width;
-  const height = fixedHeight ?? size.height;
+  // Room for the shades' pills above the plot and their spans below the axis, added to a fixed height.
+  const shadeTop = shades.length ? 26 : 0;
+  const shadeBottom = shades.length * 18;
+  const height = fixedHeight ? fixedHeight + shadeTop + shadeBottom : size.height;
   const [hoverX, setHoverX] = useState<number | null>(null);
   const [pointerY, setPointerY] = useState(0);
 
@@ -113,16 +123,32 @@ export default function LineChart({
     if (!xs.length || !ys.length || width === 0 || height === 0) return null;
     const x0 = Math.min(...xs);
     const x1 = Math.max(...xs);
-    const plotWidth = width - MARGIN.left - MARGIN.right;
+    const plotRight = width - MARGIN.right;
+    const plotWidth = plotRight - MARGIN.left;
     const sx = (x: number) => MARGIN.left + ((x - x0) / (x1 - x0 || 1)) * plotWidth;
-    const plotTop = MARGIN.top;
-    const plotBottom = height - MARGIN.bottom;
+    const plotTop = MARGIN.top + shadeTop;
+    const plotBottom = height - MARGIN.bottom - shadeBottom;
     let y0 = Math.min(...ys);
     let y1 = Math.max(...ys);
     const pad = (y1 - y0) * 0.05 || Math.abs(y0) * 0.1 || 1;
     y0 -= pad;
     y1 += pad;
     const plotHeight = plotBottom - plotTop;
+
+    // Text widths are estimated from the character count; the pills' padding absorbs the difference.
+    const pillWidth = (label: string) => label.length * 6.4 + 16;
+    const pills: { x: number; xs: number[]; label: string; width: number }[] = [];
+    for (const shade of [...shades].sort((a, b) => a.x - b.x)) {
+      const x = sx(shade.x);
+      const previous = pills.at(-1);
+      if (previous && previous.x + previous.width / 2 + 6 > x - pillWidth(shade.label) / 2) {
+        previous.xs.push(x);
+        previous.label += ` · ${shade.label}`;
+        previous.width = pillWidth(previous.label);
+        previous.x = (previous.xs[0]! + x) / 2;
+      } else pills.push({ x, xs: [x], label: shade.label, width: pillWidth(shade.label) });
+    }
+    for (const pill of pills) pill.x = Math.min(Math.max(pill.x, MARGIN.left + pill.width / 2), plotRight - pill.width / 2);
 
     return {
       x0,
@@ -133,10 +159,12 @@ export default function LineChart({
       plotHeight,
       plotTop,
       plotBottom,
+      plotRight,
+      pills,
       xTicks: niceTicks(x0, x1, Math.max(3, Math.floor(plotWidth / 110))),
       yTicks: (log ? logTicks(y0, y1) : niceTicks(y0, y1, 5)).filter((tick) => tick >= y0 && tick <= y1),
     };
-  }, [series, log, width, height]);
+  }, [series, log, width, height, shades, shadeTop, shadeBottom]);
 
   const paths = useMemo(() => {
     if (!scales) return [];
@@ -204,6 +232,56 @@ export default function LineChart({
               {xTitle}
             </text>
           </g>
+          {shades.length > 0 && (
+            <g key={`shades-${replayKey}`} className="chart-shades">
+              {shades.map((shade) => {
+                const x = scales.sx(shade.x);
+                return (
+                  <g key={shade.label}>
+                    <rect x={x} y={scales.plotTop} width={scales.plotRight - x} height={scales.plotHeight} />
+                    <line x1={x} x2={x} y1={scales.plotTop} y2={scales.plotBottom} />
+                  </g>
+                );
+              })}
+              {scales.pills.map((pill) => {
+                const bottom = MARGIN.top + 18;
+                return (
+                  <g key={pill.label} className="chart-pill">
+                    {/* A merged pill joins its shades' lines with a bracket under it. */}
+                    <path
+                      d={`M${pill.x},${bottom}V${scales.plotTop - 3}${pill.xs.length > 1 ? `M${pill.xs[0]},${scales.plotTop}V${scales.plotTop - 3}H${pill.xs.at(-1)}V${scales.plotTop}` : ''}`}
+                    />
+                    <rect x={pill.x - pill.width / 2} y={MARGIN.top} width={pill.width} height={18} rx={9} />
+                    <text x={pill.x} y={MARGIN.top + 9} textAnchor="middle" dominantBaseline="central">
+                      {pill.label}
+                    </text>
+                  </g>
+                );
+              })}
+              {[...shades]
+                .sort((a, b) => a.x - b.x)
+                .map((shade, row) => {
+                  const start = scales.sx(shade.x);
+                  const end = scales.plotRight;
+                  const y = scales.plotBottom + 36 + row * 18;
+                  const textWidth = shade.note.length * 6.2;
+                  // The note sits inside its span when it fits, the span's line broken around it; otherwise just left of it.
+                  const inside = textWidth + 24 <= end - start;
+                  const middle = (start + end) / 2;
+                  const line = inside
+                    ? `M${start},${y}H${middle - textWidth / 2 - 6}M${middle + textWidth / 2 + 6},${y}H${end}`
+                    : `M${start},${y}H${end}`;
+                  return (
+                    <g key={shade.label} className="chart-span">
+                      <path d={`${line}M${start},${y - 3}v6M${end},${y - 3}v6`} />
+                      <text x={inside ? middle : start - 8} y={y} textAnchor={inside ? 'middle' : 'end'} dominantBaseline="central">
+                        {shade.note}
+                      </text>
+                    </g>
+                  );
+                })}
+            </g>
+          )}
           <g key={replayKey}>
             {paths.map((path) => (
               <path
@@ -217,6 +295,12 @@ export default function LineChart({
               />
             ))}
           </g>
+          {rings.map(
+            (ring) =>
+              toY(ring.y) !== null && (
+                <circle key={`${replayKey}-${ring.x}`} className="chart-ring" cx={scales.sx(ring.x)} cy={scales.sy(toY(ring.y)!)} r={4.5} />
+              )
+          )}
           {marker && toY(marker.y) !== null && <circle className="chart-marker" cx={scales.sx(marker.x)} cy={scales.sy(toY(marker.y)!)} r={5} />}
           {hoverX !== null && (
             <g className="chart-hover">

@@ -1,12 +1,13 @@
 import { useMemo, useState } from 'react';
 
 import { islandColor } from '@/colors.ts';
+import Icon from '@/components/Icon.tsx';
 import { compactNumber, fitness, numberFormat } from '@/format.ts';
 import LineChart, { Sparkline } from '@/pages/run-workspace/charts/LineChart.tsx';
 import { EmptyState, NoResult, type ResultQuery } from '@/pages/run-workspace/shared.tsx';
 import type { Run, RunResult } from '@/types.ts';
 
-import { describeDiversity, historyByIsland, runBest, summarise } from './convergence.ts';
+import { describeDiversity, historyByIsland, runBest, runProgress, shareAfter, summarise } from './convergence.ts';
 
 import './convergence.css';
 
@@ -19,6 +20,17 @@ const METRICS: { key: Metric; label: string }[] = [
   { key: 'mean', label: 'Mean fitness' },
   { key: 'diversity', label: 'Diversity' },
 ];
+const CONVERGENCE_THRESHOLDS = [
+  { label: '99%', remainingShare: 0.01 },
+  { label: '99.9%', remainingShare: 0.001 },
+];
+// A threshold counts as convergence only if the improvement left after it came at most this fast compared with the
+// run's average pace: at 0.1, the last 1% must have taken at least 10% of the run, and the last 0.1% at least 1%.
+// Faster than that, the run was still improving when it ended.
+const PLATEAU_PACE = 0.1;
+
+const percentAfter = (share: number) => (share > 0 && share < 0.01 ? '<1%' : `${Math.round(share * 100)}%`);
+
 const formatDiversity = (value: number | null) => (value === null ? '—' : value.toFixed(3));
 
 function Segmented<T extends string>({
@@ -68,6 +80,20 @@ function Convergence({ result }: { result: RunResult }) {
   const canLog = histories.every((history) => history[metric].every((value) => value === null || value > 0));
   const log = logChoice && canLog;
   const isFitness = metric !== 'diversity';
+
+  // The improvement is measured on the scale the best-so-far chart would use, whichever metric is showing.
+  const progressLog = logChoice && histories.every((history) => history.bestSoFar.every((value) => value === null || value > 0));
+  const progress = useMemo(() => {
+    const points = CONVERGENCE_THRESHOLDS.flatMap(({ label, remainingShare }) => {
+      const point = runProgress(histories, axis, maximising, remainingShare, progressLog);
+      return point ? [{ ...point, label, remainingShare, after: shareAfter(histories, axis, point.x) }] : [];
+    });
+    // When both thresholds land on the same point, the stricter one says it all.
+    return points.filter((point, i) => points[i + 1]?.x !== point.x);
+  }, [histories, axis, maximising, progressLog]);
+  const converged = progress.filter((point) => point.remainingShare <= PLATEAU_PACE * point.after);
+  const stillImproving = progress.filter((point) => point.remainingShare > PLATEAU_PACE * point.after);
+  const unit = axis === 'generation' ? 'generations' : 'evaluations';
 
   const series = useMemo(
     () =>
@@ -169,6 +195,12 @@ function Convergence({ result }: { result: RunResult }) {
           better={isFitness && !maximising ? 'lower' : 'higher'}
           highlight={highlight}
           marker={marker}
+          shades={converged.map((point) => ({
+            x: point.x,
+            label: point.label,
+            note: `Last ${point.remainingShare * 100}% of improvement took ${percentAfter(point.after)} of ${unit}`,
+          }))}
+          rings={metric === 'bestSoFar' ? converged.filter((point) => !hidden.has(point.island)).map(({ x, value }) => ({ x, y: value })) : undefined}
           replayKey={`${metric}-${axis}-${log}`}
         />
         <div className="chart-keys">
@@ -176,6 +208,26 @@ function Convergence({ result }: { result: RunResult }) {
             <span className="chart-key">
               <span className="chart-key-marker" aria-hidden="true" />
               Where the run&apos;s best was first reached
+            </span>
+          )}
+          {converged.length > 0 && (
+            <span
+              className="chart-key"
+              title={
+                progressLog
+                  ? 'Improvement counted in orders of magnitude, as the log scale shows it'
+                  : 'Improvement counted on the linear scale, from the best starting value to the run best'
+              }
+            >
+              <span className="chart-key-ring" aria-hidden="true" />
+              Estimated convergence: where the run had made {converged.map((point) => point.label).join(' and ')} of its improvement
+            </span>
+          )}
+          {stillImproving.length > 0 && (
+            <span className="chart-key">
+              <Icon name="trend" size={12} />
+              {converged.length ? `Not converged to ${stillImproving.at(-1)!.label}` : 'No estimated convergence'}: the run was still improving at the
+              end
             </span>
           )}
         </div>

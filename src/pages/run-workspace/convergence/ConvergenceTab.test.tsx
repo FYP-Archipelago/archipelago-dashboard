@@ -44,6 +44,19 @@ describe('ConvergenceTab', () => {
     expect([0, 1, 2].map((island) => pressed(`Island ${island}`))).toEqual(['false', 'false', 'true']);
   });
 
+  it('only calls it convergence when the run had time left after it, not when it was still improving at the end', async () => {
+    await renderWorkspace('convergence');
+    expect(screen.getByText(/^Estimated convergence: /)).toBeTruthy();
+
+    // Island 1 now keeps improving until the last generation, which reaches the run's best.
+    const result = makeResult();
+    const stillImproving = result.generation_history.map((row) =>
+      row.island_id === 1 ? { ...row, best_so_far_fitness: [100, 90, 80, 70, 55][row.generation]! } : row
+    );
+    await renderWorkspace('convergence', { result: { ...result, generation_history: stillImproving } });
+    expect(screen.getByText('No estimated convergence: the run was still improving at the end')).toBeTruthy();
+  });
+
   it('falls back to generations when the runner logged no evaluation counts', async () => {
     const result = makeResult();
     await renderWorkspace('convergence', {

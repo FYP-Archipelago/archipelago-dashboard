@@ -27,6 +27,7 @@ const PATHS = {
     </>
   ),
   check: <path d="m5 12 5 5L20 7" />,
+  trend: <path d="m22 7-8.5 8.5-5-5L2 17M16 7h6v6" />,
   rerun: (
     <>
       <path d="M21 12a9 9 0 1 1-2.6-6.4L21 8" />
