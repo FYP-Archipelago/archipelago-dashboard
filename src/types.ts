@@ -76,11 +76,11 @@ export type GenerationSummary = {
 type StageDiagnostic = number | string | boolean | number[] | null;
 
 // A Shapley player: an island, or a [source, destination] migration route.
-type Player = number | [number, number];
+export type Player = number | [number, number];
 
 // Players' values add up to full_value - empty_value: the improvement the players are needed for. A coalition's value
 // is the best improvement reachable through lineages that stay inside it.
-type ShapleyGame = {
+export type ShapleyGame = {
   empty_value: number;
   full_value: number;
   // Null when every player order was used (exact); otherwise how many orders were sampled.
@@ -93,7 +93,7 @@ type ShapleyGame = {
   orders: { player: Player; before: number; after: number }[][];
 };
 
-type ShapleyAttribution = {
+export type ShapleyAttribution = {
   status: 'ready';
   // Best fitness among the founders, the observed best, and the best whose whole ancestry was logged.
   baseline_fitness: number;
