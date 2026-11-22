@@ -2,7 +2,7 @@ import { useLayoutEffect, useMemo, useRef, useState, type PointerEvent } from 'r
 
 import './chart.css';
 
-type Series = { key: number; label: string; color: string; xs: number[]; ys: (number | null)[] };
+type Series = { key: number; label: string; color: string; xs: number[]; ys: (number | null)[]; endCross?: boolean };
 
 type Props = {
   label: string;
@@ -17,6 +17,7 @@ type Props = {
   better: 'lower' | 'higher';
   highlight: number | null;
   marker: { x: number; y: number } | null;
+  showEndCrosses?: boolean;
   // Lines draw in again whenever this changes, e.g. on a new metric, but not when a series is toggled.
   replayKey: string;
   // Called with the x the crosshair snaps to, so other views can follow it.
@@ -33,6 +34,7 @@ type Props = {
 export type Guide = { x: number; mark: 'up' | 'down' | 'both' };
 
 const MARGIN = { top: 12, right: 16, bottom: 46, left: 60 };
+const END_STAGNATION_CROSS = 'M0,0L-4.5,-4.5M0,0L4.5,4.5M0,0L-4.5,4.5M0,0L4.5,-4.5';
 
 const tickFormat = new Intl.NumberFormat('en', { notation: 'compact', maximumSignificantDigits: 3 });
 
@@ -104,6 +106,7 @@ export default function LineChart({
   better,
   highlight,
   marker,
+  showEndCrosses = false,
   replayKey,
   onHoverX,
   guides = [],
@@ -176,16 +179,20 @@ export default function LineChart({
     return series.map((s) => {
       let d = '';
       let pen = false;
+      let plotX = '';
+      let plotY = '';
       s.xs.forEach((x, i) => {
         const y = s.ys[i] ?? null;
         if (y === null) {
           pen = false;
           return;
         }
-        d += `${pen ? 'L' : 'M'}${scales.sx(x).toFixed(1)},${scales.sy(log ? Math.log10(y) : y).toFixed(1)}`;
+        plotX = scales.sx(x).toFixed(1);
+        plotY = scales.sy(log ? Math.log10(y) : y).toFixed(1);
+        d += `${pen ? 'L' : 'M'}${plotX},${plotY}`;
         pen = true;
       });
-      return { key: s.key, color: s.color, d };
+      return { key: s.key, color: s.color, d, endCross: s.endCross && d ? `translate(${plotX},${plotY})` : null };
     });
   }, [series, scales, log]);
 
@@ -325,6 +332,27 @@ export default function LineChart({
                 opacity={highlight === null || highlight === path.key ? 1 : 0.15}
               />
             ))}
+          </g>
+          <g key={`end-crosses-${replayKey}`} aria-hidden="true">
+            {paths.map(
+              (path) =>
+                path.endCross && (
+                  <g key={path.key} className="chart-end-cross-reveal">
+                    <g
+                      className="chart-end-cross"
+                      data-visible={showEndCrosses}
+                      style={{ color: path.color }}
+                      transform={path.endCross}
+                      opacity={highlight === null || highlight === path.key ? 1 : 0.15}
+                    >
+                      <g className="chart-end-cross-strokes">
+                        <path className="chart-end-cross-outline" d={END_STAGNATION_CROSS} pathLength={1} />
+                        <path d={END_STAGNATION_CROSS} pathLength={1} />
+                      </g>
+                    </g>
+                  </g>
+                )
+            )}
           </g>
           {rings.map(
             (ring) =>

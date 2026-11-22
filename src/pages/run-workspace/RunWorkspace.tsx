@@ -203,6 +203,7 @@ function Header({ run, tab }: { run: Run; tab: RunTab }) {
 export default function RunWorkspace({ id, tab }: { id: string; tab: RunTab }) {
   const run = useRun(id);
   const result = useRunResult(id, run.data?.status === 'done');
+  const [showStagnationMarkers, setShowStagnationMarkers] = useState(false);
 
   if (!run.data)
     return (
@@ -237,7 +238,14 @@ export default function RunWorkspace({ id, tab }: { id: string; tab: RunTab }) {
             <span>{data.error.message}</span>
           </div>
         )}
-        {tab === 'convergence' && <ConvergenceTab run={data} result={result} />}
+        {tab === 'convergence' && (
+          <ConvergenceTab
+            run={data}
+            result={result}
+            showStagnationMarkers={showStagnationMarkers}
+            onToggleStagnationMarkers={() => setShowStagnationMarkers((show) => !show)}
+          />
+        )}
         {tab === 'migration' && <MigrationTab run={data} result={result} />}
         {tab === 'divergence' && <DivergenceTab run={data} result={result} />}
         {tab === 'attribution' && <AttributionTab run={data} result={result} />}

@@ -1,8 +1,8 @@
 import { cleanup, fireEvent, screen } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { makeResult } from '@/test/fixtures.ts';
-import { button, renderWorkspace } from '@/test/workspace.tsx';
+import { button, findButton, renderWorkspace } from '@/test/workspace.tsx';
 
 const pressed = (name: string) => button(name).getAttribute('aria-pressed');
 
@@ -44,6 +44,15 @@ describe('ConvergenceTab', () => {
     expect([0, 1, 2].map((island) => pressed(`Island ${island}`))).toEqual(['false', 'false', 'true']);
   });
 
+  it('hides the chart switch when the runner stopped no island on stagnation, even one that went the limit without improving', async () => {
+    const result = makeResult();
+    result.island_ends = result.island_ends.map((end) => ({ ...end, termination_reason: 'max_evaluations' }));
+    await renderWorkspace('convergence', { result });
+
+    expect(findButton('Stagnation markers')).toBeUndefined();
+    expect(screen.queryByText('Stagnated')).toBeNull();
+  });
+
   it('flags the islands the runner stopped on stagnation, and none when the run has no island ends', async () => {
     const flagged = () =>
       [...document.querySelectorAll('.stagnation-flag')].map(
@@ -68,6 +77,49 @@ describe('ConvergenceTab', () => {
     cleanup();
     await renderWorkspace('convergence', { result: makeResult({ island_ends: [] }) });
     expect(flagged()).toEqual([]);
+  });
+
+  it('labels stagnated islands and lets users turn their chart markers on without redrawing their lines', async () => {
+    vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(720);
+    const result = makeResult();
+    result.island_ends = result.island_ends.map((end) => (end.island_id === 0 ? { ...end, termination_reason: 'max_evaluations' } : end));
+    result.generation_history.find((row) => row.island_id === 1 && row.generation === 4)!.mean_fitness = null;
+    await renderWorkspace('convergence', { result });
+
+    const markers = button('Stagnation markers');
+    const firstLine = document.querySelector('.chart-line');
+    const firstCross = document.querySelector('.chart-end-cross')!;
+    expect(markers.closest('.chart-card')).toBeTruthy();
+    expect(markers.getAttribute('aria-checked')).toBe('false');
+    expect(firstCross.getAttribute('data-visible')).toBe('false');
+    expect(screen.getByTitle('Stagnation limit: 2 generations').textContent).toBe('Stagnated');
+    expect(screen.queryByText('Island stopped at the stagnation limit')).toBeNull();
+
+    fireEvent.click(markers);
+    expect(markers.getAttribute('aria-checked')).toBe('true');
+    expect(firstCross.getAttribute('data-visible')).toBe('true');
+    expect(document.querySelector('.chart-line')).toBe(firstLine);
+    expect(screen.getByText('Island stopped at the stagnation limit')).toBeTruthy();
+
+    fireEvent.click(markers);
+    expect(document.querySelector('.chart-end-cross')).toBe(firstCross);
+    expect(firstCross.getAttribute('data-visible')).toBe('false');
+    expect(screen.queryByText('Island stopped at the stagnation limit')).toBeNull();
+    fireEvent.click(markers);
+
+    fireEvent.click(button('Mean fitness'));
+    fireEvent.click(button('Generations'));
+    const crosses = document.querySelectorAll('.chart-end-cross');
+    const islandLine = document.querySelectorAll('.chart-line')[1]!;
+    const lastPlottedPoint = islandLine.getAttribute('d')!.split('L').at(-1);
+    expect(crosses).toHaveLength(1);
+    expect(crosses[0]).not.toBe(firstCross);
+    expect(crosses[0]!.getAttribute('transform')).toBe(`translate(${lastPlottedPoint})`);
+
+    fireEvent.click(button('Island 1'));
+    expect(document.querySelector('.chart-end-cross')).toBeNull();
+    fireEvent.click(button('Island 1'));
+    expect(document.querySelector('.chart-end-cross')?.getAttribute('data-visible')).toBe('true');
   });
 
   it('only calls it convergence when the run had time left after it, not when it was still improving at the end', async () => {

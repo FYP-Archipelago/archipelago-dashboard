@@ -85,13 +85,22 @@ function WithoutImprovement({ end, limit }: { end: IslandEnd | undefined; limit:
   );
 }
 
-function Convergence({ result }: { result: RunResult }) {
+type StagnationControl = {
+  showStagnationMarkers: boolean;
+  onToggleStagnationMarkers: () => void;
+};
+
+function Convergence({ result, showStagnationMarkers, onToggleStagnationMarkers }: { result: RunResult } & StagnationControl) {
   const maximising = result.run.maximising;
   const histories = useMemo(() => historyByIsland(result.generation_history), [result]);
   const summaries = useMemo(() => histories.map((history) => summarise(history, maximising)), [histories, maximising]);
   const best = runBest(summaries, maximising);
   const diversityName = describeDiversity(result.generation_history);
   const stagnationLimit = result.run.stagnation_generations ?? 0;
+  const stagnatedIslands = useMemo(
+    () => new Set(result.island_ends.filter((end) => end.termination_reason === 'stagnation').map((end) => end.island_id)),
+    [result.island_ends]
+  );
 
   const [metric, setMetric] = useState<Metric>('bestSoFar');
   const [axisChoice, setAxis] = useState<Axis>('evaluations');
@@ -129,8 +138,9 @@ function Convergence({ result }: { result: RunResult }) {
           color: islandColor(history.island),
           xs: axis === 'generation' ? history.generation : (history.evaluations as number[]),
           ys: history[metric],
+          endCross: stagnatedIslands.has(history.island) && history[metric].some((value) => value !== null),
         })),
-    [histories, hidden, axis, metric]
+    [histories, hidden, axis, metric, stagnatedIslands]
   );
 
   const toggle = (island: number) =>
@@ -206,6 +216,18 @@ function Convergence({ result }: { result: RunResult }) {
               ]}
               onChange={setAxis}
             />
+            {stagnatedIslands.size > 0 && (
+              <button
+                className="stagnation-switch"
+                type="button"
+                role="switch"
+                aria-checked={showStagnationMarkers}
+                onClick={onToggleStagnationMarkers}
+              >
+                Stagnation markers
+                <span className="stagnation-switch-track" aria-hidden="true" />
+              </button>
+            )}
           </div>
         </div>
         <LineChart
@@ -219,6 +241,7 @@ function Convergence({ result }: { result: RunResult }) {
           better={isFitness && !maximising ? 'lower' : 'higher'}
           highlight={highlight}
           marker={marker}
+          showEndCrosses={showStagnationMarkers}
           shades={converged.map((point) => ({
             x: point.x,
             label: point.label,
@@ -245,6 +268,12 @@ function Convergence({ result }: { result: RunResult }) {
             >
               <span className="chart-key-ring" aria-hidden="true" />
               <span>Estimated convergence: where the run had made {converged.map((point) => point.label).join(' and ')} of its improvement</span>
+            </span>
+          )}
+          {showStagnationMarkers && series.some((line) => line.endCross) && (
+            <span className="chart-key chart-key-stagnation">
+              <Icon name="x" size={11} stroke={2.5} />
+              Island stopped at the stagnation limit
             </span>
           )}
           {stillImproving.length > 0 && (
@@ -324,7 +353,7 @@ function Convergence({ result }: { result: RunResult }) {
   );
 }
 
-export default function ConvergenceTab({ run, result }: { run: Run; result: ResultQuery }) {
+export default function ConvergenceTab({ run, result, ...stagnationControl }: { run: Run; result: ResultQuery } & StagnationControl) {
   if (!result.data) return <NoResult run={run} result={result} />;
-  return <Convergence result={result.data} />;
+  return <Convergence result={result.data} {...stagnationControl} />;
 }

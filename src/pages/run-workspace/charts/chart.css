@@ -72,6 +72,20 @@
   stroke: var(--surface);
   stroke-width: 2;
 }
+.chart-end-cross {
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-width: 2.25;
+  transition: opacity 0.2s;
+}
+.chart-end-cross-outline {
+  stroke: var(--surface);
+  stroke-width: 5.5;
+}
+.chart-end-cross[data-visible='false'] .chart-end-cross-strokes {
+  opacity: 0;
+}
 .chart-hover line {
   stroke: var(--border-strong);
   stroke-dasharray: 3 3;
@@ -86,7 +100,20 @@
     stroke-dashoffset: 1;
     animation: draw-line var(--chart-draw-duration) var(--ease) forwards;
   }
-  /* After the lines have drawn, each shade sweeps out from where it starts to the end of the axis. */
+  .chart-end-cross-reveal {
+    stroke-dasharray: 0.25 1;
+    animation: draw-end-cross 0.26s ease-out var(--chart-draw-duration) both;
+  }
+  .chart-end-cross-strokes {
+    transform-box: fill-box;
+    transform-origin: center;
+    transition:
+      opacity 0.18s ease-out,
+      transform 0.45s var(--ease);
+  }
+  .chart-end-cross[data-visible='false'] .chart-end-cross-strokes {
+    transform: rotate(-45deg) scale(0.4);
+  }
   .chart-shades rect {
     transform-box: fill-box;
     transform-origin: left;
@@ -101,6 +128,19 @@
 }
 @keyframes draw-line {
   to {
+    stroke-dashoffset: 0;
+  }
+}
+@keyframes draw-end-cross {
+  from {
+    opacity: 0;
+    stroke-dashoffset: 0.25;
+  }
+  35% {
+    opacity: 1;
+  }
+  to {
+    opacity: 1;
     stroke-dashoffset: 0;
   }
 }
