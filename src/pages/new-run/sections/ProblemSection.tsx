@@ -72,24 +72,28 @@ const BenchGlyph = memo(function BenchGlyph({ benchmark, instance, variant }: { 
   if (benchmark === 'tsp') {
     const tour = tspTour(instance);
     const path = toPath(tour, true);
-    const cities = tour.map((city, i) => <circle key={i} className="g-dot" cx={city[0]} cy={city[1]} r={2.2} />);
+    const cities = tour.map((city, i) => <circle key={i} className="preset-glyph-dot" cx={city[0]} cy={city[1]} r={2.2} />);
     if (variant % 2 === 0)
       // Berlin52
       body = (
         <>
-          <path className="g-line g-draw" pathLength={1} d={path} style={vars({ '--t': '1.8s', '--e': 'linear' })} />
+          <path className="preset-glyph-line preset-glyph-draw" pathLength={1} d={path} style={vars({ '--t': '1.8s', '--e': 'linear' })} />
           {cities}
-          <circle className="g-ball g-travel" r={3} style={vars({ offsetPath: `path("${path}")`, '--t': '1.8s', '--e': 'linear' })} />
+          <circle
+            className="preset-glyph-ball preset-glyph-travel"
+            r={3}
+            style={vars({ offsetPath: `path("${path}")`, '--t': '1.8s', '--e': 'linear' })}
+          />
         </>
       );
     else {
       // KroA100
       body = (
         <>
-          <path className="g-line g-fade" d={path} style={vars({ '--d': `${tour.length * 0.04 + 0.1}s` })} />
-          <path className="g-glint" pathLength={1} d={path} style={vars({ '--d': `${tour.length * 0.04 + 0.35}s` })} />
+          <path className="preset-glyph-line preset-glyph-fade" d={path} style={vars({ '--d': `${tour.length * 0.04 + 0.1}s` })} />
+          <path className="preset-glyph-glint" pathLength={1} d={path} style={vars({ '--d': `${tour.length * 0.04 + 0.35}s` })} />
           {tour.map((city, i) => (
-            <circle key={i} className="g-dot g-pop" cx={city[0]} cy={city[1]} r={2.2} style={vars({ '--d': `${i * 0.04}s` })} />
+            <circle key={i} className="preset-glyph-dot preset-glyph-pop" cx={city[0]} cy={city[1]} r={2.2} style={vars({ '--d': `${i * 0.04}s` })} />
           ))}
         </>
       );
@@ -101,18 +105,24 @@ const BenchGlyph = memo(function BenchGlyph({ benchmark, instance, variant }: { 
     const best = deepest(points, minima);
     body = (
       <>
-        <path className="g-line" d={toPath(points)} />
+        <path className="preset-glyph-line" d={toPath(points)} />
         {minima.map((i, k) => (
           <circle
             key={i}
-            className={`g-pop ${i === best ? 'g-dot' : 'g-hollow'}`}
+            className={`preset-glyph-pop ${i === best ? 'preset-glyph-dot' : 'preset-glyph-hollow'}`}
             cx={points[i]![0]}
             cy={points[i]![1]}
             r={2.2}
             style={vars({ '--d': `${0.1 + k * 0.09}s` })}
           />
         ))}
-        <circle className="g-ring" cx={points[best]![0]} cy={points[best]![1]} r={6} style={vars({ '--d': `${0.2 + minima.length * 0.09}s` })} />
+        <circle
+          className="preset-glyph-ring"
+          cx={points[best]![0]}
+          cy={points[best]![1]}
+          r={6}
+          style={vars({ '--d': `${0.2 + minima.length * 0.09}s` })}
+        />
       </>
     );
   } else if (benchmark === 'ackley') {
@@ -122,10 +132,10 @@ const BenchGlyph = memo(function BenchGlyph({ benchmark, instance, variant }: { 
     const [cx, cy] = points[centre]!;
     body = (
       <>
-        <path className="g-line" d={toPath(points)} />
-        <circle className="g-ripple" cx={cx} cy={cy - 3} r={9} style={vars({ '--d': '1.15s' })} />
+        <path className="preset-glyph-line" d={toPath(points)} />
+        <circle className="preset-glyph-ripple" cx={cx} cy={cy - 3} r={9} style={vars({ '--d': '1.15s' })} />
         <circle
-          className="g-ball g-travel"
+          className="preset-glyph-ball preset-glyph-travel"
           r={2.8}
           style={vars({ offsetPath: `path("${roll}")`, '--t': '1.2s', '--e': 'cubic-bezier(0.55, 0, 0.9, 0.6)' })}
         />
@@ -144,10 +154,10 @@ const BenchGlyph = memo(function BenchGlyph({ benchmark, instance, variant }: { 
     const leap = `M${trapX.toFixed(1)},${(trapY - 3).toFixed(1)} Q${((trapX + bestX) / 2).toFixed(1)},${(Math.min(trapY, bestY) - 34).toFixed(1)} ${bestX.toFixed(1)},${(bestY - 3).toFixed(1)}`;
     body = (
       <>
-        <path className="g-line" d={toPath(points)} />
-        <path className="g-leap" pathLength={1} d={leap} />
-        <circle className="g-hollow g-lure" cx={trapX} cy={trapY - 3} r={3.4} />
-        <circle className="g-ball g-jump" r={2.8} style={vars({ offsetPath: `path("${leap}")` })} />
+        <path className="preset-glyph-line" d={toPath(points)} />
+        <path className="preset-glyph-leap" pathLength={1} d={leap} />
+        <circle className="preset-glyph-hollow preset-glyph-lure" cx={trapX} cy={trapY - 3} r={3.4} />
+        <circle className="preset-glyph-ball preset-glyph-jump" r={2.8} style={vars({ offsetPath: `path("${leap}")` })} />
       </>
     );
   } else if (benchmark === 'sphere') {
@@ -156,19 +166,27 @@ const BenchGlyph = memo(function BenchGlyph({ benchmark, instance, variant }: { 
     body = (
       <>
         {[22, 15, 8].map((r, i) => (
-          <ellipse key={r} className="g-line g-contract" cx={cx} cy={cy} rx={r * 2} ry={r} style={vars({ '--d': `${i * 0.12}s` })} />
+          <ellipse
+            key={r}
+            className="preset-glyph-line preset-glyph-contract"
+            cx={cx}
+            cy={cy}
+            rx={r * 2}
+            ry={r}
+            style={vars({ '--d': `${i * 0.12}s` })}
+          />
         ))}
         {steps.map((t, i) => (
           <circle
             key={t}
-            className="g-dot g-step"
+            className="preset-glyph-dot preset-glyph-step"
             cx={cx - 44 + 44 * t}
             cy={cy - 17 + 17 * t}
             r={1.9}
             style={vars({ '--d': `${0.35 + i * 0.16}s` })}
           />
         ))}
-        <circle className="g-dot g-pop" cx={cx} cy={cy} r={2.8} style={vars({ '--d': '1.15s' })} />
+        <circle className="preset-glyph-dot preset-glyph-pop" cx={cx} cy={cy} r={2.8} style={vars({ '--d': '1.15s' })} />
       </>
     );
   } else if (benchmark === 'knapsack') {
@@ -181,11 +199,28 @@ const BenchGlyph = memo(function BenchGlyph({ benchmark, instance, variant }: { 
     ];
     body = (
       <>
-        <path className="g-line" d="M20,10 L20,46 L92,46 L92,10" />
+        <path className="preset-glyph-line" d="M20,10 L20,46 L92,46 L92,10" />
         {items.map(([x, y, w, h], i) => (
-          <rect key={i} className="g-box g-drop" x={x} y={y} width={w} height={h} rx={1.5} style={vars({ '--d': `${i * 0.14}s` })} />
+          <rect
+            key={i}
+            className="preset-glyph-box preset-glyph-drop"
+            x={x}
+            y={y}
+            width={w}
+            height={h}
+            rx={1.5}
+            style={vars({ '--d': `${i * 0.14}s` })}
+          />
         ))}
-        <rect className="g-box g-reject" x={40} y={2} width={30} height={9} rx={1.5} style={vars({ '--d': `${items.length * 0.14 + 0.1}s` })} />
+        <rect
+          className="preset-glyph-box preset-glyph-reject"
+          x={40}
+          y={2}
+          width={30}
+          height={9}
+          rx={1.5}
+          style={vars({ '--d': `${items.length * 0.14 + 0.1}s` })}
+        />
       </>
     );
   } else if (benchmark === 'nguyen7') {
@@ -212,14 +247,14 @@ const BenchGlyph = memo(function BenchGlyph({ benchmark, instance, variant }: { 
         {links.map(([parent, child]) => (
           <path
             key={child}
-            className="g-line g-draw"
+            className="preset-glyph-line preset-glyph-draw"
             pathLength={1}
             d={toPath([nodes[parent]!, nodes[child]!])}
             style={vars({ '--t': '0.3s', '--d': `${level[child]! * 0.32 - 0.22}s` })}
           />
         ))}
         {nodes.map(([x, y], i) => (
-          <circle key={i} className="g-dot g-pop" cx={x} cy={y} r={3} style={vars({ '--d': `${level[i]! * 0.32}s` })} />
+          <circle key={i} className="preset-glyph-dot preset-glyph-pop" cx={x} cy={y} r={3} style={vars({ '--d': `${level[i]! * 0.32}s` })} />
         ))}
       </>
     );
@@ -232,9 +267,16 @@ const BenchGlyph = memo(function BenchGlyph({ benchmark, instance, variant }: { 
     body = (
       <>
         {samples.map((x, i) => (
-          <circle key={x} className="g-dot g-pop" cx={x} cy={model(x) + (i % 3) * 3 - 3} r={2.2} style={vars({ '--d': `${i * 0.05}s` })} />
+          <circle
+            key={x}
+            className="preset-glyph-dot preset-glyph-pop"
+            cx={x}
+            cy={model(x) + (i % 3) * 3 - 3}
+            r={2.2}
+            style={vars({ '--d': `${i * 0.05}s` })}
+          />
         ))}
-        <path className="g-line g-morph" d={fit} style={vars({ '--from': `path("${flat}")`, '--d': '0.6s', '--t': '1s' })} />
+        <path className="preset-glyph-line preset-glyph-morph" d={fit} style={vars({ '--from': `path("${flat}")`, '--d': '0.6s', '--t': '1s' })} />
       </>
     );
   }
@@ -248,9 +290,9 @@ const BenchGlyph = memo(function BenchGlyph({ benchmark, instance, variant }: { 
 
 export default function ProblemSection({ presets, form, patch }: { presets: Preset[]; form: Form; patch: Patch }) {
   return (
-    <section className="nr-step">
+    <section className="new-run-step">
       <h2>Problem</h2>
-      <p className="desc">What to optimise, and with which algorithm. Optimal defaults come with each.</p>
+      <p className="new-run-step-description">What to optimise, and with which algorithm. Optimal defaults come with each.</p>
       <div className="presets" role="radiogroup" aria-label="Problem">
         {presets.map((preset, index) => {
           // Preset names are <ALGORITHM>_<Problem>.
@@ -259,23 +301,23 @@ export default function ProblemSection({ presets, form, patch }: { presets: Pres
           return (
             <button
               key={preset.preset}
-              className={`preset${on ? ' on' : ''}`}
+              className={`preset-option${on ? ' preset-option-on' : ''}`}
               role="radio"
               aria-checked={on}
               title={preset.description}
               onClick={() => !on && patch(presetSettings(preset))}
             >
-              <span className="glyph">
+              <span className="preset-glyph">
                 <BenchGlyph
                   benchmark={preset.benchmark}
                   instance={preset.preset}
                   variant={presets.slice(0, index).filter((other) => other.benchmark === preset.benchmark).length}
                 />
               </span>
-              <span className="pcheck">
+              <span className="preset-checkmark">
                 <Icon name="check" size={13} stroke={2.4} />
               </span>
-              <span className="ptext">
+              <span className="preset-description">
                 <strong>{problem}</strong>
                 <small>{ALGORITHMS[preset.algorithm] ?? preset.algorithm.toUpperCase()}</small>
               </span>

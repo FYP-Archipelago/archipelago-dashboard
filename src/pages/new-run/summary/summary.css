@@ -1,15 +1,15 @@
-.summary {
+.new-run-summary {
   position: sticky;
   top: 24px;
 }
 
-.summary h3 {
+.new-run-summary h3 {
   margin: 0 0 16px;
   font-size: 14px;
   font-weight: 600;
 }
 
-.summary .field {
+.new-run-summary .new-run-field {
   margin-bottom: 18px;
 }
 
@@ -22,38 +22,38 @@
   flex: 1;
 }
 
-.shuffle span {
+.name-shuffle span {
   display: grid;
   transition: transform 0.3s var(--ease);
 }
 
-.shuffle:hover span {
+.name-shuffle:hover span {
   transform: rotate(-150deg);
 }
 
-.shuffle .spun {
+.name-shuffle .name-shuffle-spun {
   animation: unspin 0.6s var(--ease);
 }
 
-.summary dl {
+.new-run-summary dl {
   display: grid;
   grid-template-columns: auto 1fr;
   gap: 10px 16px;
   margin: 0;
 }
 
-.summary dt {
+.new-run-summary dt {
   color: var(--muted);
 }
 
-.summary dd {
+.new-run-summary dd {
   margin: 0;
   text-align: right;
   font-weight: 500;
   overflow-wrap: anywhere;
 }
 
-.summary hr {
+.new-run-summary hr {
   margin: 16px 0;
   border: 0;
   border-top: 1px solid var(--border);
@@ -80,16 +80,16 @@
 }
 
 @media (max-width: 1200px) {
-  .summary {
+  .new-run-summary {
     position: static;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .shuffle span {
+  .name-shuffle span {
     transition: none;
   }
-  .shuffle .spun {
+  .name-shuffle .name-shuffle-spun {
     animation: none;
   }
 }

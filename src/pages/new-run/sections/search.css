@@ -1,11 +1,11 @@
 /* Search tiles */
-.sd {
+.search-settings {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
   gap: 10px;
 }
 
-.sd-tile {
+.search-setting-tile {
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -16,19 +16,19 @@
   transition: border-color 0.2s;
 }
 
-.sd-tile:focus-within,
-.sd-tile:hover {
+.search-setting-tile:focus-within,
+.search-setting-tile:hover {
   border-color: var(--border-strong);
 }
 
-.sd-l {
+.search-setting-label {
   color: var(--muted);
   font-size: 12.5px;
   font-weight: 500;
 }
 
-.sd-big,
-.sd-input {
+.search-setting-value,
+.search-setting-input {
   font-size: 30px;
   font-weight: 600;
   letter-spacing: -0.04em;
@@ -36,7 +36,7 @@
   font-variant-numeric: tabular-nums;
 }
 
-.sd-input {
+.search-setting-input {
   width: 100%;
   min-width: 0;
   padding: 0;
@@ -47,30 +47,30 @@
   transition: border-color 0.2s;
 }
 
-.sd-input:focus {
+.search-setting-input:focus {
   border-bottom-color: var(--accent);
 }
 
-.sd-input::placeholder {
+.search-setting-input::placeholder {
   color: var(--muted);
 }
 
-.sd-input.invalid {
+.search-setting-input.search-setting-input-invalid {
   color: var(--critical);
 }
 
-.sd-big {
+.search-setting-value {
   min-width: 1.2ch;
   text-align: center;
 }
 
-.sd-chips {
+.search-setting-quick-picks {
   display: flex;
   flex-wrap: wrap;
   gap: 4px;
 }
 
-.sd-chips button {
+.search-setting-quick-picks button {
   padding: 1px 8px;
   border-radius: 999px;
   border: 1px solid var(--border);
@@ -82,12 +82,12 @@
     background 0.2s;
 }
 
-.sd-chips button:hover {
+.search-setting-quick-picks button:hover {
   color: var(--ink);
   border-color: var(--border-strong);
 }
 
-.sd-chips button.on {
+.search-setting-quick-picks button.search-setting-quick-pick-selected {
   background: var(--surface-3);
   border-color: var(--border-strong);
   color: var(--ink);
@@ -133,6 +133,6 @@
 
 @media (prefers-reduced-motion: no-preference) {
   .roll-dots span {
-    animation: g-pop 0.45s var(--spring) backwards;
+    animation: point-pop-in 0.45s var(--spring) backwards;
   }
 }

@@ -23,13 +23,13 @@ type Row = { label: string; value: ReactNode; off?: string };
 function Settings({ title, note, rows }: { title: string; note?: string; rows: Row[] }) {
   return (
     <section className="card settings-card">
-      <div className="card-head card-heading">
+      <div className="card-header card-heading">
         <h3>{title}</h3>
         {note && <span className="muted">{note}</span>}
       </div>
       <dl className="settings-list">
         {rows.map((row) => (
-          <div key={row.label} className={row.off ? 'off' : undefined} title={row.off}>
+          <div key={row.label} className={row.off ? 'settings-row-off' : undefined} title={row.off}>
             <dt>{row.label}</dt>
             <dd>{row.off ? '—' : row.value}</dd>
           </div>
@@ -55,7 +55,7 @@ function searchRows(run: Run): Row[] {
   const settings = run.run_settings;
   const migrationOff = settings['migration.enabled'] ? undefined : 'Not used: migration is off';
   const rows: Row[] = [
-    { label: 'Preset', value: <span className="mono">{run.preset}</span> },
+    { label: 'Preset', value: <span className="monospace">{run.preset}</span> },
     { label: 'Islands', value: settings.num_islands },
     { label: 'Evaluation budget', value: numberFormat.format(settings.evaluation_budget) },
     { label: 'Target generations', value: numberFormat.format(settings.target_generations) },
@@ -128,7 +128,7 @@ function Timing({ run, result }: { run: Run; result: RunResult | undefined }) {
     ],
   ];
   return (
-    <section className="card stat-strip compact">
+    <section className="card stat-strip stat-strip-compact">
       {items.map(([label, value, hint]) => (
         <div key={label} title={hint}>
           <span className="muted">{label}</span>
@@ -180,7 +180,7 @@ function Stage({ stage, diagnostics }: { stage: string; diagnostics: Record<stri
           <strong>{numberFormat.format(out)}</strong> clusters out
         </p>
       )}
-      <dl className="kv">
+      <dl className="key-value-list">
         {counts.map(([key, value]) => (
           <div key={key}>
             <dt>{humanise(key)}</dt>
@@ -245,7 +245,7 @@ function Quality({ result }: { result: RunResult }) {
       <h2 className="section-title">Layout and data quality</h2>
       <div className="quality-grid">
         <section className="card">
-          <div className="card-head">
+          <div className="card-header">
             <h3>Layout</h3>
             <span className="tag">{layout.method.toUpperCase()}</span>
           </div>
@@ -260,7 +260,7 @@ function Quality({ result }: { result: RunResult }) {
                 <span className="ink-2">{label}</span>
                 <strong>{(share * 100).toFixed(1)}%</strong>
               </div>
-              <div className="meter">
+              <div className="quality-meter">
                 <i style={{ width: `${share * 100}%` }} />
               </div>
             </div>
@@ -268,10 +268,10 @@ function Quality({ result }: { result: RunResult }) {
           <p className="hint">Note that distances in the network are approximate.</p>
         </section>
         <section className="card">
-          <div className="card-head">
+          <div className="card-header">
             <h3>Graph</h3>
           </div>
-          <dl className="kv">
+          <dl className="key-value-list">
             <div>
               <dt>Search clusters</dt>
               <dd>{numberFormat.format(clustering.counts.nodes)}</dd>
@@ -291,14 +291,14 @@ function Quality({ result }: { result: RunResult }) {
           </dl>
         </section>
         <section className="card">
-          <div className="card-head">
+          <div className="card-header">
             <h3>Data quality</h3>
-            <span className="pill">
+            <span className="run-status-pill">
               <span className={`dot ${clean ? 'done' : 'warning'}`} />
               {clean ? 'Clean' : issues === 1 ? '1 issue' : `${issues} issues`}
             </span>
           </div>
-          <dl className="kv">
+          <dl className="key-value-list">
             <div>
               <dt>Rows clustered</dt>
               <dd>{numberFormat.format(clustering.counts.rows_clustered)}</dd>
@@ -321,7 +321,7 @@ function Quality({ result }: { result: RunResult }) {
             </div>
           </dl>
           {warnings.length > 0 && (
-            <ul className="warnings">
+            <ul className="quality-warnings">
               {warnings.map((warning, i) => (
                 <li key={i}>{warning}</li>
               ))}

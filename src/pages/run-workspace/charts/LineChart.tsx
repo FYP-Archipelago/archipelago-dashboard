@@ -215,7 +215,7 @@ export default function LineChart({
           .sort((a, b) => (a.y === null ? 1 : b.y === null ? -1 : better === 'lower' ? a.y - b.y : b.y - a.y));
 
   return (
-    <div ref={ref} className={`chart${fixedHeight ? '' : ' fill'}`} style={fixedHeight ? { height } : undefined}>
+    <div ref={ref} className={`chart${fixedHeight ? '' : ' chart-fill'}`} style={fixedHeight ? { height } : undefined}>
       {scales && (
         <svg width={width} height={height} role="img" aria-label={label}>
           <g className="chart-grid">

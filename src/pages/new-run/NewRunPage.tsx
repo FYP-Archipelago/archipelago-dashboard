@@ -88,8 +88,8 @@ function NewRunForm({ presets, preset, source }: { presets: Presets; preset: Pre
   }, [submit.phase, submit.runId]);
 
   return (
-    <div className="nr">
-      <div className="nr-steps">
+    <div className="new-run-layout">
+      <div className="new-run-steps">
         <ProblemSection presets={presets.presets} form={form} patch={patch} />
         <SearchSection form={form} errors={errors} overrides={presets.overrides} patch={patch} setText={setText} />
         <MigrationSection form={form} errors={errors} overrides={presets.overrides} patch={patch} setText={setText} step={step} />
@@ -147,7 +147,7 @@ export default function NewRunPage({ sourceId }: { sourceId?: string }) {
 
   return (
     <div className="page">
-      <div className="page-h">
+      <div className="page-header">
         <h1>New Run</h1>
       </div>
       {body}

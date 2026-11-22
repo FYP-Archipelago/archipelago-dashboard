@@ -23,21 +23,21 @@ export default function Summary({ form, errors, submit, patch, onLaunch }: Summa
   const stages = STAGES.filter((stage) => form.clustering[stage.key]).map((stage) => stage.label);
 
   return (
-    <aside className="card summary">
+    <aside className="card new-run-summary">
       <h3>Summary</h3>
-      <div className="field">
+      <div className="new-run-field">
         <label htmlFor="run-name">Run name</label>
         <div className="name-row">
           <input
             id="run-name"
-            className={`input mono${errors.name ? ' invalid' : ''}`}
+            className={`input monospace${errors.name ? ' new-run-input-invalid' : ''}`}
             value={form.name}
             maxLength={NAME_MAX}
             spellCheck={false}
             onChange={(event) => patch({ name: event.target.value })}
           />
           <button
-            className="btn btn-icon shuffle"
+            className="button icon-button name-shuffle"
             title="Generate another name"
             aria-label="Generate another name"
             onClick={() => {
@@ -45,7 +45,7 @@ export default function Summary({ form, errors, submit, patch, onLaunch }: Summa
               setSpins((n) => n + 1);
             }}
           >
-            <span key={spins} className={spins ? 'spun' : undefined}>
+            <span key={spins} className={spins ? 'name-shuffle-spun' : undefined}>
               <Icon name="rerun" size={14} />
             </span>
           </button>

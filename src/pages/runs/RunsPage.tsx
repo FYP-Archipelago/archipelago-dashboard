@@ -38,7 +38,9 @@ function DurationCell({ run }: { run: Run }) {
   const start = run.started_at ? Date.parse(run.started_at) : null;
   const end = run.finished_at ? Date.parse(run.finished_at) : counting ? now : null;
   return (
-    <td className={`r duration ${run.status === 'done' ? 'ink-2' : 'muted'}`}>{start !== null && end !== null ? duration(end - start) : '—'}</td>
+    <td className={`align-right run-duration ${run.status === 'done' ? 'ink-2' : 'muted'}`}>
+      {start !== null && end !== null ? duration(end - start) : '—'}
+    </td>
   );
 }
 
@@ -46,7 +48,7 @@ function RunRow({ run }: { run: Run }) {
   // Preset names are <algorithm>_<problem>.
   const cut = run.preset.indexOf('_');
   return (
-    <tr className="click" onClick={(event) => !(event.target as Element).closest('a') && navigate(runHref(run.run_id))}>
+    <tr className="run-row-link" onClick={(event) => !(event.target as Element).closest('a') && navigate(runHref(run.run_id))}>
       <td>
         <span className="status-cell" title={run.error ? `${run.error.phase}: ${run.error.message}` : undefined}>
           <span className={`dot ${run.status}`} />
@@ -58,32 +60,36 @@ function RunRow({ run }: { run: Run }) {
           <Link href={runHref(run.run_id)} title={run.run_name}>
             {run.run_name}
           </Link>
-          <span className="mono muted" title={run.run_id}>
+          <span className="monospace muted" title={run.run_id}>
             {run.run_id}
           </span>
         </div>
       </td>
       <td className="ink-2 preset-part">{run.preset.slice(0, cut)}</td>
       <td className="ink-2 preset-part">{run.preset.slice(cut + 1)}</td>
-      <td className="r">{run.run_settings.num_islands}</td>
-      <td className="r">{compact.format(run.run_settings.evaluation_budget)}</td>
+      <td className="align-right">{run.run_settings.num_islands}</td>
+      <td className="align-right">{compact.format(run.run_settings.evaluation_budget)}</td>
       <td>
-        <span className="mode">
+        <span className="run-list-mode">
           <Icon name={run.stream ? 'radio' : 'clock'} size={14} />
           {run.stream ? 'Stream' : 'After Run'}
         </span>
       </td>
       <td>
-        <div className="stages">
+        <div className="run-list-stages">
           {STAGES.map(([key, label]) => (
-            <span key={key} className={`stage${run.clustering[key] ? '' : ' off'}`} title={run.clustering[key] ? undefined : 'Not used'}>
+            <span
+              key={key}
+              className={`run-list-stage${run.clustering[key] ? '' : ' run-list-stage-off'}`}
+              title={run.clustering[key] ? undefined : 'Not used'}
+            >
               {label}
             </span>
           ))}
         </div>
       </td>
       <DurationCell run={run} />
-      <td className="r muted">
+      <td className="align-right muted">
         <Icon name="chevR" size={15} />
       </td>
     </tr>
@@ -125,11 +131,11 @@ export default function RunsPage() {
 
   return (
     <div className="page runs-page">
-      <div className="page-h">
+      <div className="page-header">
         <h1>Runs</h1>
       </div>
-      <div className="filters">
-        <label className="search">
+      <div className="runs-filters">
+        <label className="runs-search">
           <Icon name="search" size={15} />
           <input
             ref={search}
@@ -138,9 +144,9 @@ export default function RunsPage() {
             value={q}
             onChange={(event) => setQ(event.target.value)}
           />
-          <kbd className="search-kbd">Ctrl+K</kbd>
+          <kbd className="search-keyboard-shortcut">Ctrl+K</kbd>
         </label>
-        <div className="seg" role="group" aria-label="Status">
+        <div className="segmented-control" role="group" aria-label="Status">
           {STATUS_FILTERS.map((value) => (
             <button key={value} className={status === value ? 'on' : ''} aria-pressed={status === value} onClick={() => setStatus(value)}>
               <span className="status">{value}</span>
@@ -161,18 +167,18 @@ export default function RunsPage() {
         </select>
       </div>
       <div className="card table-card" role="region" aria-label="Run history" tabIndex={0}>
-        <table className="table">
+        <table className="table runs-table">
           <thead>
             <tr>
-              <th className="col-status">Status</th>
+              <th className="status-column">Status</th>
               <th>Run</th>
               <th>Algorithm</th>
-              <th className="col-problem">Problem</th>
-              <th className="r">Islands</th>
-              <th className="r">Budget</th>
+              <th className="problem-column">Problem</th>
+              <th className="align-right">Islands</th>
+              <th className="align-right">Budget</th>
               <th>Mode</th>
               <th>Clustering Stages</th>
-              <th className="r">Duration</th>
+              <th className="align-right">Duration</th>
               <th />
             </tr>
           </thead>
@@ -192,7 +198,7 @@ export default function RunsPage() {
       <div className="table-foot">
         {runs.isFetchNextPageError && <Unavailable />}
         {runs.hasNextPage ? (
-          <button className="btn" disabled={runs.isFetchingNextPage} onClick={() => runs.fetchNextPage()}>
+          <button className="button" disabled={runs.isFetchingNextPage} onClick={() => runs.fetchNextPage()}>
             {runs.isFetchingNextPage ? 'Loading…' : 'Load more'}
           </button>
         ) : (

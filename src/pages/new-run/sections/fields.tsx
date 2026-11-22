@@ -12,11 +12,11 @@ export type FieldProps = {
 
 export function NumberField({ id, label, value, onChange, error, hint, placeholder, decimal, disabled }: FieldProps) {
   return (
-    <div className="field">
+    <div className="new-run-field">
       <label htmlFor={id}>{label}</label>
       <input
         id={id}
-        className={`input num${error ? ' invalid' : ''}`}
+        className={`input numeric${error ? ' new-run-input-invalid' : ''}`}
         inputMode={decimal ? 'decimal' : 'numeric'}
         value={value}
         placeholder={placeholder}
@@ -42,7 +42,7 @@ type InlineNumberProps = {
 export function InlineNumber({ label, value, onChange, onStep, invalid }: InlineNumberProps) {
   return (
     <input
-      className={`inline-num num${invalid ? ' invalid' : ''}`}
+      className={`inline-number-input numeric${invalid ? ' new-run-input-invalid' : ''}`}
       inputMode="numeric"
       aria-label={label}
       aria-invalid={invalid}
@@ -61,5 +61,5 @@ export function InlineNumber({ label, value, onChange, onStep, invalid }: Inline
 }
 
 export function Switch({ on }: { on: boolean }) {
-  return <span className={`switch${on ? ' on' : ''}`} aria-hidden="true" />;
+  return <span className={`new-run-switch${on ? ' new-run-switch-on' : ''}`} aria-hidden="true" />;
 }

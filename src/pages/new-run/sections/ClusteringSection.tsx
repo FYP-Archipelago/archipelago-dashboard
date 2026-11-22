@@ -59,16 +59,16 @@ function DetailPreview({ detail, active }: { detail: number; active: boolean }) 
   const clusters = previewClusters(detail);
 
   return (
-    <div className={`detail-preview${active ? '' : ' unused'}`}>
+    <div className={`detail-preview${active ? '' : ' clustering-detail-unused'}`}>
       <svg viewBox="0 0 280 84" aria-hidden="true">
         {clusters.map((cluster, i) => (
-          <ellipse key={`c${i}`} className="dp-cluster" cx={cluster.x} cy={cluster.y} rx={cluster.rx} ry={cluster.ry} />
+          <ellipse key={`c${i}`} className="detail-preview-cluster" cx={cluster.x} cy={cluster.y} rx={cluster.rx} ry={cluster.ry} />
         ))}
         {PREVIEW_POINTS.map(([x, y], i) => (
-          <circle key={i} className="dp-point" cx={x} cy={y} r={1.8} />
+          <circle key={i} className="detail-preview-point" cx={x} cy={y} r={1.8} />
         ))}
       </svg>
-      <span className="dp-count">{active ? `${clusters.length} clusters in this sample` : 'Only applies to BIRCH and DenStream'}</span>
+      <span className="detail-preview-count">{active ? `${clusters.length} clusters in this sample` : 'Only applies to BIRCH and DenStream'}</span>
     </div>
   );
 }
@@ -78,10 +78,10 @@ function DetailSlider({ clustering, patchCluster }: Pick<ClusteringProps, 'clust
   const shareOf = (detail: number) => ((detail - DETAIL_MIN) / (DETAIL_MAX - DETAIL_MIN)) * 100;
 
   return (
-    <div className={`detail-slider${detailApplies ? '' : ' unused'}`}>
-      <div className="ds-head">
+    <div className={`detail-slider${detailApplies ? '' : ' clustering-detail-unused'}`}>
+      <div className="detail-slider-header">
         <label htmlFor="f-detail">Detail</label>
-        <span className="ds-value num">
+        <span className="detail-slider-value numeric">
           {clustering.detail.toFixed(1)}
           {clustering.detail === 1 && <em>default</em>}
         </span>
@@ -97,11 +97,11 @@ function DetailSlider({ clustering, patchCluster }: Pick<ClusteringProps, 'clust
         style={vars({ '--fill': `${shareOf(clustering.detail)}%` })}
         onChange={(event) => patchCluster({ detail: Number(event.target.value) })}
       />
-      <div className="ds-ticks">
+      <div className="detail-slider-ticks">
         {[0.5, 1, 1.5, 2].map((tick) => (
           <button
             key={tick}
-            className={`num${clustering.detail === tick ? ' on' : ''}`}
+            className={`numeric${clustering.detail === tick ? ' detail-slider-tick-selected' : ''}`}
             style={{ left: `${shareOf(tick)}%` }}
             disabled={!detailApplies}
             onClick={() => patchCluster({ detail: tick })}
@@ -110,7 +110,7 @@ function DetailSlider({ clustering, patchCluster }: Pick<ClusteringProps, 'clust
           </button>
         ))}
       </div>
-      <div className="ds-ends">
+      <div className="detail-slider-endpoints">
         <small>Coarse · fewer, bigger clusters</small>
         <small>Fine · more, smaller clusters</small>
       </div>
@@ -123,27 +123,29 @@ function AdvancedPanel({ clustering, errors, patchCluster, setClusterText }: Clu
   const settingCount = ADVANCED.filter((field) => !field.stage || clustering[field.stage]).length + 1;
 
   return (
-    <details className="advanced">
+    <details className="clustering-advanced">
       <summary>
         <Icon name="chevR" size={14} />
-        <span className="adv-title">Advanced Clustering Settings</span>
-        <span className="adv-meta">
+        <span className="advanced-settings-title">Advanced Clustering Settings</span>
+        <span className="advanced-settings-summary">
           {settingCount} settings · detail {clustering.detail.toFixed(1)}
         </span>
       </summary>
-      <div className="adv-body">
-        <div className="adv-detail">
+      <div className="advanced-settings-body">
+        <div className="advanced-settings-detail">
           <DetailSlider clustering={clustering} patchCluster={patchCluster} />
           <DetailPreview detail={clustering.detail} active={clustering.birch || clustering.denstream} />
         </div>
-        <div className="adv-groups">
+        <div className="advanced-settings-groups">
           {groups.map((group) => {
             const enabled = !group.key || clustering[group.key];
             return (
-              <div key={group.label} className={`adv-group${enabled ? '' : ' off'}`}>
-                <div className="adv-group-h">
+              <div key={group.label} className={`advanced-settings-group${enabled ? '' : ' clustering-group-off'}`}>
+                <div className="advanced-settings-group-header">
                   <strong>{group.label}</strong>
-                  {group.key && <span className={`pill${enabled ? ' on' : ''}`}>{enabled ? 'On' : 'Off'}</span>}
+                  {group.key && (
+                    <span className={`clustering-stage-pill${enabled ? ' clustering-stage-pill-on' : ''}`}>{enabled ? 'On' : 'Off'}</span>
+                  )}
                 </div>
                 {ADVANCED.filter((field) => field.stage === group.key).map((field) => (
                   <NumberField
@@ -172,24 +174,24 @@ export default function ClusteringSection(props: ClusteringProps) {
   const { clustering, errors, patchCluster } = props;
 
   return (
-    <section className="nr-step">
+    <section className="new-run-step">
       <h2>Clustering</h2>
-      <p className="desc">How evaluations are grouped in the network.</p>
-      <div className="pipeline">
+      <p className="new-run-step-description">How evaluations are grouped in the network.</p>
+      <div className="clustering-pipeline">
         {STAGES.map((stage, i) => (
           <Fragment key={stage.key}>
             {i > 0 && (
-              <span className="arrow">
+              <span className="clustering-stage-arrow">
                 <Icon name="arrowR" size={14} />
               </span>
             )}
             <button
-              className={`cl-stage${clustering[stage.key] ? ' on' : ''}`}
+              className={`clustering-stage${clustering[stage.key] ? ' clustering-stage-on' : ''}`}
               role="switch"
               aria-checked={clustering[stage.key]}
               onClick={() => patchCluster({ [stage.key]: !clustering[stage.key] })}
             >
-              <span className="top">
+              <span className="clustering-stage-title">
                 <strong>{stage.label}</strong>
                 <Switch on={clustering[stage.key]} />
               </span>
@@ -198,7 +200,7 @@ export default function ClusteringSection(props: ClusteringProps) {
           </Fragment>
         ))}
       </div>
-      {errors.stages && <p className="field-error block">{errors.stages}</p>}
+      {errors.stages && <p className="field-error field-error-block">{errors.stages}</p>}
       <AdvancedPanel {...props} />
     </section>
   );

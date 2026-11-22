@@ -1,15 +1,15 @@
-.pipeline {
+.clustering-pipeline {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) auto minmax(0, 1fr);
   gap: 8px;
 }
 
-.pipeline .arrow {
+.clustering-pipeline .clustering-stage-arrow {
   align-self: center;
   color: var(--muted);
 }
 
-.cl-stage {
+.clustering-stage {
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -23,33 +23,33 @@
     background 0.2s;
 }
 
-.cl-stage:hover {
+.clustering-stage:hover {
   border-color: var(--border-strong);
 }
 
-.cl-stage.on {
+.clustering-stage.clustering-stage-on {
   border-color: var(--border-strong);
   background: var(--surface-2);
 }
 
-.cl-stage .top {
+.clustering-stage .clustering-stage-title {
   display: flex;
   align-items: center;
   justify-content: space-between;
 }
 
-.cl-stage strong {
+.clustering-stage strong {
   font-weight: 600;
 }
 
-.cl-stage p {
+.clustering-stage p {
   color: var(--muted);
   font-size: 12.5px;
   line-height: 1.45;
 }
 
-.cl-stage:not(.on) strong,
-.cl-stage:not(.on) p {
+.clustering-stage:not(.clustering-stage-on) strong,
+.clustering-stage:not(.clustering-stage-on) p {
   opacity: 0.55;
 }
 
@@ -102,7 +102,7 @@ input[type='range']::-moz-range-thumb {
   border: 2px solid var(--surface);
 }
 
-.advanced {
+.clustering-advanced {
   margin-top: 18px;
   border: 1px solid var(--border);
   border-radius: var(--radius);
@@ -110,12 +110,12 @@ input[type='range']::-moz-range-thumb {
   transition: border-color 0.2s;
 }
 
-.advanced:hover,
-.advanced[open] {
+.clustering-advanced:hover,
+.clustering-advanced[open] {
   border-color: var(--border-strong);
 }
 
-.advanced summary {
+.clustering-advanced summary {
   display: flex;
   align-items: center;
   gap: 10px;
@@ -124,33 +124,33 @@ input[type='range']::-moz-range-thumb {
   cursor: pointer;
 }
 
-.advanced summary::-webkit-details-marker {
+.clustering-advanced summary::-webkit-details-marker {
   display: none;
 }
 
-.advanced summary svg {
+.clustering-advanced summary svg {
   flex: none;
   color: var(--muted);
   transition: transform 0.25s var(--ease);
 }
 
-.advanced[open] summary svg {
+.clustering-advanced[open] summary svg {
   transform: rotate(90deg);
 }
 
-.adv-title {
+.advanced-settings-title {
   font-weight: 600;
 }
 
-.adv-meta {
+.advanced-settings-summary {
   margin-left: auto;
   color: var(--muted);
   font-size: 12.5px;
 }
 
 @media (prefers-reduced-motion: no-preference) {
-  .advanced[open] > :not(summary) {
-    animation: adv-open 0.35s var(--ease);
+  .clustering-advanced[open] > :not(summary) {
+    animation: advanced-settings-open 0.35s var(--ease);
   }
 }
 
@@ -161,26 +161,26 @@ input[type='range']::-moz-range-thumb {
   min-width: 0;
 }
 
-.ds-head {
+.detail-slider-header {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
 }
 
-.ds-head label {
+.detail-slider-header label {
   color: var(--ink-2);
   font-size: 13px;
   font-weight: 500;
 }
 
-.ds-value {
+.detail-slider-value {
   font-size: 22px;
   font-weight: 600;
   letter-spacing: -0.04em;
   font-variant-numeric: tabular-nums;
 }
 
-.ds-value em {
+.detail-slider-value em {
   margin-left: 8px;
   padding: 1px 7px;
   border-radius: 999px;
@@ -193,13 +193,13 @@ input[type='range']::-moz-range-thumb {
   vertical-align: 3px;
 }
 
-.ds-ticks {
+.detail-slider-ticks {
   position: relative;
   height: 18px;
   margin: 0 7px;
 }
 
-.ds-ticks button {
+.detail-slider-ticks button {
   position: absolute;
   transform: translateX(-50%);
   padding: 0 4px;
@@ -210,30 +210,30 @@ input[type='range']::-moz-range-thumb {
   transition: color 0.2s;
 }
 
-.ds-ticks button:hover:not(:disabled) {
+.detail-slider-ticks button:hover:not(:disabled) {
   color: var(--ink);
 }
 
-.ds-ticks button.on {
+.detail-slider-ticks button.detail-slider-tick-selected {
   color: var(--ink);
 }
 
-.ds-ticks button:disabled {
+.detail-slider-ticks button:disabled {
   cursor: not-allowed;
 }
 
-.ds-ends {
+.detail-slider-endpoints {
   display: flex;
   justify-content: space-between;
   gap: 12px;
 }
 
-.ds-ends small {
+.detail-slider-endpoints small {
   color: var(--muted);
   font-size: 12px;
 }
 
-.detail-slider.unused {
+.detail-slider.clustering-detail-unused {
   opacity: 0.5;
 }
 
@@ -253,7 +253,7 @@ input[type='range']::-moz-range-thumb {
   overflow: visible;
 }
 
-.dp-cluster {
+.detail-preview-cluster {
   fill: color-mix(in srgb, var(--ink) 6%, transparent);
   stroke: color-mix(in srgb, var(--ink) 40%, transparent);
   stroke-width: 0.8;
@@ -265,20 +265,20 @@ input[type='range']::-moz-range-thumb {
     ry 0.45s var(--ease);
 }
 
-.dp-point {
+.detail-preview-point {
   fill: var(--ink-2);
 }
 
-.dp-count {
+.detail-preview-count {
   color: var(--muted);
   font-size: 11.5px;
 }
 
-.detail-preview.unused svg {
+.detail-preview.clustering-detail-unused svg {
   opacity: 0.3;
 }
 
-.pill {
+.clustering-stage-pill {
   padding: 0 8px;
   border-radius: 999px;
   border: 1px solid var(--border);
@@ -288,19 +288,19 @@ input[type='range']::-moz-range-thumb {
   line-height: 18px;
 }
 
-.pill.on {
+.clustering-stage-pill.clustering-stage-pill-on {
   border-color: color-mix(in srgb, var(--good) 50%, transparent);
   color: var(--good);
 }
 
-.adv-body {
+.advanced-settings-body {
   display: flex;
   flex-direction: column;
   gap: 18px;
   padding: 4px 16px 16px;
 }
 
-.adv-detail {
+.advanced-settings-detail {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 300px);
   gap: 24px;
@@ -311,13 +311,13 @@ input[type='range']::-moz-range-thumb {
   background: var(--bg);
 }
 
-.adv-groups {
+.advanced-settings-groups {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
   gap: 10px;
 }
 
-.adv-group {
+.advanced-settings-group {
   display: flex;
   flex-direction: column;
   gap: 14px;
@@ -328,11 +328,11 @@ input[type='range']::-moz-range-thumb {
   transition: opacity 0.2s;
 }
 
-.adv-group.off {
+.advanced-settings-group.clustering-group-off {
   opacity: 0.5;
 }
 
-.adv-group-h {
+.advanced-settings-group-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -340,7 +340,7 @@ input[type='range']::-moz-range-thumb {
   border-bottom: 1px solid var(--border);
 }
 
-@keyframes adv-open {
+@keyframes advanced-settings-open {
   from {
     opacity: 0;
     transform: translateY(-4px);

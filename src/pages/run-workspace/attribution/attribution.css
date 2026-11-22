@@ -19,7 +19,7 @@
   gap: 2px;
   font-size: 13px;
 }
-.shared-ends .r {
+.shared-ends .align-right {
   text-align: right;
 }
 .shared-ends strong {
@@ -46,10 +46,10 @@
   overflow: hidden;
   background: var(--surface-3);
 }
-.shared-bar .alone {
+.shared-bar .shared-bar-alone {
   background: repeating-linear-gradient(135deg, var(--axis) 0 4px, var(--surface-3) 4px 8px);
 }
-.shared-bar .credited {
+.shared-bar .shared-bar-credited {
   background: var(--ink);
 }
 .shared-caption {
@@ -183,11 +183,11 @@
 .group-chip:hover {
   background: var(--hover);
 }
-.group-chip.off {
+.group-chip.group-chip-off {
   border-color: var(--border);
   color: var(--muted);
 }
-.group-chip.off .swatch {
+.group-chip.group-chip-off .swatch {
   opacity: 0.3;
 }
 .group-result {
@@ -203,24 +203,24 @@
   font-weight: 600;
   letter-spacing: -0.02em;
 }
-.attribution-grid .meter {
+.attribution-grid .coalition-meter {
   height: 8px;
   margin-top: 10px;
   border-radius: 4px;
   background: var(--surface-3);
   overflow: hidden;
 }
-.attribution-grid .meter i {
+.attribution-grid .coalition-meter i {
   display: block;
   height: 100%;
   background: var(--ink);
   transition: width 0.4s var(--ease);
 }
 
-.orders {
+.attribution-orders {
   margin-top: 16px;
 }
-.orders .section-sub {
+.attribution-orders .section-subtitle {
   margin-bottom: 8px;
 }
 .waterfall {
@@ -269,10 +269,10 @@
   font-weight: 500;
   font-variant-numeric: tabular-nums;
 }
-.group-chip small.up {
+.group-chip small.group-chip-up {
   color: var(--good);
 }
-.group-chip small.down {
+.group-chip small.group-chip-down {
   color: #f08a8a;
 }
 

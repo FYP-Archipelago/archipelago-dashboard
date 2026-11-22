@@ -45,12 +45,12 @@ function RunPreview({ stream, progress }: { stream: boolean; progress: number })
   const scale = barWidth / (stream ? RUN_END : CLUSTER_END);
 
   return (
-    <div className="rp">
+    <div className="run-preview">
       <svg viewBox="0 0 170 96" aria-hidden="true">
         {PREVIEW_EDGES.map(([from, to]) => (
           <line
             key={to}
-            className={`rp-edge${isShown(from) && isShown(to) ? ' on' : ''}`}
+            className={`run-preview-edge${isShown(from) && isShown(to) ? ' run-preview-edge-visible' : ''}`}
             x1={PREVIEW_NODES[from]!.x}
             y1={PREVIEW_NODES[from]!.y}
             x2={PREVIEW_NODES[to]!.x}
@@ -58,14 +58,14 @@ function RunPreview({ stream, progress }: { stream: boolean; progress: number })
           />
         ))}
         {PREVIEW_NODES.map((node, i) => (
-          <circle key={i} className={`rp-node${isShown(i) ? ' on' : ''}`} cx={node.x} cy={node.y} r={node.r} />
+          <circle key={i} className={`run-preview-node${isShown(i) ? ' run-preview-node-visible' : ''}`} cx={node.x} cy={node.y} r={node.r} />
         ))}
 
-        <rect className="rp-track" x={barX} y={80} width={barWidth} height={5} rx={2.5} />
-        <rect className="rp-run" x={barX} y={80} width={Math.min(progress, RUN_END) * scale} height={5} rx={2.5} />
+        <rect className="run-preview-progress-track" x={barX} y={80} width={barWidth} height={5} rx={2.5} />
+        <rect className="run-preview-running-progress" x={barX} y={80} width={Math.min(progress, RUN_END) * scale} height={5} rx={2.5} />
         {!stream && progress > RUN_END && (
           <rect
-            className="rp-cluster"
+            className="run-preview-clustering-progress"
             x={barX + RUN_END * scale}
             y={80}
             width={(Math.min(progress, CLUSTER_END) - RUN_END) * scale}
@@ -77,14 +77,14 @@ function RunPreview({ stream, progress }: { stream: boolean; progress: number })
           PREVIEW_NODES.map((node, i) => (
             <circle
               key={`t${i}`}
-              className={`rp-tick${node.at * RUN_END <= progress ? ' on' : ''}`}
+              className={`run-preview-event-tick${node.at * RUN_END <= progress ? ' run-preview-event-tick-visible' : ''}`}
               cx={barX + node.at * RUN_END * scale}
               cy={82.5}
               r={1.3}
             />
           ))}
       </svg>
-      <span className="rp-status">{status}</span>
+      <span className="run-preview-status">{status}</span>
     </div>
   );
 }
@@ -101,9 +101,9 @@ export default function ModeSection({ stream, setStream }: ModeProps) {
   }, []);
 
   return (
-    <section className="nr-step">
+    <section className="new-run-step">
       <h2>Mode</h2>
-      <p className="desc">Watch the network grow, or wait for the final finished network.</p>
+      <p className="new-run-step-description">Watch the network grow, or wait for the final finished network.</p>
       <div className="radio-cards" role="radiogroup" aria-label="Mode">
         {[
           { stream: true, title: 'Live updates', text: 'Cluster as the run progresses and stream the network.' },
@@ -111,14 +111,14 @@ export default function ModeSection({ stream, setStream }: ModeProps) {
         ].map((option) => (
           <button
             key={option.title}
-            className={`radio-card mode-card${stream === option.stream ? ' on' : ''}`}
+            className={`radio-card mode-card${stream === option.stream ? ' mode-card-on' : ''}`}
             role="radio"
             aria-checked={stream === option.stream}
             onClick={() => setStream(option.stream)}
           >
             <RunPreview stream={option.stream} progress={progress} />
             <span className="mode-text">
-              <span className="rd" />
+              <span className="mode-radio-indicator" />
               <span>
                 <strong>{option.title}</strong>
                 <span>{option.text}</span>

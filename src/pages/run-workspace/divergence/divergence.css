@@ -28,7 +28,7 @@
 .legend-line.muted-line {
   background: var(--muted);
 }
-.heat-scale .push {
+.heat-scale .heat-scale-note {
   margin-left: auto;
 }
 .pair-facts {
@@ -93,13 +93,13 @@
 .pair-chip:hover {
   background: var(--hover);
 }
-.pair-chip.off {
+.pair-chip.pair-chip-off {
   border-color: var(--border);
   color: var(--muted);
 }
 .pair-chip .legend-line {
   width: 12px;
 }
-.pair-chip.off .legend-line {
+.pair-chip.pair-chip-off .legend-line {
   opacity: 0.25;
 }

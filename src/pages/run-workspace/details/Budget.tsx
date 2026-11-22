@@ -33,17 +33,17 @@ function islandUse(result: RunResult): IslandUse[] {
 // stopping early on stagnation, filled for using up the budget, a square for the generation cap, a bullseye for the
 // target, and a dot crossed out for a stop that cut the island short.
 const REASONS: Record<TerminationReason, { one: string; many: string; marker: string }> = {
-  stagnation: { one: 'stagnated', many: 'stagnated', marker: 'hollow' },
-  max_evaluations: { one: 'spent its budget', many: 'spent their budget', marker: 'filled' },
-  max_generations: { one: 'hit the generation cap', many: 'hit the generation cap', marker: 'square' },
-  target_fitness_reached: { one: 'reached the target', many: 'reached the target', marker: 'target' },
-  time_limit: { one: 'ran out of time', many: 'ran out of time', marker: 'halted' },
-  error: { one: 'failed', many: 'failed', marker: 'halted' },
-  aborted: { one: 'was cancelled', many: 'were cancelled', marker: 'halted' },
+  stagnation: { one: 'stagnated', many: 'stagnated', marker: 'budget-marker-hollow' },
+  max_evaluations: { one: 'spent its budget', many: 'spent their budget', marker: 'budget-marker-filled' },
+  max_generations: { one: 'hit the generation cap', many: 'hit the generation cap', marker: 'budget-marker-square' },
+  target_fitness_reached: { one: 'reached the target', many: 'reached the target', marker: 'budget-marker-target' },
+  time_limit: { one: 'ran out of time', many: 'ran out of time', marker: 'budget-marker-halted' },
+  error: { one: 'failed', many: 'failed', marker: 'budget-marker-halted' },
+  aborted: { one: 'was cancelled', many: 'were cancelled', marker: 'budget-marker-halted' },
 };
 const reasonPhrase = (reason: TerminationReason, count: number) => (count === 1 ? REASONS[reason].one : REASONS[reason].many);
 // An island with no island_end, which the runner skips for one that crashed, gets a striped dot.
-const markerOf = (end: IslandEnd | null) => (end ? REASONS[end.termination_reason].marker : 'missing');
+const markerOf = (end: IslandEnd | null) => (end ? REASONS[end.termination_reason].marker : 'budget-marker-missing');
 
 // One island's stop as a sentence, e.g. "Stagnated after 50 generations without improvement".
 function stopText(end: IslandEnd): string {
@@ -67,7 +67,7 @@ function clustersOf(islands: IslandUse[], target: number): Cluster[] {
   }));
 }
 
-const tipClass = (at: number) => `budget-tip${at < 0.12 ? ' pinned-left' : at > 0.75 ? ' pinned-right' : ''}`;
+const tipClass = (at: number) => `budget-tip${at < 0.12 ? ' budget-tip-left' : at > 0.75 ? ' budget-tip-right' : ''}`;
 
 type Hover = { island: number; on: 'evaluations' | 'generations' | 'legend' };
 
@@ -96,10 +96,10 @@ export default function Budget({ run, result }: { run: Run; result: RunResult })
     ...[...reasons]
       .sort((a, b) => b[1] - a[1])
       .map(([reason, count]) => ({ marker: REASONS[reason].marker, count, phrase: reasonPhrase(reason, count) })),
-    ...(missing > 0 ? [{ marker: 'missing', count: missing, phrase: 'with no end recorded' }] : []),
+    ...(missing > 0 ? [{ marker: 'budget-marker-missing', count: missing, phrase: 'with no end recorded' }] : []),
   ];
 
-  const dim = (island: number) => (hover && hover.island !== island ? ' dim' : '');
+  const dim = (island: number) => (hover && hover.island !== island ? ' budget-dim' : '');
   const hoverProps = (island: number, on: Hover['on']) => ({
     onPointerEnter: () => setHover({ island, on }),
     onPointerLeave: () => setHover(null),
@@ -164,8 +164,8 @@ export default function Budget({ run, result }: { run: Run; result: RunResult })
         <div className="budget-bar">
           {/* Solid up to where the first island stopped, lighter on to the last. */}
           <span className="budget-fill">
-            <i className="reached" style={{ width: width(fewest / target) }} />
-            <i className="range" style={{ width: width((most - fewest) / target) }} />
+            <i className="budget-reached" style={{ width: width(fewest / target) }} />
+            <i className="budget-range" style={{ width: width((most - fewest) / target) }} />
           </span>
           {clusters.map((cluster, index) => {
             // Stacked, each dot shows a 6 px sliver; fanned out, they sit a full dot apart. The row stays inside the track.
@@ -176,7 +176,7 @@ export default function Budget({ run, result }: { run: Run; result: RunResult })
             return (
               <div
                 key={cluster.islands[0]!.island}
-                className={`budget-cluster${open ? ' open' : ''}`}
+                className="budget-cluster"
                 style={{ left: `clamp(${half}px, ${width(cluster.at)}, 100% - ${half}px)`, width: half * 2 + 8 }}
                 onPointerEnter={() => setOpenCluster(index)}
                 onPointerLeave={() => setOpenCluster(null)}
@@ -186,7 +186,7 @@ export default function Budget({ run, result }: { run: Run; result: RunResult })
                   return (
                     <b
                       key={island.island}
-                      className={`budget-dot ${markerOf(island.end)}${hovered === island ? ' active' : ''}`}
+                      className={`budget-dot ${markerOf(island.end)}${hovered === island ? ' budget-dot-active' : ''}`}
                       style={{
                         left: `calc(50% + ${offset}px)`,
                         zIndex: hovered === island ? 2 : 1,
@@ -211,7 +211,7 @@ export default function Budget({ run, result }: { run: Run; result: RunResult })
           })}
         </div>
       </div>
-      <div className={`budget-legend${keyEntries.length ? ' with-reasons' : ''}`}>
+      <div className={`budget-legend${keyEntries.length ? ' budget-legend-with-reasons' : ''}`}>
         {islands.map((island) => (
           <span key={island.island} className={`budget-legend-island${dim(island.island)}`} {...hoverProps(island.island, 'legend')}>
             <i className="swatch" style={{ background: islandColor(island.island) }} />
@@ -220,7 +220,7 @@ export default function Budget({ run, result }: { run: Run; result: RunResult })
         ))}
         {/* Read as one sentence, so only the first entry names the islands: "1 island stagnated · 1 failed". */}
         {keyEntries.map((entry, index) => (
-          <span key={entry.marker + entry.phrase} className={`budget-legend-reason${index === 0 ? ' first' : ''}`}>
+          <span key={entry.marker + entry.phrase} className={`budget-legend-reason${index === 0 ? ' budget-legend-first' : ''}`}>
             <i className={`budget-key-dot ${entry.marker}`} aria-hidden="true" />
             {index === 0 && entry.count === islands.length && entry.count > 1 ? 'All ' : ''}
             {entry.count}

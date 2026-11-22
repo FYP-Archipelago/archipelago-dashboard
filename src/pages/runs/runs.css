@@ -1,4 +1,4 @@
-.filters {
+.runs-filters {
   container: run-filters / inline-size;
   display: flex;
   align-items: center;
@@ -6,21 +6,21 @@
   gap: 10px;
   margin-bottom: 16px;
 }
-.filters .status-select {
+.runs-filters .status-select {
   display: none;
   flex: none;
   font-size: 13px;
   cursor: pointer;
 }
 @container run-filters (width < 890px) {
-  .filters .seg {
+  .runs-filters .segmented-control {
     display: none;
   }
-  .filters .status-select {
+  .runs-filters .status-select {
     display: block;
   }
 }
-.search {
+.runs-search {
   position: relative;
   display: flex;
   align-items: center;
@@ -28,17 +28,17 @@
   max-width: 480px;
   min-width: 0;
 }
-.search svg {
+.runs-search svg {
   position: absolute;
   left: 11px;
   color: var(--muted);
 }
-.search .input {
+.runs-search .input {
   padding-left: 34px;
   padding-right: 60px;
   width: 100%;
 }
-.search-kbd {
+.search-keyboard-shortcut {
   position: absolute;
   right: 8px;
   padding: 1px 6px;
@@ -50,29 +50,29 @@
   color: var(--muted);
   pointer-events: none;
 }
-.table .col-status {
+.runs-table .status-column {
   width: 130px;
 }
-.table .preset-part {
+.runs-table .preset-part {
   overflow-wrap: anywhere;
 }
-.table .duration {
+.runs-table .run-duration {
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
 }
-.table tbody tr.click {
+.runs-table tbody tr.run-row-link {
   cursor: pointer;
 }
-.table tbody tr.click td {
+.runs-table tbody tr.run-row-link td {
   transition: background 0.15s;
 }
-.table tbody tr.click:hover td {
+.runs-table tbody tr.run-row-link:hover td {
   background: var(--hover);
 }
-.table tbody tr.click td:last-child svg {
+.runs-table tbody tr.run-row-link td:last-child svg {
   transition: transform 0.25s var(--ease);
 }
-.table tbody tr.click:hover td:last-child svg {
+.runs-table tbody tr.run-row-link:hover td:last-child svg {
   transform: translateX(3px);
   color: var(--ink);
 }
@@ -99,11 +99,11 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.stages {
+.run-list-stages {
   display: flex;
   gap: 4px;
 }
-.stage {
+.run-list-stage {
   padding: 2px 6px;
   border-radius: 6px;
   background: var(--surface-3);
@@ -112,12 +112,12 @@
   color: var(--ink-2);
   white-space: nowrap;
 }
-.stage.off {
+.run-list-stage.run-list-stage-off {
   background: none;
   color: var(--muted);
   opacity: 0.5;
 }
-.mode {
+.run-list-mode {
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -150,11 +150,11 @@
   .runs-page {
     padding: 28px 24px 64px;
   }
-  .table th,
-  .table td {
+  .runs-table th,
+  .runs-table td {
     padding-inline: 10px;
   }
-  .table .col-status {
+  .runs-table .status-column {
     width: 104px;
   }
   .run-cell {
@@ -169,48 +169,48 @@
   .runs-page {
     padding-inline: 16px;
   }
-  .table th,
-  .table td {
+  .runs-table th,
+  .runs-table td {
     padding-inline: 8px;
   }
-  .table td {
+  .runs-table td {
     padding-block: 9px;
   }
-  .table th {
+  .runs-table th {
     white-space: normal;
   }
-  .table .col-status {
+  .runs-table .status-column {
     width: auto;
   }
-  .table .col-problem {
+  .runs-table .problem-column {
     min-width: 88px;
   }
-  .stages {
+  .run-list-stages {
     flex-wrap: wrap;
   }
 }
 
 @media (max-width: 1160px) {
-  .table {
+  .runs-table {
     font-size: 13px;
   }
-  .table th,
-  .table td {
+  .runs-table th,
+  .runs-table td {
     padding-inline: 6px;
   }
-  .table th {
+  .runs-table th {
     font-size: 12px;
   }
   .run-cell {
     max-width: 130px;
   }
-  .stage {
+  .run-list-stage {
     padding-inline: 4px;
   }
 }
 
 @media (prefers-reduced-motion: no-preference) {
-  .table tbody tr {
+  .runs-table tbody tr {
     animation: fade-in 0.5s ease backwards;
   }
 }

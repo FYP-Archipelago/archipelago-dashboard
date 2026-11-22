@@ -12,17 +12,17 @@
   margin: 0 auto;
   padding: 36px 48px 96px;
 }
-.page-h {
+.page-header {
   margin-bottom: 24px;
 }
-.page-h h1 {
+.page-header h1 {
   font-size: 30px;
   font-weight: 600;
   letter-spacing: -0.04em;
   line-height: 1.1;
 }
 
-.mono {
+.monospace {
   font-family: var(--mono);
   font-size: 12px;
   letter-spacing: -0.01em;
@@ -90,7 +90,7 @@
   }
 }
 
-.btn {
+.button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -108,23 +108,23 @@
     transform 0.1s,
     color 0.15s;
 }
-.btn:hover {
+.button:hover {
   background: var(--hover);
   border-color: color-mix(in srgb, var(--ink) 24%, transparent);
 }
-.btn:active {
+.button:active {
   transform: scale(0.98);
 }
-.btn:disabled {
+.button:disabled {
   opacity: 0.4;
   cursor: not-allowed;
 }
-.btn-primary {
+.button-primary {
   background: var(--accent);
   color: var(--accent-ink);
   border-color: var(--accent);
 }
-.btn-primary:hover {
+.button-primary:hover {
   background: #ffffff;
   border-color: #ffffff;
 }
@@ -148,7 +148,7 @@
   border-color: var(--accent);
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent);
 }
-.seg {
+.segmented-control {
   display: inline-flex;
   gap: 2px;
   padding: 3px;
@@ -156,7 +156,7 @@
   background: var(--surface-2);
   border: 1px solid var(--border);
 }
-.seg button {
+.segmented-control button {
   height: 26px;
   padding: 0 11px;
   border-radius: 6px;
@@ -169,13 +169,13 @@
     background 0.2s,
     transform 0.12s var(--ease);
 }
-.seg button:hover {
+.segmented-control button:hover {
   color: var(--ink);
 }
-.seg button:active {
+.segmented-control button:active {
   transform: scale(0.95);
 }
-.seg button.on {
+.segmented-control button.on {
   background: var(--surface-3);
   color: var(--ink);
   box-shadow:
@@ -240,7 +240,7 @@
 .table tr:last-child td {
   border-bottom: 0;
 }
-.table .r {
+.table .align-right {
   text-align: right;
 }
 .table-foot {

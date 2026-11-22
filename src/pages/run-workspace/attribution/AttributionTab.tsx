@@ -43,7 +43,7 @@ function Shared({ shapley, game, view, maximising }: { shapley: ShapleyAttributi
   const alone = view === 'routes' ? game.empty_value / game.full_value || 0 : 0;
   const coverage = shapley.coverage.evaluations ? shapley.coverage.supported / shapley.coverage.evaluations : 0;
   return (
-    <section className="card shared">
+    <section className="card">
       <div className="shared-ends">
         <div>
           <span className="muted">Best at the start</span>
@@ -53,14 +53,14 @@ function Shared({ shapley, game, view, maximising }: { shapley: ShapleyAttributi
           <Icon name="arrowR" size={18} />
           <small>{maximising ? 'higher is better' : 'lower is better'}</small>
         </span>
-        <div className="r">
+        <div className="align-right">
           <span className="muted">Best at the end</span>
           <strong>{fitness(shapley.observed_best_fitness)}</strong>
         </div>
       </div>
       <div className="shared-bar" role="img" aria-label={`Improvement of ${fitness(game.full_value)}`}>
-        {alone > 0 && <i className="alone" style={{ width: `${alone * 100}%` }} />}
-        <i className="credited" style={{ width: `${(1 - alone) * 100}%` }} />
+        {alone > 0 && <i className="shared-bar-alone" style={{ width: `${alone * 100}%` }} />}
+        <i className="shared-bar-credited" style={{ width: `${(1 - alone) * 100}%` }} />
       </div>
       <div className="shared-caption">
         <p className="shared-text">
@@ -71,7 +71,7 @@ function Shared({ shapley, game, view, maximising }: { shapley: ShapleyAttributi
           ) : (
             <>
               Of the <b>{fitness(game.full_value)}</b> improvement, <span className="alone-key">{fitness(game.empty_value)}</span> was reachable with
-              no migration. The other <b className="credited-key">{fitness(shared)}</b> ({percent(shared / game.full_value || 0)}) needed migrants.
+              no migration. The other <b>{fitness(shared)}</b> ({percent(shared / game.full_value || 0)}) needed migrants.
             </>
           )}
         </p>
@@ -103,7 +103,7 @@ function Credit({ game, view }: { game: ShapleyGame; view: View }) {
   const [first, second] = players;
   return (
     <section className="card">
-      <div className="card-head card-heading">
+      <div className="card-header card-heading">
         <h3>{view === 'islands' ? 'Credit per island' : 'Credit per route'}</h3>
         <span className="muted">Shapley value, as a share of the shared improvement</span>
       </div>
@@ -164,7 +164,7 @@ function Coalitions({ game, view }: { game: ShapleyGame; view: View }) {
   if (!game.coalitions.length)
     return (
       <section className="card">
-        <div className="card-head">
+        <div className="card-header">
           <h3>Coalitions</h3>
         </div>
         <p className="hint">
@@ -183,7 +183,7 @@ function Coalitions({ game, view }: { game: ShapleyGame; view: View }) {
   };
   return (
     <section className="card">
-      <div className="card-head card-heading">
+      <div className="card-header card-heading">
         <h3>Coalitions</h3>
         <span className="muted">Improvement a subset reaches on its own</span>
       </div>
@@ -194,14 +194,14 @@ function Coalitions({ game, view }: { game: ShapleyGame; view: View }) {
           return (
             <button
               key={key}
-              className={`group-chip${picked.has(key) ? '' : ' off'}`}
+              className={`group-chip${picked.has(key) ? '' : ' group-chip-off'}`}
               aria-pressed={picked.has(key)}
               aria-label={playerName(player)}
               onClick={() => setPicked(flipped(key))}
             >
               <Swatch player={player} />
               {playerName(player)}
-              <small className={change > 0 ? 'up' : change < 0 ? 'down' : undefined}>
+              <small className={change > 0 ? 'group-chip-up' : change < 0 ? 'group-chip-down' : undefined}>
                 {change === 0 ? '±0' : `${change > 0 ? '+' : '−'}${percent(Math.abs(change))}`}
               </small>
             </button>
@@ -214,7 +214,7 @@ function Coalitions({ game, view }: { game: ShapleyGame; view: View }) {
           v(S) = {fitness(reached)} of {fitness(shared)}
         </span>
       </div>
-      <div className="meter">
+      <div className="coalition-meter">
         <i style={{ width: `${Math.max(0, Math.min(1, reached / shared || 0)) * 100}%` }} />
       </div>
       <p className="hint">
@@ -254,11 +254,11 @@ function Orders({ game }: { game: ShapleyGame }) {
   const bar = Math.min(64, slot * 0.55);
   const noun = Array.isArray(steps[0]!.player) ? 'routes' : 'islands';
   return (
-    <section className="card orders">
-      <div className="card-head">
+    <section className="card attribution-orders">
+      <div className="card-header">
         <h3>Marginal contributions</h3>
         {game.orders.length > 1 && (
-          <div className="seg push" role="group" aria-label="Example order">
+          <div className="segmented-control card-header-end" role="group" aria-label="Example order">
             {game.orders.map((_, i) => (
               <button key={i} className={i === index ? 'on' : ''} aria-pressed={i === index} onClick={() => setIndex(i)}>
                 π{i + 1}
@@ -267,7 +267,7 @@ function Orders({ game }: { game: ShapleyGame }) {
           </div>
         )}
       </div>
-      <p className="section-sub">
+      <p className="section-subtitle">
         Players join one at a time in order π{index + 1}. Each bar is a player&apos;s marginal contribution given those already present; its Shapley
         value is the mean over{' '}
         {game.sampled_orders
@@ -349,7 +349,7 @@ function Attribution({ shapley, maximising, migrationEnabled }: { shapley: Shapl
   return (
     <>
       <div className="attribution-head">
-        <div className="seg" role="group" aria-label="Players">
+        <div className="segmented-control" role="group" aria-label="Players">
           <button className={view === 'islands' ? 'on' : ''} aria-pressed={view === 'islands'} onClick={() => change('islands')}>
             Island attribution
           </button>

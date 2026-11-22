@@ -53,13 +53,13 @@ export default function Sidebar({ route }: { route: Route }) {
         <img src="/favicon.svg" alt="" width="28" height="28" />
         <span>Archipelago</span>
       </Link>
-      <Link className="btn btn-primary btn-new" href={newRunHref}>
+      <Link className="button button-primary new-run-button" href={newRunHref}>
         <Icon name="plus" size={15} stroke={2} />
         New Run
       </Link>
-      <div className="side-section-title">
+      <div className="sidebar-section-title">
         <span>Recent</span>
-        <Link className={`view-all${route.name === 'runs' ? ' on' : ''}`} href={runsHref}>
+        <Link className={`view-all${route.name === 'runs' ? ' view-all-on' : ''}`} href={runsHref}>
           View all
           <Icon name="arrowR" size={12} stroke={2} />
         </Link>
@@ -68,12 +68,12 @@ export default function Sidebar({ route }: { route: Route }) {
         {runs?.map((run) => (
           <Link
             key={run.run_id}
-            className={`recent-item${route.name === 'run' && route.id === run.run_id ? ' active' : ''}`}
+            className={`recent-item${route.name === 'run' && route.id === run.run_id ? ' recent-item-active' : ''}`}
             href={runHref(run.run_id)}
             title={run.run_name}
           >
             <span className={`dot ${run.status}`} />
-            <span className="recent-meta">
+            <span className="recent-run-details">
               <strong>{run.run_name}</strong>
               <small>
                 {run.preset} · {ago(run.created_at)}
@@ -88,11 +88,11 @@ export default function Sidebar({ route }: { route: Route }) {
           </p>
         )}
       </nav>
-      <div className="side-foot">
+      <div className="sidebar-footer">
         <div className="backend-line">
           <span className={`dot ${state.dot}`} />
           <span>{state.label}</span>
-          {health.data && !failing && <span className="mono">v{health.data.version}</span>}
+          {health.data && !failing && <span className="monospace">v{health.data.version}</span>}
         </div>
       </div>
     </aside>

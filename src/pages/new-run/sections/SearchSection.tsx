@@ -16,13 +16,13 @@ type TileProps = Omit<FieldProps, 'decimal' | 'disabled'> & { hint: string; chil
 
 function NumberTile({ id, label, value, onChange, error, hint, placeholder, children }: TileProps) {
   return (
-    <div className="sd-tile">
-      <label className="sd-l" htmlFor={id}>
+    <div className="search-setting-tile">
+      <label className="search-setting-label" htmlFor={id}>
         {label}
       </label>
       <input
         id={id}
-        className={`sd-input num${error ? ' invalid' : ''}`}
+        className={`search-setting-input numeric${error ? ' search-setting-input-invalid' : ''}`}
         inputMode="numeric"
         placeholder={placeholder}
         value={value}
@@ -46,19 +46,19 @@ function IslandStepper({ form, islandCounts, patch }: { form: Form; islandCounts
   return (
     <>
       <div className="roll">
-        <button className="btn btn-icon" aria-label="Fewer islands" disabled={index <= 0} onClick={() => step(-1)}>
+        <button className="button icon-button" aria-label="Fewer islands" disabled={index <= 0} onClick={() => step(-1)}>
           −
         </button>
         <span className="roll-window" aria-live="polite">
           <span className="roll-strip" style={{ transform: `translateY(${(-Math.max(0, index) / islandCounts.length) * 100}%)` }}>
             {islandCounts.map((count) => (
-              <b key={count} className="sd-big num">
+              <b key={count} className="search-setting-value numeric">
                 {count}
               </b>
             ))}
           </span>
         </span>
-        <button className="btn btn-icon" aria-label="More islands" disabled={index >= islandCounts.length - 1} onClick={() => step(1)}>
+        <button className="button icon-button" aria-label="More islands" disabled={index >= islandCounts.length - 1} onClick={() => step(1)}>
           +
         </button>
       </div>
@@ -98,11 +98,15 @@ export default function SearchSection({ form, errors, overrides, patch, setText 
   const chips = (key: SettingKey, picks: number[]) => {
     const { min = -Infinity, max = Infinity } = limits(key);
     return (
-      <div className="sd-chips">
+      <div className="search-setting-quick-picks">
         {picks
           .filter((pick) => min <= pick && pick <= max)
           .map((pick) => (
-            <button key={pick} className={Number(form.text[key]) === pick ? 'on' : ''} onClick={() => setText(key)(String(pick))}>
+            <button
+              key={pick}
+              className={Number(form.text[key]) === pick ? 'search-setting-quick-pick-selected' : ''}
+              onClick={() => setText(key)(String(pick))}
+            >
               {compactNumber.format(pick)}
             </button>
           ))}
@@ -111,12 +115,12 @@ export default function SearchSection({ form, errors, overrides, patch, setText 
   };
 
   return (
-    <section className="nr-step">
+    <section className="new-run-step">
       <h2>Search</h2>
-      <p className="desc">Size and length of the run.</p>
-      <div className="sd">
-        <div className="sd-tile">
-          <span className="sd-l">Islands</span>
+      <p className="new-run-step-description">Size and length of the run.</p>
+      <div className="search-settings">
+        <div className="search-setting-tile">
+          <span className="search-setting-label">Islands</span>
           <IslandStepper form={form} islandCounts={islandCounts} patch={patch} />
           <small>Each evolves its own population</small>
         </div>
@@ -149,8 +153,8 @@ export default function SearchSection({ form, errors, overrides, patch, setText 
           placeholder="Random"
           hint="Random picks a fresh seed for every run"
         >
-          <div className="sd-chips">
-            <button className={form.text.seed.trim() ? '' : 'on'} onClick={() => setText('seed')('')}>
+          <div className="search-setting-quick-picks">
+            <button className={form.text.seed.trim() ? '' : 'search-setting-quick-pick-selected'} onClick={() => setText('seed')('')}>
               Random
             </button>
             <button onClick={() => setText('seed')(String(seedMin + Math.floor(Math.random() * (seedMax - seedMin + 1))))}>Roll one</button>

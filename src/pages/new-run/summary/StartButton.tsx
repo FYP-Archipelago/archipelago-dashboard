@@ -39,7 +39,7 @@ export default function StartButton({ phase, disabled, onLaunch }: StartProps) {
   if (phase === 'done')
     content = (
       <>
-        <svg className="start-check" width="15" height="15" viewBox="0 0 24 24" aria-hidden="true">
+        <svg className="start-button-check" width="15" height="15" viewBox="0 0 24 24" aria-hidden="true">
           <path d="m5 12 5 5L20 7" pathLength={1} />
         </svg>
         Run started
@@ -55,14 +55,14 @@ export default function StartButton({ phase, disabled, onLaunch }: StartProps) {
   else if (phase === 'busy')
     content = (
       <>
-        <span className="start-spin" aria-hidden="true" />
+        <span className="start-button-spinner" aria-hidden="true" />
         Starting…
       </>
     );
   else
     content = (
       <>
-        <span className="start-arrow">
+        <span className="start-button-arrow">
           <Icon name="arrowR" size={14} stroke={2} />
         </span>
         Start Run
@@ -71,19 +71,19 @@ export default function StartButton({ phase, disabled, onLaunch }: StartProps) {
 
   return (
     // The burst sits beside the button, not in it, so the button's dimming and scaling while it starts do not touch it.
-    <div className="start-wrap">
+    <div className="start-button-wrap">
       <button
-        className={`btn btn-primary start phase-${phase}${launching ? ' launching' : ''}`}
+        className={`button button-primary start-button start-button-phase-${phase}${launching ? ' start-button-launching' : ''}`}
         disabled={disabled}
         onClick={(event) => launch(event.currentTarget)}
       >
-        <span className="start-content" key={phase}>
+        <span className="start-button-content" key={phase}>
           {content}
         </span>
       </button>
       {bursts.map((burst) => (
-        <span key={burst.id} className="burst" style={{ left: burst.x, top: burst.y }} aria-hidden="true">
-          <span className="burst-ring" />
+        <span key={burst.id} className="start-button-burst" style={{ left: burst.x, top: burst.y }} aria-hidden="true">
+          <span className="start-button-burst-ring" />
           {[...Array(14).keys()].map((i, _, all) => {
             const angle = (i / all.length) * 2 * Math.PI + (i % 2) * 0.2;
             const reach = 46 + (i % 3) * 18;

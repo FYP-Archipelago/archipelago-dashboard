@@ -1,11 +1,11 @@
-.start {
+.start-button {
   position: relative;
   width: 100%;
   height: 40px;
   overflow: visible;
 }
 
-.start-content {
+.start-button-content {
   position: relative;
   display: inline-flex;
   align-items: center;
@@ -13,12 +13,12 @@
 }
 
 @media (prefers-reduced-motion: no-preference) {
-  .start-content {
+  .start-button-content {
     animation: start-swap 0.35s var(--ease);
   }
 }
 
-.start-spin {
+.start-button-spinner {
   width: 13px;
   height: 13px;
   border-radius: 50%;
@@ -27,12 +27,12 @@
   animation: spin 0.7s linear infinite;
 }
 
-.start.phase-busy:disabled {
+.start-button.start-button-phase-busy:disabled {
   opacity: 0.85;
   cursor: progress;
 }
 
-.start.phase-done:disabled {
+.start-button.start-button-phase-done:disabled {
   opacity: 1;
   background: var(--good);
   border-color: var(--good);
@@ -40,7 +40,7 @@
   cursor: default;
 }
 
-.start.phase-failed:disabled {
+.start-button.start-button-phase-failed:disabled {
   opacity: 1;
   background: var(--critical);
   border-color: var(--critical);
@@ -49,12 +49,12 @@
 }
 
 @media (prefers-reduced-motion: no-preference) {
-  .start.phase-failed {
+  .start-button.start-button-phase-failed {
     animation: start-shake 0.45s var(--ease);
   }
 }
 
-.start-check path {
+.start-button-check path {
   fill: none;
   stroke: currentColor;
   stroke-width: 2.6;
@@ -64,27 +64,27 @@
 }
 
 @media (prefers-reduced-motion: no-preference) {
-  .start-check path {
+  .start-button-check path {
     animation: check-draw 0.45s 0.1s var(--ease) backwards;
   }
-  .start.phase-done {
+  .start-button.start-button-phase-done {
     animation: done-pop 0.5s var(--spring);
   }
 }
 
-.start-wrap {
+.start-button-wrap {
   position: relative;
 }
 
 /* The burst of island colours that a launch sends out from where it was pressed. */
-.burst {
+.start-button-burst {
   position: absolute;
   width: 0;
   height: 0;
   pointer-events: none;
 }
 
-.burst-ring {
+.start-button-burst-ring {
   position: absolute;
   left: -20px;
   top: -20px;
@@ -96,7 +96,7 @@
   opacity: 0;
 }
 
-.burst i {
+.start-button-burst i {
   position: absolute;
   left: -4px;
   top: -4px;
@@ -108,37 +108,37 @@
 }
 
 @media (prefers-reduced-motion: no-preference) {
-  .burst-ring {
+  .start-button-burst-ring {
     animation: burst-ring 0.6s var(--ease);
   }
-  .burst i {
+  .start-button-burst i {
     animation: burst-out 0.75s var(--ease);
   }
 }
 
-.start {
+.start-button {
   user-select: none;
   transition:
     background 0.15s,
     transform 0.4s var(--spring);
 }
 
-.start:active:not(:disabled),
-.start.launching {
+.start-button:active:not(:disabled),
+.start-button.start-button-launching {
   transform: scale(0.965);
   transition: transform 0.12s var(--ease);
 }
 
-.start-content {
+.start-button-content {
   z-index: 1;
 }
 
-.start-arrow {
+.start-button-arrow {
   display: inline-grid;
   transition: transform 0.2s var(--ease);
 }
 
-.start:hover:not(:disabled) .start-arrow {
+.start-button:hover:not(:disabled) .start-button-arrow {
   transform: translateX(3px);
 }
 

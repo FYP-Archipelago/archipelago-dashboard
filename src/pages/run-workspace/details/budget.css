@@ -48,11 +48,11 @@
   box-shadow: inset -1px 0 0 var(--surface);
   transition: opacity 0.15s;
 }
-.budget-fill i.reached {
+.budget-fill i.budget-reached {
   background: var(--ink-2);
   box-shadow: none;
 }
-.budget-fill i.range {
+.budget-fill i.budget-range {
   background: var(--border-strong);
   box-shadow: none;
 }
@@ -79,44 +79,44 @@
     left 0.25s var(--ease),
     transform 0.2s var(--ease);
 }
-.budget-dot.filled {
+.budget-dot.budget-marker-filled {
   background: var(--island);
   box-shadow: 0 0 0 2px var(--surface);
 }
-.budget-dot.hollow {
+.budget-dot.budget-marker-hollow {
   background: var(--surface);
   box-shadow:
     inset 0 0 0 2.5px var(--island),
     0 0 0 2px var(--surface);
 }
-.budget-dot.square {
+.budget-dot.budget-marker-square {
   border-radius: 3px;
   background: var(--island);
   box-shadow: 0 0 0 2px var(--surface);
 }
-.budget-dot.target {
+.budget-dot.budget-marker-target {
   background: radial-gradient(circle, var(--island) 0 2.5px, var(--surface) 3px 4.5px, var(--island) 5px);
   box-shadow: 0 0 0 2px var(--surface);
 }
-.budget-dot.halted {
+.budget-dot.budget-marker-halted {
   background:
     linear-gradient(45deg, transparent 42%, var(--surface) 42% 58%, transparent 58%),
     linear-gradient(-45deg, transparent 42%, var(--surface) 42% 58%, transparent 58%), var(--island);
   box-shadow: 0 0 0 2px var(--surface);
 }
-.budget-dot.missing {
+.budget-dot.budget-marker-missing {
   background: repeating-linear-gradient(45deg, var(--island) 0 2px, transparent 2px 4px);
   box-shadow:
     inset 0 0 0 1.5px var(--island),
     0 0 0 2px var(--surface);
 }
-.budget-card .dim {
+.budget-card .budget-dim {
   opacity: 0.25;
 }
-.budget-cluster .dim {
+.budget-cluster .budget-dim {
   opacity: 1;
 }
-.budget-dot.active {
+.budget-dot.budget-dot-active {
   transform: scale(1.25);
 }
 
@@ -138,10 +138,10 @@
   transform: translateX(-50%);
   pointer-events: none;
 }
-.budget-tip.pinned-left {
+.budget-tip.budget-tip-left {
   transform: translateX(-12px);
 }
-.budget-tip.pinned-right {
+.budget-tip.budget-tip-right {
   transform: translateX(calc(-100% + 12px));
 }
 .budget-tip b {
@@ -174,10 +174,10 @@
 }
 /* The stop reasons follow the islands on the right. The auto margin keeps the islands left, and reasons that do not
    fit wrap one by one onto the next line, which flex-end keeps on the right. */
-.budget-legend.with-reasons {
+.budget-legend.budget-legend-with-reasons {
   justify-content: flex-end;
 }
-.budget-legend-reason.first {
+.budget-legend-reason.budget-legend-first {
   margin-left: auto;
 }
 .budget-legend-reason {
@@ -190,25 +190,25 @@
   height: 11px;
   border-radius: 50%;
 }
-.budget-key-dot.filled {
+.budget-key-dot.budget-marker-filled {
   background: var(--ink-2);
 }
-.budget-key-dot.hollow {
+.budget-key-dot.budget-marker-hollow {
   box-shadow: inset 0 0 0 2px var(--ink-2);
 }
-.budget-key-dot.square {
+.budget-key-dot.budget-marker-square {
   border-radius: 2px;
   background: var(--ink-2);
 }
-.budget-key-dot.target {
+.budget-key-dot.budget-marker-target {
   background: radial-gradient(circle, var(--ink-2) 0 1.5px, transparent 2px 3px, var(--ink-2) 3.5px);
 }
-.budget-key-dot.halted {
+.budget-key-dot.budget-marker-halted {
   background:
     linear-gradient(45deg, transparent 44%, var(--surface) 44% 56%, transparent 56%),
     linear-gradient(-45deg, transparent 44%, var(--surface) 44% 56%, transparent 56%), var(--ink-2);
 }
-.budget-key-dot.missing {
+.budget-key-dot.budget-marker-missing {
   background: repeating-linear-gradient(45deg, var(--ink-2) 0 1.5px, transparent 1.5px 3px);
   box-shadow: inset 0 0 0 1.2px var(--ink-2);
 }

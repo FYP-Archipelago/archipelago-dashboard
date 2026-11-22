@@ -1,21 +1,21 @@
-.nr-step .topos {
+.new-run-step .migration-topologies {
   margin-top: 16px;
 }
 
-.topo.on {
+.migration-topology-option.migration-topology-selected {
   border-color: var(--accent);
   box-shadow: 0 0 0 1px var(--accent);
   background: var(--surface-2);
 }
 
-.step-h {
+.migration-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
 }
 
-.mig-seg {
+.migration-toggle {
   display: flex;
   gap: 2px;
   padding: 3px;
@@ -24,7 +24,7 @@
   background: var(--surface-2);
 }
 
-.mig-seg button {
+.migration-toggle button {
   min-width: 56px;
   padding: 5px 16px;
   border-radius: 6px;
@@ -36,16 +36,16 @@
     color 0.2s;
 }
 
-.mig-seg button:hover {
+.migration-toggle button:hover {
   color: var(--ink);
 }
 
-.mig-seg button.on {
+.migration-toggle button.migration-toggle-selected {
   background: var(--accent);
   color: var(--accent-ink);
 }
 
-.mig-body {
+.migration-fieldset {
   display: flex;
   flex-direction: column;
   gap: 16px;
@@ -56,28 +56,27 @@
   transition: opacity 0.25s;
 }
 
-.mig-body:disabled {
+.migration-fieldset:disabled {
   opacity: 0.4;
   filter: grayscale(1);
 }
 
-.mig-body:disabled * {
+.migration-fieldset:disabled * {
   cursor: not-allowed;
 }
 
-.nr-step .mig-body .topos,
-.nr-step .mig-body .fields,
-.mig-body .field-error.block {
+.new-run-step .migration-fieldset .migration-topologies,
+.migration-fieldset .field-error.field-error-block {
   margin-top: 0;
 }
 
-.topos {
+.migration-topologies {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
   gap: 8px;
 }
 
-.topo {
+.migration-topology-option {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -93,20 +92,20 @@
     background 0.2s;
 }
 
-.topo:hover {
+.migration-topology-option:hover {
   border-color: var(--border-strong);
 }
 
-.topo.on {
+.migration-topology-option.migration-topology-selected {
   color: var(--ink);
 }
 
-.topo.invalid {
+.migration-topology-option.migration-topology-invalid {
   opacity: 0.4;
 }
 
 /* Migration schedule: calendar and population */
-.ms-label {
+.migration-control-label {
   display: inline-flex;
   align-items: center;
   gap: 7px;
@@ -115,49 +114,49 @@
   font-weight: 500;
 }
 
-.ms-label svg {
+.migration-control-label svg {
   color: var(--muted);
 }
 
-.mg-readout {
+.migration-readout {
   flex: 1;
   color: var(--muted);
   font-size: 13px;
 }
 
-.mg-readout b {
+.migration-readout b {
   color: var(--ink);
   font-weight: 600;
 }
 
-.mg-readout-arrow {
+.migration-readout-arrow {
   display: inline-grid;
   margin: 0 8px;
   vertical-align: -2px;
 }
 
-.mg-readout .field-error {
+.migration-readout .field-error {
   font-size: 13px;
 }
 
-.mq {
+.migration-controls {
   display: flex;
   flex-direction: column;
   gap: 22px;
 }
 
-.q-head {
+.migration-control-header {
   display: flex;
   align-items: center;
   gap: 8px;
   margin-bottom: 10px;
 }
 
-.q-head-dot {
+.migration-control-separator {
   color: var(--muted);
 }
 
-.cal-grid {
+.migration-calendar {
   display: grid;
   grid-template-columns: repeat(50, minmax(0, 1fr));
   gap: 3px;
@@ -165,7 +164,7 @@
   border-radius: 6px;
 }
 
-.cal-day {
+.migration-calendar-generation {
   aspect-ratio: 1;
   border-radius: 2px;
   background: var(--surface-3);
@@ -174,25 +173,25 @@
     transform 0.15s var(--spring);
 }
 
-.cal-day.alone {
+.migration-calendar-generation.migration-calendar-solo {
   background: color-mix(in srgb, var(--accent) 22%, var(--surface-3));
 }
 
-.cal-day.migrates {
+.migration-calendar-generation.migration-calendar-event {
   background: var(--accent);
 }
 
-.cal-day.first {
+.migration-calendar-generation.migration-calendar-first-event {
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 35%, transparent);
 }
 
-.cal-day:hover {
+.migration-calendar-generation:hover {
   transform: scale(1.45);
   position: relative;
   z-index: 1;
 }
 
-.cal-legend {
+.migration-control-legend {
   display: flex;
   align-items: center;
   gap: 14px;
@@ -201,11 +200,11 @@
   font-size: 12px;
 }
 
-.cal-legend > span:last-child {
+.migration-control-legend > span:last-child {
   margin-left: auto;
 }
 
-.cal-legend i {
+.migration-control-legend i {
   display: inline-block;
   width: 9px;
   height: 9px;
@@ -214,11 +213,11 @@
   vertical-align: -1px;
 }
 
-.cal-legend i.alone {
+.migration-control-legend i.migration-calendar-solo {
   background: color-mix(in srgb, var(--accent) 22%, var(--surface-3));
 }
 
-.cal-legend i.migrates {
+.migration-control-legend i.migration-calendar-event {
   background: var(--accent);
 }
 
@@ -233,7 +232,7 @@
   touch-action: none;
 }
 
-.mig-body:disabled .ranked-chart {
+.migration-fieldset:disabled .ranked-chart {
   cursor: not-allowed;
 }
 
@@ -246,15 +245,15 @@
   transition: background 0.15s;
 }
 
-.ranked-bar.sent {
+.ranked-bar.ranked-bar-sent {
   background: var(--accent);
 }
 
-.ranked-bar.preview {
+.ranked-bar.ranked-bar-preview {
   background: color-mix(in srgb, var(--accent) 60%, var(--surface-3));
 }
 
-.ranked-bar.locked {
+.ranked-bar.ranked-bar-locked {
   opacity: 0.35;
 }
 
@@ -295,7 +294,7 @@
   white-space: nowrap;
 }
 
-.ranked-cut.flip .ranked-tag {
+.ranked-cut.ranked-cut-flip .ranked-tag {
   left: auto;
   right: 12px;
 }
@@ -304,7 +303,7 @@
   color: var(--ink);
 }
 
-.pop-arrow {
+.population-size-arrow {
   display: grid;
   margin: 0 -8px;
 }

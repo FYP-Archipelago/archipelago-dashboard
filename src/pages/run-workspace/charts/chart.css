@@ -6,11 +6,11 @@
 .chart svg {
   display: block;
 }
-.chart.fill {
+.chart.chart-fill {
   flex: 1 1 0;
   min-height: 260px;
 }
-.chart.fill svg {
+.chart.chart-fill svg {
   position: absolute;
   inset: 0;
 }

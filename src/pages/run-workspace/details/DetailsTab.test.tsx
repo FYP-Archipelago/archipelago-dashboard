@@ -25,7 +25,7 @@ describe('DetailsTab', () => {
     await renderWorkspace('details');
 
     expect(row('Stages').textContent).toContain('LSH → BIRCH');
-    expect(row('DenStream epsilon').className).toBe('off');
+    expect(row('DenStream epsilon').className).toBe('settings-row-off');
     expect(row('DenStream epsilon').querySelector('dd')?.textContent).toBe('—');
     expect(screen.getByText('BIRCH')).toBeTruthy();
     expect(screen.queryByText('DenStream', { selector: 'h4' })).toBeNull();

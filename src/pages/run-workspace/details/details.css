@@ -25,8 +25,8 @@
   font-weight: 500;
   font-variant-numeric: tabular-nums;
 }
-.settings-list > .off dt,
-.settings-list > .off dd {
+.settings-list > .settings-row-off dt,
+.settings-list > .settings-row-off dd {
   color: var(--muted);
   font-weight: 400;
   opacity: 0.6;
@@ -132,26 +132,26 @@
   display: flex;
   justify-content: space-between;
 }
-.meter {
+.quality-meter {
   height: 6px;
   margin-top: 6px;
   border-radius: 3px;
   background: var(--surface-3);
   overflow: hidden;
 }
-.meter i {
+.quality-meter i {
   display: block;
   height: 100%;
   border-radius: 3px;
   background: var(--ink-2);
 }
 @media (prefers-reduced-motion: no-preference) {
-  .meter i {
+  .quality-meter i {
     transform-origin: left;
     animation: grow-x 1s var(--ease) 0.2s backwards;
   }
 }
-.warnings {
+.quality-warnings {
   margin: 14px 0 0;
   padding: 12px 0 0 18px;
   border-top: 1px solid var(--border);

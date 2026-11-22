@@ -45,7 +45,7 @@ function Segmented<T extends string>({
   onChange: (value: T) => void;
 }) {
   return (
-    <div className="seg" role="group" aria-label={label}>
+    <div className="segmented-control" role="group" aria-label={label}>
       {options.map((option) => (
         <button
           key={option.key}
@@ -134,7 +134,7 @@ function Convergence({ result }: { result: RunResult }) {
           {histories.map(({ island }) => (
             <button
               key={island}
-              className={`island-toggle${hidden.has(island) ? ' off' : ''}`}
+              className={`island-toggle${hidden.has(island) ? ' island-toggle-off' : ''}`}
               aria-pressed={!hidden.has(island)}
               onClick={() => toggle(island)}
               onPointerEnter={() => !hidden.has(island) && setHighlight(island)}
@@ -148,7 +148,7 @@ function Convergence({ result }: { result: RunResult }) {
       </div>
 
       <div className="card chart-card">
-        <div className="card-head">
+        <div className="card-header">
           <div className="card-heading">
             <h3>{metricLabel}</h3>
             <span className="muted">
@@ -220,7 +220,7 @@ function Convergence({ result }: { result: RunResult }) {
               }
             >
               <span className="chart-key-ring" aria-hidden="true" />
-              Estimated convergence: where the run had made {converged.map((point) => point.label).join(' and ')} of its improvement
+              <span>Estimated convergence: where the run had made {converged.map((point) => point.label).join(' and ')} of its improvement</span>
             </span>
           )}
           {stillImproving.length > 0 && (
@@ -238,19 +238,19 @@ function Convergence({ result }: { result: RunResult }) {
           <thead>
             <tr>
               <th>Island</th>
-              <th className="r">Final best</th>
-              <th className="r">Last improved</th>
-              <th className="r">Without improvement</th>
-              <th className="r">Final mean</th>
-              <th className="r">Final diversity</th>
-              <th className="col-trend">Diversity over time</th>
+              <th className="align-right">Final best</th>
+              <th className="align-right">Last improved</th>
+              <th className="align-right">Without improvement</th>
+              <th className="align-right">Final mean</th>
+              <th className="align-right">Final diversity</th>
+              <th className="diversity-trend-column">Diversity over time</th>
             </tr>
           </thead>
           <tbody>
             {summaries.map((s) => (
               <tr
                 key={s.island}
-                className={highlight === s.island ? 'highlighted' : undefined}
+                className={highlight === s.island ? 'island-row-highlighted' : undefined}
                 onPointerEnter={() => !hidden.has(s.island) && setHighlight(s.island)}
                 onPointerLeave={() => setHighlight(null)}
               >
@@ -268,8 +268,8 @@ function Convergence({ result }: { result: RunResult }) {
                     )}
                   </span>
                 </td>
-                <td className="r">{fitness(s.finalBest)}</td>
-                <td className="r">
+                <td className="align-right">{fitness(s.finalBest)}</td>
+                <td className="align-right">
                   {s.reachedGeneration === null ? (
                     '—'
                   ) : (
@@ -279,7 +279,7 @@ function Convergence({ result }: { result: RunResult }) {
                     </>
                   )}
                 </td>
-                <td className="r">
+                <td className="align-right">
                   {s.stagnantGenerations === null ? (
                     '—'
                   ) : (
@@ -289,9 +289,9 @@ function Convergence({ result }: { result: RunResult }) {
                     </>
                   )}
                 </td>
-                <td className="r">{fitness(s.finalMean)}</td>
-                <td className="r">{formatDiversity(s.finalDiversity)}</td>
-                <td className="col-trend">
+                <td className="align-right">{fitness(s.finalMean)}</td>
+                <td className="align-right">{formatDiversity(s.finalDiversity)}</td>
+                <td className="diversity-trend-column">
                   <Sparkline
                     values={histories.find((h) => h.island === s.island)!.diversity}
                     color={islandColor(s.island)}

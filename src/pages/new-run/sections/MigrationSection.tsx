@@ -115,15 +115,15 @@ function IntervalCalendar({ form, errors, setText, step }: ScheduleProps) {
 
   return (
     <div>
-      <div className="q-head">
-        <span className="ms-label">
+      <div className="migration-control-header">
+        <span className="migration-control-label">
           <Icon name="clock" size={14} />
           Interval
         </span>
-        <span className="q-head-dot" aria-hidden="true">
+        <span className="migration-control-separator" aria-hidden="true">
           ·
         </span>
-        <span className="mg-readout">
+        <span className="migration-readout">
           every
           <InlineNumber
             label="Generations between migrations"
@@ -133,7 +133,7 @@ function IntervalCalendar({ form, errors, setText, step }: ScheduleProps) {
             onStep={(delta) => step('migration.interval', delta)}
           />
           generations
-          <span className="mg-readout-arrow">
+          <span className="migration-readout-arrow">
             <Icon name="arrowR" size={13} />
           </span>
           {shownError ? (
@@ -142,13 +142,13 @@ function IntervalCalendar({ form, errors, setText, step }: ScheduleProps) {
             'set target generations first'
           ) : (
             <>
-              <b className="num">{migrationCount}</b> {migrationCount === 1 ? 'migration event' : 'migration events'}
+              <b className="numeric">{migrationCount}</b> {migrationCount === 1 ? 'migration event' : 'migration events'}
             </>
           )}
         </span>
       </div>
       <div
-        className="cal-grid"
+        className="migration-calendar"
         role="slider"
         tabIndex={form.migration ? 0 : -1}
         aria-label="Interval"
@@ -170,21 +170,21 @@ function IntervalCalendar({ form, errors, setText, step }: ScheduleProps) {
               tabIndex={-1}
               aria-label={`Generation ${lastGeneration}`}
               title={`Generation ${lastGeneration}`}
-              className={`cal-day${migrates ? ' migrates' : ''}${alone ? ' alone' : ''}${first ? ' first' : ''}`}
+              className={`migration-calendar-generation${migrates ? ' migration-calendar-event' : ''}${alone ? ' migration-calendar-solo' : ''}${first ? ' migration-calendar-first-event' : ''}`}
               onPointerEnter={() => setHovered(lastGeneration)}
               onClick={() => setText('migration.interval')(String(lastGeneration))}
             />
           );
         })}
       </div>
-      <div className="cal-legend">
+      <div className="migration-control-legend">
         <span>
-          <i className="alone" /> evolving alone
+          <i className="migration-calendar-solo" /> evolving alone
         </span>
         <span>
-          <i className="migrates" /> migration
+          <i className="migration-calendar-event" /> migration
         </span>
-        <span className="num">
+        <span className="numeric">
           {perSquare > 1 ? `each square is ${perSquare} generations · ` : 'each square is a generation · '}
           {generations ?? '—'} in all
         </span>
@@ -214,15 +214,15 @@ function MigrantRanked({ form, errors, setText, step }: ScheduleProps) {
 
   return (
     <div>
-      <div className="q-head">
-        <span className="ms-label">
+      <div className="migration-control-header">
+        <span className="migration-control-label">
           <Icon name="arrowR" size={14} />
           Migrants per route
         </span>
-        <span className="q-head-dot" aria-hidden="true">
+        <span className="migration-control-separator" aria-hidden="true">
           ·
         </span>
-        <span className="mg-readout">
+        <span className="migration-readout">
           sends its best
           <InlineNumber
             label="Migrants per route"
@@ -232,7 +232,7 @@ function MigrantRanked({ form, errors, setText, step }: ScheduleProps) {
             onStep={(delta) => step(key, delta)}
           />
           along each route
-          <span className="mg-readout-arrow">
+          <span className="migration-readout-arrow">
             <Icon name="arrowR" size={13} />
           </span>
           {errors[key] ? (
@@ -241,7 +241,7 @@ function MigrantRanked({ form, errors, setText, step }: ScheduleProps) {
             'population depends on budget and generations'
           ) : (
             <>
-              <b className="num">{Math.round((migrants / population) * 100)}%</b> of about <b className="num">{population}</b>
+              <b className="numeric">{Math.round((migrants / population) * 100)}%</b> of about <b className="numeric">{population}</b>
             </>
           )}
         </span>
@@ -273,26 +273,26 @@ function MigrantRanked({ form, errors, setText, step }: ScheduleProps) {
         {Array.from({ length: bars }, (_, i) => (
           <span
             key={i}
-            className={`ranked-bar${i < cut ? ' sent' : ''}${hovered && i < hovered && i >= cut ? ' preview' : ''}${i >= max ? ' locked' : ''}`}
+            className={`ranked-bar${i < cut ? ' ranked-bar-sent' : ''}${hovered && i < hovered && i >= cut ? ' ranked-bar-preview' : ''}${i >= max ? ' ranked-bar-locked' : ''}`}
           />
         ))}
         {cut > 0 && (
-          <span className={`ranked-cut${cut / bars > 0.75 ? ' flip' : ''}`} style={{ left: `${(cut / bars) * 100}%` }}>
+          <span className={`ranked-cut${cut / bars > 0.75 ? ' ranked-cut-flip' : ''}`} style={{ left: `${(cut / bars) * 100}%` }}>
             <span className="ranked-tag">
-              best <b className="num">{migrants}</b> sent
+              best <b className="numeric">{migrants}</b> sent
               <Icon name="arrowR" size={11} />
             </span>
           </span>
         )}
       </div>
-      <div className="cal-legend">
+      <div className="migration-control-legend">
         <span>best migrants</span>
-        <span className="pop-arrow">
+        <span className="population-size-arrow">
           <Icon name="arrowR" size={11} />
         </span>
         <span>worst migrants</span>
         {population !== null && population > bars && (
-          <span className="num">
+          <span className="numeric">
             showing the best {bars} of about {population}
           </span>
         )}
@@ -306,16 +306,16 @@ export default function MigrationSection({ form, errors, overrides, patch, setTe
   const topologies = topologySpec?.type === 'choice' ? topologySpec.choices : [form.topology];
 
   return (
-    <section className="nr-step">
-      <div className="step-h">
+    <section className="new-run-step">
+      <div className="migration-header">
         <h2>Migration</h2>
-        <div className="mig-seg" role="radiogroup" aria-label="Migration">
+        <div className="migration-toggle" role="radiogroup" aria-label="Migration">
           {[false, true].map((on) => (
             <button
               key={String(on)}
               role="radio"
               aria-checked={form.migration === on}
-              className={form.migration === on ? 'on' : undefined}
+              className={form.migration === on ? 'migration-toggle-selected' : undefined}
               onClick={() => patch({ migration: on })}
             >
               {on ? 'On' : 'Off'}
@@ -323,14 +323,14 @@ export default function MigrationSection({ form, errors, overrides, patch, setTe
           ))}
         </div>
       </div>
-      <p className="desc">{form.migration ? 'How individuals move between islands.' : 'Islands evolve in isolation.'}</p>
-      <fieldset className="mig-body" disabled={!form.migration}>
-        <div className="topos" role="radiogroup" aria-label="Migration topology">
+      <p className="new-run-step-description">{form.migration ? 'How individuals move between islands.' : 'Islands evolve in isolation.'}</p>
+      <fieldset className="migration-fieldset" disabled={!form.migration}>
+        <div className="migration-topologies" role="radiogroup" aria-label="Migration topology">
           {topologies.map((kind) => (
             <button
               key={kind}
               type="button"
-              className={`topo${form.topology === kind ? ' on' : ''}${kind === 'torus' && !torusGrid(form.islands).valid ? ' invalid' : ''}`}
+              className={`migration-topology-option${form.topology === kind ? ' migration-topology-selected' : ''}${kind === 'torus' && !torusGrid(form.islands).valid ? ' migration-topology-invalid' : ''}`}
               role="radio"
               aria-checked={form.topology === kind}
               title={kind === 'torus' ? `Needs ${torusNeeds(overrides)}` : undefined}
@@ -341,8 +341,8 @@ export default function MigrationSection({ form, errors, overrides, patch, setTe
             </button>
           ))}
         </div>
-        {errors.topology && <p className="field-error block">{errors.topology}</p>}
-        <div className="mq">
+        {errors.topology && <p className="field-error field-error-block">{errors.topology}</p>}
+        <div className="migration-controls">
           <IntervalCalendar form={form} errors={errors} setText={setText} step={step} />
           <MigrantRanked form={form} errors={errors} setText={setText} step={step} />
         </div>

@@ -42,14 +42,14 @@ function Matrix({
       ))}
       {islands.map((a) => (
         <div key={a} className="heat-row">
-          <span className="heat-axis row">Island {a}</span>
+          <span className="heat-axis heat-axis-row">Island {a}</span>
           {islands.map((b) => {
             const key = pairKey(a, b);
             const v = values.get(key);
-            if (a === b) return <span key={b} className="heat-cell same" />;
+            if (a === b) return <span key={b} className="heat-cell heat-cell-same" />;
             if (v === undefined)
               return (
-                <span key={b} className="heat-cell empty" title="One of the islands logged nothing in this window">
+                <span key={b} className="heat-cell heat-cell-empty" title="One of the islands logged nothing in this window">
                   ·
                 </span>
               );
@@ -57,7 +57,7 @@ function Matrix({
             return (
               <button
                 key={b}
-                className={`heat-cell${key === selected ? ' selected' : ''}`}
+                className={`heat-cell${key === selected ? ' heat-cell-selected' : ''}`}
                 style={{ background: heatColor(shade), color: heatInk(shade) }}
                 aria-pressed={key === selected}
                 aria-label={`Islands ${pairName(a, b)}: ${value(v)}`}
@@ -163,11 +163,11 @@ function Divergence({ run, result }: { run: Run; result: RunResult }) {
 
   return (
     <>
-      <section className={`card stat-strip${meanStat ? ' single-line' : ''}`}>
+      <section className={`card stat-strip${meanStat ? ' stat-strip-single-line' : ''}`}>
         <div>
           <span className="muted">Most different</span>
           <strong>Islands {pairName(most.a, most.b)}</strong>
-          <span className="note">
+          <span className="stat-note">
             {value(most.value)}
             {meanStat ? '' : ' over the whole run'} · <span>{verdict(most)}</span>
           </span>
@@ -175,7 +175,7 @@ function Divergence({ run, result }: { run: Run; result: RunResult }) {
         <div>
           <span className="muted">Most alike</span>
           <strong>Islands {pairName(least.a, least.b)}</strong>
-          <span className="note">
+          <span className="stat-note">
             {value(least.value)}
             {meanStat ? '' : ' over the whole run'} · <span>{verdict(least)}</span>
           </span>
@@ -186,7 +186,7 @@ function Divergence({ run, result }: { run: Run; result: RunResult }) {
             {real}
             <small>of {pairs.length} pairs</small>
           </strong>
-          <span className="note">
+          <span className="stat-note">
             {real === pairs.length ? (meanStat ? 'Each pair in its own region' : 'Every pair searched its own region') : 'The rest overlap'}
           </span>
         </div>
@@ -197,7 +197,7 @@ function Divergence({ run, result }: { run: Run; result: RunResult }) {
               {meanMigrations.length}
               <small>of {migrationCount} migrations</small>
             </strong>
-            <span className="note">
+            <span className="stat-note">
               {meanMigrations.length ? `${closerAfterMigration} drew closer · ${apartAfterMigration} moved apart` : 'None moved it much'}
             </span>
           </div>
@@ -208,14 +208,14 @@ function Divergence({ run, result }: { run: Run; result: RunResult }) {
             <strong>
               {value(firstMean)} → {value(lastMean)}
             </strong>
-            <span className="note">{trend}</span>
+            <span className="stat-note">{trend}</span>
           </div>
         )}
       </section>
 
       <div className="divergence-grid">
         <section className="card chart-column">
-          <div className="card-head card-heading">
+          <div className="card-header card-heading">
             <h3>Over the run</h3>
             <span className="muted">Per window of generations</span>
           </div>
@@ -223,7 +223,7 @@ function Divergence({ run, result }: { run: Run; result: RunResult }) {
             {pairs.map((p) => (
               <button
                 key={p.key}
-                className={`pair-chip${picked.has(p.key) ? '' : ' off'}`}
+                className={`pair-chip${picked.has(p.key) ? '' : ' pair-chip-off'}`}
                 aria-pressed={picked.has(p.key)}
                 onClick={() => togglePicked(p.key)}
               >
@@ -276,9 +276,9 @@ function Divergence({ run, result }: { run: Run; result: RunResult }) {
           </p>
         </section>
         <section className="card">
-          <div className="card-head">
+          <div className="card-header">
             <h3>Between islands</h3>
-            <div className="seg push" role="group" aria-label="Period">
+            <div className="segmented-control card-header-end" role="group" aria-label="Period">
               <button className={view === 'whole' ? 'on' : ''} aria-pressed={view === 'whole'} onClick={() => setView('whole')}>
                 Whole run
               </button>
@@ -297,9 +297,9 @@ function Divergence({ run, result }: { run: Run; result: RunResult }) {
             <span>Alike</span>
             <i style={{ background: heatGradient() }} />
             <span>Different</span>
-            <span className="push">{view === 'whole' ? 'Whole run' : `${windowLabel(windowIndex)} · point at the chart to move`}</span>
+            <span className="heat-scale-note">{view === 'whole' ? 'Whole run' : `${windowLabel(windowIndex)} · point at the chart to move`}</span>
           </div>
-          <dl className="kv pair-facts">
+          <dl className="key-value-list pair-facts">
             <div className="pair-selection">
               <dt>Selected pair</dt>
               <dd>

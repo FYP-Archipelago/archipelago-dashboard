@@ -1,4 +1,4 @@
-.radio-card.on {
+.radio-card.mode-card-on {
   border-color: var(--accent);
   box-shadow: 0 0 0 1px var(--accent);
   background: var(--surface-2);
@@ -27,7 +27,7 @@
   border-color: var(--border-strong);
 }
 
-.radio-card .rd {
+.radio-card .mode-radio-indicator {
   flex: none;
   width: 16px;
   height: 16px;
@@ -37,7 +37,7 @@
   transition: border 0.2s var(--ease);
 }
 
-.radio-card.on .rd {
+.radio-card.mode-card-on .mode-radio-indicator {
   border: 5px solid var(--accent);
 }
 
@@ -52,65 +52,65 @@
 }
 
 /* Mode previews */
-.rp {
+.run-preview {
   display: flex;
   flex-direction: column;
   gap: 4px;
   width: 100%;
 }
 
-.rp svg {
+.run-preview svg {
   width: 100%;
   height: auto;
   overflow: visible;
 }
 
 /* Parts of the network ease in, but vanish at once when the preview loops, so no ghost of it lingers. */
-.rp-edge {
+.run-preview-edge {
   stroke: var(--border-strong);
   stroke-width: 0.8;
   opacity: 0;
 }
 
-.rp-edge.on {
+.run-preview-edge.run-preview-edge-visible {
   opacity: 1;
   transition: opacity 0.3s;
 }
 
-.rp-node {
+.run-preview-node {
   fill: var(--ink-2);
   transform-box: fill-box;
   transform-origin: center;
   transform: scale(0);
 }
 
-.rp-node.on {
+.run-preview-node.run-preview-node-visible {
   transform: none;
   transition: transform 0.35s var(--spring);
 }
 
-.rp-track {
+.run-preview-progress-track {
   fill: var(--surface-3);
 }
 
-.rp-run {
+.run-preview-running-progress {
   fill: var(--accent);
 }
 
-.rp-cluster {
+.run-preview-clustering-progress {
   fill: var(--warning);
 }
 
-.rp-tick {
+.run-preview-event-tick {
   fill: var(--bg);
   opacity: 0;
 }
 
-.rp-tick.on {
+.run-preview-event-tick.run-preview-event-tick-visible {
   opacity: 1;
 }
 
-.rp-status {
+.run-preview-status {
   color: var(--muted);
   font-size: 11.5px;
 }
@@ -120,11 +120,11 @@
   gap: 12px;
 }
 
-.mode-card .rp svg {
+.mode-card .run-preview svg {
   max-height: 120px;
 }
 
-.mode-card .rp {
+.mode-card .run-preview {
   padding: 10px 12px 8px;
   border-radius: var(--radius-sm);
   background: var(--bg);
@@ -136,7 +136,7 @@
   gap: 12px;
 }
 
-.mode-text .rd {
+.mode-text .mode-radio-indicator {
   flex: none;
   width: 16px;
   height: 16px;

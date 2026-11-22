@@ -42,7 +42,7 @@ const findStart = () => button('Start Run');
 const wait = (ms: number) => act(() => vi.advanceTimersByTimeAsync(ms));
 const runRequests = (fetchMock: Awaited<ReturnType<typeof renderPage>>) => fetchMock.mock.calls.filter(([, init]) => init?.method === 'POST');
 const summary = (label: string) =>
-  [...document.querySelectorAll('.summary dt')].find((dt) => dt.textContent === label)?.nextElementSibling?.textContent;
+  [...document.querySelectorAll('.new-run-summary dt')].find((dt) => dt.textContent === label)?.nextElementSibling?.textContent;
 
 describe('NewRunPage start', () => {
   it("sends the first preset's settings with every clustering stage, then opens the new run's page", async () => {
@@ -237,7 +237,7 @@ describe('NewRunPage form', () => {
 
     fireEvent.click(migrationToggle('Off'));
 
-    expect((document.querySelector('fieldset.mig-body') as HTMLFieldSetElement).disabled).toBe(true);
+    expect((document.querySelector('fieldset.migration-fieldset') as HTMLFieldSetElement).disabled).toBe(true);
     expect(summary('Migration')).toBe('—');
     expect(summary('Schedule')).toBeUndefined();
 
@@ -267,7 +267,9 @@ describe('NewRunPage form', () => {
     };
     await renderPage({ presets: { ...PRESETS, overrides } });
 
-    const quickPicks = [...control('Target generations').parentElement!.querySelectorAll('.sd-chips button')].map((each) => each.textContent);
+    const quickPicks = [...control('Target generations').parentElement!.querySelectorAll('.search-setting-quick-picks button')].map(
+      (each) => each.textContent
+    );
     expect(quickPicks).toEqual(['100', '200']);
 
     vi.spyOn(Math, 'random').mockReturnValue(0.99999);
@@ -323,7 +325,7 @@ describe('NewRunPage form', () => {
 
     const interval = control('Generations between migrations');
     expect(interval.value).toBe('40');
-    expect(interval.closest('.q-head')!.textContent).toContain('5 migration events');
+    expect(interval.closest('.migration-control-header')!.textContent).toContain('5 migration events');
   });
 
   it('previews a hovered calendar day in the readout, and goes back to the chosen interval on leaving', async () => {
@@ -333,11 +335,11 @@ describe('NewRunPage form', () => {
 
     fireEvent.pointerEnter(control('Generation 25'));
     expect(interval.value).toBe('25');
-    expect(interval.closest('.q-head')!.textContent).toContain('8 migration events');
+    expect(interval.closest('.migration-control-header')!.textContent).toContain('8 migration events');
 
     fireEvent.pointerLeave(control('Interval'));
     expect(interval.value).toBe('40');
-    expect(interval.closest('.q-head')!.textContent).toContain('5 migration events');
+    expect(interval.closest('.migration-control-header')!.textContent).toContain('5 migration events');
   });
 });
 

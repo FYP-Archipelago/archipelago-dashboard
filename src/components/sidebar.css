@@ -29,11 +29,11 @@
   font-weight: 600;
   letter-spacing: -0.03em;
 }
-.btn-new {
+.new-run-button {
   height: 34px;
 }
 
-.side-section-title {
+.sidebar-section-title {
   display: flex;
   align-items: center;
   font-size: 12px;
@@ -59,7 +59,7 @@
   transition: transform 0.2s var(--ease);
 }
 .view-all:hover,
-.view-all.on {
+.view-all.view-all-on {
   color: var(--ink);
   background: var(--hover);
 }
@@ -87,29 +87,29 @@
 .recent-item:hover {
   background: var(--hover);
 }
-.recent-item.active {
+.recent-item.recent-item-active {
   background: var(--surface-2);
 }
-.recent-meta {
+.recent-run-details {
   min-width: 0;
   display: flex;
   flex-direction: column;
   transition: transform 0.25s var(--ease);
 }
-.recent-item:hover .recent-meta {
+.recent-item:hover .recent-run-details {
   transform: translateX(2px);
 }
-.recent-meta strong,
-.recent-meta small {
+.recent-run-details strong,
+.recent-run-details small {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.recent-meta strong {
+.recent-run-details strong {
   font-weight: 500;
   font-size: 13px;
 }
-.recent-meta small {
+.recent-run-details small {
   color: var(--muted);
   font-size: 12px;
 }
@@ -119,7 +119,7 @@
   font-size: 12px;
 }
 
-.side-foot {
+.sidebar-footer {
   margin-top: auto;
   padding-top: 12px;
 }
@@ -131,7 +131,7 @@
   font-size: 12px;
   color: var(--muted);
 }
-.backend-line .mono {
+.backend-line .monospace {
   margin-left: auto;
   font-size: 11px;
 }

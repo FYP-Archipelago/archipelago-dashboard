@@ -70,7 +70,7 @@ function CopyId({ id }: { id: string }) {
   }, [copied]);
   return (
     <button
-      className={`copy-id mono${copied ? ' copied' : ''}`}
+      className={`copy-run-id monospace${copied ? ' copy-run-id-copied' : ''}`}
       title="Copy run ID"
       onClick={() => navigator.clipboard?.writeText(id).then(() => setCopied(true))}
     >
@@ -92,7 +92,7 @@ function CancelButton({ run }: { run: Run }) {
 
   if (run.status === 'cancelling')
     return (
-      <button className="btn" disabled>
+      <button className="button" disabled>
         <span className="dot cancelling" />
         Cancelling…
       </button>
@@ -109,7 +109,7 @@ function CancelButton({ run }: { run: Run }) {
           Couldn&apos;t cancel the run
         </span>
       )}
-      <button className={`btn${armed ? ' btn-danger' : ''}`} disabled={cancel.isPending} onClick={onClick}>
+      <button className={`button${armed ? ' button-danger' : ''}`} disabled={cancel.isPending} onClick={onClick}>
         <Icon name="x" size={14} stroke={2} />
         {cancel.isPending ? 'Cancelling…' : armed ? 'Confirm cancel' : 'Cancel run'}
       </button>
@@ -134,7 +134,7 @@ function Tabs({ id, tab }: { id: string; tab: RunTab }) {
       {RUN_TABS.map((name) => (
         <Link
           key={name}
-          className={`run-tab${name === tab ? ' active' : ''}`}
+          className={`run-tab${name === tab ? ' run-tab-active' : ''}`}
           href={runHref(id, name)}
           aria-current={name === tab ? 'page' : undefined}
         >
@@ -162,23 +162,23 @@ function Header({ run, tab }: { run: Run; tab: RunTab }) {
     <RunTime key="time" run={run} />,
   ];
   return (
-    <header className="run-head">
-      <div className="run-head-inner">
-        <nav className="crumbs" aria-label="Breadcrumb">
+    <header className="run-header">
+      <div className="run-header-inner">
+        <nav className="run-crumbs" aria-label="Breadcrumb">
           <Link href={runsHref}>Runs</Link>
           <Icon name="chevR" size={13} />
           <span className="ink-2">{run.run_name}</span>
         </nav>
         <div className="run-title">
           <h1>{run.run_name}</h1>
-          <span className="pill">
+          <span className="run-status-pill">
             <span className={`dot ${run.status}`} />
             <span className="status">{run.status}</span>
           </span>
           <CopyId id={run.run_id} />
           <div className="run-actions">
             {isFinished(run.status) ? (
-              <Link className="btn" href={rerunHref(run.run_id)}>
+              <Link className="button" href={rerunHref(run.run_id)}>
                 <Icon name="rerun" size={14} />
                 Re-run with same settings
               </Link>
@@ -210,9 +210,9 @@ export default function RunWorkspace({ id, tab }: { id: string; tab: RunTab }) {
         <div className="page-state">
           {run.isError && isNotFound(run.error) ? (
             <>
-              <h1 className="not-found">Run not found</h1>
-              <span className="mono">{id}</span>
-              <Link className="btn" href={runsHref}>
+              <h1 className="run-not-found">Run not found</h1>
+              <span className="monospace">{id}</span>
+              <Link className="button" href={runsHref}>
                 Back to runs
               </Link>
             </>
@@ -231,7 +231,7 @@ export default function RunWorkspace({ id, tab }: { id: string; tab: RunTab }) {
       <Header run={data} tab={tab} />
       <div className="page run-page">
         {data.status === 'failed' && data.error && (
-          <div className="banner critical">
+          <div className="run-banner run-banner-critical">
             <Icon name="alert" size={18} />
             <strong>{FAILED_IN[data.error.phase]}</strong>
             <span>{data.error.message}</span>

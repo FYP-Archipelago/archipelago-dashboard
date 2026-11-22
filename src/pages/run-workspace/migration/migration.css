@@ -15,7 +15,7 @@
   cursor: pointer;
   transition: opacity 0.2s;
 }
-.flow-route.dimmed {
+.flow-route.flow-route-dimmed {
   opacity: 0.15;
 }
 .flow-route-line {
@@ -97,11 +97,11 @@
   gap: 6px;
   white-space: nowrap;
 }
-.table .better {
+.table .arrival-better {
   color: var(--good);
 }
-.table .worse,
-.table .same {
+.table .arrival-worse,
+.table .arrival-same {
   color: var(--muted);
 }
 

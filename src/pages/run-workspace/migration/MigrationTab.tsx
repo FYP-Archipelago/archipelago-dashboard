@@ -55,7 +55,7 @@ function FlowDiagram({ islands, routes, hovered, onHover }: { islands: number[];
         return (
           <g
             key={key}
-            className={`flow-route${hovered && hovered !== key ? ' dimmed' : ''}`}
+            className={`flow-route${hovered && hovered !== key ? ' flow-route-dimmed' : ''}`}
             onPointerMove={(event) => onHover(key, event)}
             onPointerLeave={() => onHover(null)}
           >
@@ -91,7 +91,7 @@ function RouteMatrix({ islands, routes, hovered, onHover }: { islands: number[];
   const most = Math.max(1, ...routes.map((route) => route.migrants));
   return (
     <div className="heat-grid" style={{ gridTemplateColumns: `auto repeat(${islands.length}, minmax(34px, 1fr)) auto` }}>
-      <span className="heat-axis corner">From ↓ To →</span>
+      <span className="heat-axis heat-axis-corner">From ↓ To →</span>
       {islands.map((island) => (
         <span key={island} className="heat-axis">
           <i className="swatch" style={{ background: islandColor(island) }} />
@@ -101,14 +101,14 @@ function RouteMatrix({ islands, routes, hovered, onHover }: { islands: number[];
       <span className="heat-axis">Sent</span>
       {islands.map((source) => (
         <div key={source} className="heat-row">
-          <span className="heat-axis row">Island {source}</span>
+          <span className="heat-axis heat-axis-row">Island {source}</span>
           {islands.map((destination) => {
             const key = routeKey(source, destination);
             const migrants = between.get(key) ?? 0;
-            if (source === destination) return <span key={key} className="heat-cell same" />;
+            if (source === destination) return <span key={key} className="heat-cell heat-cell-same" />;
             if (!migrants)
               return (
-                <span key={key} className="heat-cell empty" title={`No migrants from island ${source} to island ${destination}`}>
+                <span key={key} className="heat-cell heat-cell-empty" title={`No migrants from island ${source} to island ${destination}`}>
                   ·
                 </span>
               );
@@ -116,7 +116,7 @@ function RouteMatrix({ islands, routes, hovered, onHover }: { islands: number[];
             return (
               <span
                 key={key}
-                className={`heat-cell${hovered === key ? ' selected' : ''}`}
+                className={`heat-cell${hovered === key ? ' heat-cell-selected' : ''}`}
                 style={{ background: heatColor(shade), color: heatInk(shade) }}
                 aria-label={`Island ${source} → island ${destination}: ${migrants} migrants`}
                 onPointerEnter={() => onHover(key)}
@@ -129,13 +129,13 @@ function RouteMatrix({ islands, routes, hovered, onHover }: { islands: number[];
           <span className="heat-total">{sent(source)}</span>
         </div>
       ))}
-      <span className="heat-axis row">Received</span>
+      <span className="heat-axis heat-axis-row">Received</span>
       {islands.map((island) => (
-        <span key={island} className="heat-total column">
+        <span key={island} className="heat-total heat-total-column">
           {received(island)}
         </span>
       ))}
-      <span className="heat-total column">{routes.reduce((sum, route) => sum + route.migrants, 0)}</span>
+      <span className="heat-total heat-total-column">{routes.reduce((sum, route) => sum + route.migrants, 0)}</span>
     </div>
   );
 }
@@ -177,19 +177,19 @@ function arrivalsOf(graph: RunResult['graph']): Arrival[] {
 }
 
 // How the arrival cluster's best compares with the best of the cluster the migrants left.
-function comparison(arrival: Arrival, maximising: boolean): { label: string; tone: 'better' | 'worse' | 'same' } | null {
+function comparison(arrival: Arrival, maximising: boolean): { label: string; tone: 'arrival-better' | 'arrival-worse' | 'arrival-same' } | null {
   if (arrival.fromBest === null || arrival.toBest === null) return null;
   const gap = arrival.toBest - arrival.fromBest;
-  if (gap === 0) return { label: 'Same', tone: 'same' };
+  if (gap === 0) return { label: 'Same', tone: 'arrival-same' };
   const better = maximising ? gap > 0 : gap < 0;
-  return { label: `${better ? 'Better' : 'Worse'} by ${fitness(Math.abs(gap))}`, tone: better ? 'better' : 'worse' };
+  return { label: `${better ? 'Better' : 'Worse'} by ${fitness(Math.abs(gap))}`, tone: better ? 'arrival-better' : 'arrival-worse' };
 }
 
 function Arrivals({ graph, maximising }: { graph: RunResult['graph']; maximising: boolean }) {
   const arrivals = useMemo(() => arrivalsOf(graph), [graph]);
   const [showAll, setShowAll] = useState(false);
   if (!arrivals.length) return null;
-  const better = arrivals.filter((arrival) => comparison(arrival, maximising)?.tone === 'better').length;
+  const better = arrivals.filter((arrival) => comparison(arrival, maximising)?.tone === 'arrival-better').length;
   const shown = showAll ? arrivals : arrivals.slice(0, 10);
   const cluster = (id: number, best: number | null) => (
     <>
@@ -199,7 +199,7 @@ function Arrivals({ graph, maximising }: { graph: RunResult['graph']; maximising
   return (
     <>
       <h2 className="section-title">Where migrants landed</h2>
-      <p className="section-sub">
+      <p className="section-subtitle">
         Migrants moved along {numberFormat.format(arrivals.length)} links between search clusters. {numberFormat.format(better)} of them arrived in a
         cluster whose best beat the one they left.
       </p>
@@ -210,8 +210,8 @@ function Arrivals({ graph, maximising }: { graph: RunResult['graph']; maximising
               <th>Route</th>
               <th>From cluster</th>
               <th>To cluster</th>
-              <th className="r">Migrants</th>
-              <th className="r">Arrival cluster&apos;s best</th>
+              <th className="align-right">Migrants</th>
+              <th className="align-right">Arrival cluster&apos;s best</th>
             </tr>
           </thead>
           <tbody>
@@ -229,8 +229,8 @@ function Arrivals({ graph, maximising }: { graph: RunResult['graph']; maximising
                   </td>
                   <td>{cluster(arrival.from, arrival.fromBest)}</td>
                   <td>{cluster(arrival.to, arrival.toBest)}</td>
-                  <td className="r">{arrival.migrants}</td>
-                  <td className={`r ${compared?.tone ?? ''}`}>{compared?.label ?? '—'}</td>
+                  <td className="align-right">{arrival.migrants}</td>
+                  <td className={`align-right ${compared?.tone ?? ''}`}>{compared?.label ?? '—'}</td>
                 </tr>
               );
             })}
@@ -239,7 +239,7 @@ function Arrivals({ graph, maximising }: { graph: RunResult['graph']; maximising
       </section>
       {arrivals.length > shown.length && (
         <div className="table-foot">
-          <button className="btn" onClick={() => setShowAll(true)}>
+          <button className="button" onClick={() => setShowAll(true)}>
             Show all {numberFormat.format(arrivals.length)} links
           </button>
         </div>
@@ -278,7 +278,7 @@ function Migration({ run, result }: { run: Run; result: RunResult }) {
         <div>
           <span className="muted">Migrants</span>
           <strong>{numberFormat.format(total)}</strong>
-          <span className="note">
+          <span className="stat-note">
             {settings['migration.num_migrants']} per migration event, every {settings['migration.interval']} generations
           </span>
         </div>
@@ -288,14 +288,14 @@ function Migration({ run, result }: { run: Run; result: RunResult }) {
             {routes.length}
             <small>of {islands.length * (islands.length - 1)} possible</small>
           </strong>
-          <span className="note">{TOPOLOGIES[topology] ?? topology} Topology</span>
+          <span className="stat-note">{TOPOLOGIES[topology] ?? topology} Topology</span>
         </div>
         <div>
           <span className="muted">Busiest route</span>
           <strong>
             {busiest.source} → {busiest.destination}
           </strong>
-          <span className="note">
+          <span className="stat-note">
             {busiest.migrants} migrants · {percent(busiest.migrants / total)} of traffic
           </span>
         </div>
@@ -303,21 +303,21 @@ function Migration({ run, result }: { run: Run; result: RunResult }) {
           <div title="The share of the run's improvement the islands could not reach without migrants">
             <span className="muted">Improvement that needed migrants</span>
             <strong>{percent(Math.max(0, routesGame.full_value - routesGame.empty_value) / routesGame.full_value)}</strong>
-            <span className="note">the rest each island evolved on its own</span>
+            <span className="stat-note">the rest each island evolved on its own</span>
           </div>
         )}
       </section>
 
       <div ref={grid} className="migration-grid">
         <section className="card">
-          <div className="card-head card-heading">
+          <div className="card-header card-heading">
             <h3>Flow between islands</h3>
             <span className="muted">Arrow width ∝ Number of migrants</span>
           </div>
           <FlowDiagram islands={islands} routes={routes} hovered={hover?.key ?? null} onHover={onHover} />
         </section>
         <section className="card">
-          <div className="card-head card-heading">
+          <div className="card-header card-heading">
             <h3>Route matrix</h3>
             <span className="muted">Migrants by source and destination</span>
           </div>
