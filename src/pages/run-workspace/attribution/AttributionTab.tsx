@@ -129,7 +129,12 @@ function Credit({ game, view }: { game: ShapleyGame; view: View }) {
               {lo < 0 && <i className="credit-zero" style={{ left: `${at(0)}%` }} />}
               <i
                 className="credit-fill"
-                style={{ left: `${Math.min(at(0), at(value))}%`, width: `${Math.abs(at(value) - at(0))}%`, background: playerColor(player) }}
+                style={{
+                  left: `${Math.min(at(0), at(value))}%`,
+                  width: `${Math.abs(at(value) - at(0))}%`,
+                  background: playerColor(player),
+                  transformOrigin: value < 0 ? 'right' : 'left',
+                }}
               />
             </span>
             <span className="credit-value">

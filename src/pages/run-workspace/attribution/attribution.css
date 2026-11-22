@@ -151,7 +151,6 @@
 }
 @media (prefers-reduced-motion: no-preference) {
   .credit-fill {
-    transform-origin: left;
     animation: grow-x 0.9s var(--ease) 0.15s backwards;
   }
 }
