@@ -1,4 +1,4 @@
-import { fireEvent, screen } from '@testing-library/react';
+import { cleanup, fireEvent, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import { makeResult } from '@/test/fixtures.ts';
@@ -42,6 +42,32 @@ describe('ConvergenceTab', () => {
     fireEvent.click(button('Island 2'));
 
     expect([0, 1, 2].map((island) => pressed(`Island ${island}`))).toEqual(['false', 'false', 'true']);
+  });
+
+  it('flags the islands the runner stopped on stagnation, and none when the run has no island ends', async () => {
+    const flagged = () =>
+      [...document.querySelectorAll('.stagnation-flag')].map(
+        (flag) =>
+          flag
+            .closest('tr')!
+            .querySelector('.island-cell')!
+            .textContent!.match(/^Island \d+/)![0]
+      );
+    const result = makeResult();
+    // The logs show island 2 improving in its last generation, but below the runner's tolerance, so the runner's count
+    // and stop reason are what the table shows. Island 1 went 2 generations without but used up its budget.
+    result.island_ends = result.island_ends.map((end) =>
+      end.island_id === 2
+        ? { ...end, termination_reason: 'stagnation', generations_since_improvement: 2 }
+        : { ...end, termination_reason: 'max_evaluations' }
+    );
+    await renderWorkspace('convergence', { result });
+    expect(flagged()).toEqual(['Island 2']);
+    expect(document.querySelector('.stagnation-flag')!.parentElement!.textContent).toBe('2 gens (40%)Stagnated');
+
+    cleanup();
+    await renderWorkspace('convergence', { result: makeResult({ island_ends: [] }) });
+    expect(flagged()).toEqual([]);
   });
 
   it('only calls it convergence when the run had time left after it, not when it was still improving at the end', async () => {

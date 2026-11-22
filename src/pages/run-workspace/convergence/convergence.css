@@ -147,3 +147,9 @@
   background: #fff;
   transform: rotate(45deg);
 }
+.stagnation-flag {
+  display: block;
+  color: var(--warning);
+  font-size: 11.5px;
+  font-weight: 500;
+}

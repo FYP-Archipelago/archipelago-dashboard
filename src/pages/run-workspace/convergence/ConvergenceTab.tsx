@@ -5,7 +5,7 @@ import Icon from '@/components/Icon.tsx';
 import { compactNumber, fitness, numberFormat } from '@/format.ts';
 import LineChart, { Sparkline } from '@/pages/run-workspace/charts/LineChart.tsx';
 import { EmptyState, NoResult, type ResultQuery } from '@/pages/run-workspace/shared.tsx';
-import type { Run, RunResult } from '@/types.ts';
+import type { IslandEnd, Run, RunResult } from '@/types.ts';
 
 import { describeDiversity, historyByIsland, runBest, runProgress, shareAfter, summarise } from './convergence.ts';
 
@@ -62,12 +62,36 @@ function Segmented<T extends string>({
   );
 }
 
+// Generations the island went without improving before it stopped: from runner
+function WithoutImprovement({ end, limit }: { end: IslandEnd | undefined; limit: number }) {
+  const since = end?.generations_since_improvement ?? null;
+  const stagnated = end?.termination_reason === 'stagnation';
+  return (
+    <>
+      {since === null || !end ? (
+        '—'
+      ) : (
+        <>
+          {since} gens
+          {end.generations_completed > 0 && <span className="muted"> ({Math.round((since / end.generations_completed) * 100)}%)</span>}
+        </>
+      )}
+      {stagnated && (
+        <span className="stagnation-flag" title={limit > 0 ? `Stagnation limit: ${numberFormat.format(limit)} generations` : undefined}>
+          Stagnated
+        </span>
+      )}
+    </>
+  );
+}
+
 function Convergence({ result }: { result: RunResult }) {
   const maximising = result.run.maximising;
   const histories = useMemo(() => historyByIsland(result.generation_history), [result]);
   const summaries = useMemo(() => histories.map((history) => summarise(history, maximising)), [histories, maximising]);
   const best = runBest(summaries, maximising);
   const diversityName = describeDiversity(result.generation_history);
+  const stagnationLimit = result.run.stagnation_generations ?? 0;
 
   const [metric, setMetric] = useState<Metric>('bestSoFar');
   const [axisChoice, setAxis] = useState<Axis>('evaluations');
@@ -280,14 +304,7 @@ function Convergence({ result }: { result: RunResult }) {
                   )}
                 </td>
                 <td className="align-right">
-                  {s.stagnantGenerations === null ? (
-                    '—'
-                  ) : (
-                    <>
-                      {s.stagnantGenerations} gens
-                      {s.stagnantShare !== null && <span className="muted"> ({Math.round(s.stagnantShare * 100)}%)</span>}
-                    </>
-                  )}
+                  <WithoutImprovement end={result.island_ends.find((end) => end.island_id === s.island)} limit={stagnationLimit} />
                 </td>
                 <td className="align-right">{fitness(s.finalMean)}</td>
                 <td className="align-right">{formatDiversity(s.finalDiversity)}</td>

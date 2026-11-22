@@ -17,7 +17,7 @@ describe('convergence summaries', () => {
   it("dates an island's best to its last improvement, not to the generations that only kept it", () => {
     const island0 = summarise(historyByIsland(rows)[0]!, false);
 
-    expect(island0).toMatchObject({ finalBest: 60, reachedGeneration: 3, reachedEvaluations: 40, stagnantGenerations: 1, stagnantShare: 0.2 });
+    expect(island0).toMatchObject({ finalBest: 60, reachedGeneration: 3, reachedEvaluations: 40 });
   });
 
   it('reads better as higher for a maximising run', () => {

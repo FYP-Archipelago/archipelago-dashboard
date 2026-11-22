@@ -17,9 +17,6 @@ export type IslandSummary = {
   // The generation (and evaluation count) whose best-so-far was the island's final best: when it last improved.
   reachedGeneration: number | null;
   reachedEvaluations: number | null;
-  // Generations logged after that without improving, and that as a share of all the island's generations.
-  stagnantGenerations: number | null;
-  stagnantShare: number | null;
   finalMean: number | null;
   finalDiversity: number | null;
 };
@@ -50,17 +47,12 @@ export function summarise(history: IslandHistory, maximising: boolean): IslandSu
   history.bestSoFar.forEach((value, i) => {
     if (value !== null && (bestAt < 0 || better(value, history.bestSoFar[bestAt]!))) bestAt = i;
   });
-  const first = history.generation[0];
-  const last = history.generation.at(-1);
   const reached = bestAt < 0 ? null : history.generation[bestAt]!;
-  const stagnant = reached === null || last === undefined ? null : last - reached;
   return {
     island: history.island,
     finalBest: bestAt < 0 ? null : history.bestSoFar[bestAt]!,
     reachedGeneration: reached,
     reachedEvaluations: bestAt < 0 ? null : (history.evaluations[bestAt] ?? null),
-    stagnantGenerations: stagnant,
-    stagnantShare: stagnant === null || first === undefined || last === undefined ? null : stagnant / (last - first + 1),
     finalMean: lastOf(history.mean),
     finalDiversity: lastOf(history.diversity),
   };
