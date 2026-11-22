@@ -268,8 +268,7 @@ function Orders({ game }: { game: ShapleyGame }) {
         )}
       </div>
       <p className="section-subtitle">
-        Players join one at a time in order π{index + 1}. Each bar is a player&apos;s marginal contribution given those already present; its Shapley
-        value is the mean over{' '}
+        Each bar shows a player&apos;s marginal contribution given earlier players in π{index + 1}. Its Shapley value is the mean over{' '}
         {game.sampled_orders
           ? `${numberFormat.format(game.sampled_orders)} sampled orders`
           : `all ${numberFormat.format(factorial(game.players.length))} orders`}

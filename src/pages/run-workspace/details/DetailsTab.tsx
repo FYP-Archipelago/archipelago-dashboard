@@ -143,7 +143,9 @@ function Timing({ run, result }: { run: Run; result: RunResult | undefined }) {
 const SHOWN_ELSEWHERE = new Set([
   'family',
   'threshold',
+  'threshold_checkpoints',
   'epsilon',
+  'epsilon_checkpoints',
   'half_life',
   'bucket_width',
   'prune_period',
@@ -155,11 +157,17 @@ const SHOWN_ELSEWHERE = new Set([
 ]);
 
 function stageTag(stage: string, diagnostics: Record<string, StageDiagnostic>): string | null {
-  const value = (key: string) => (typeof diagnostics[key] === 'number' ? significant.format(diagnostics[key]) : null);
   if (stage === 'lsh') return typeof diagnostics.family === 'string' ? diagnostics.family : null;
-  if (stage === 'birch') return value('threshold') && `θ ${value('threshold')}`;
-  if (stage === 'denstream') return value('epsilon') && `ε ${value('epsilon')}`;
-  return null;
+  if (stage !== 'birch' && stage !== 'denstream') return null;
+
+  const [key, symbol] = stage === 'birch' ? ['threshold', 'θ'] : ['epsilon', 'ε'];
+  const checkpoints = diagnostics[`${key}_checkpoints`];
+  const value = diagnostics[key];
+  const final = typeof value === 'number' ? value : Array.isArray(checkpoints) ? checkpoints.at(-1) : undefined;
+  if (final === undefined) return null;
+
+  const first = Array.isArray(checkpoints) && checkpoints.length > 1 ? `${significant.format(checkpoints[0]!)} → ` : '';
+  return `${symbol} ${first}${significant.format(final)}`;
 }
 
 function Stage({ stage, diagnostics }: { stage: string; diagnostics: Record<string, StageDiagnostic> }) {
@@ -168,7 +176,9 @@ function Stage({ stage, diagnostics }: { stage: string; diagnostics: Record<stri
   const counts = Object.entries(diagnostics).filter(
     (entry): entry is [string, number] => typeof entry[1] === 'number' && !SHOWN_ELSEWHERE.has(entry[0])
   );
-  const trends = Object.entries(diagnostics).filter((entry): entry is [string, number[]] => Array.isArray(entry[1]) && entry[1].length > 1);
+  const trends = Object.entries(diagnostics).filter(
+    (entry): entry is [string, number[]] => Array.isArray(entry[1]) && entry[1].length > 1 && !SHOWN_ELSEWHERE.has(entry[0])
+  );
   return (
     <div className="flow-stage">
       <h4>

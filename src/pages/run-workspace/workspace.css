@@ -272,7 +272,6 @@
   margin-top: 16px;
 }
 .section-subtitle {
-  max-width: 760px;
   margin: 0 0 16px;
   color: var(--muted);
   line-height: 1.5;
