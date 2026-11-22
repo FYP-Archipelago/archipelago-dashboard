@@ -1,5 +1,5 @@
 .chart {
-  --chart-draw-duration: 2.5s;
+  --chart-draw-duration: 1.5s;
   position: relative;
   min-width: 0;
 }

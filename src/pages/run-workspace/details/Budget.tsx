@@ -135,8 +135,8 @@ export default function Budget({ run, result }: { run: Run; result: RunResult })
             </span>
             {islands.map(
               (island, index) =>
-                hover?.on === 'evaluations' &&
-                hover.island === island.island && (
+                hover?.island === island.island &&
+                hover.on !== 'generations' && (
                   <div
                     key={island.island}
                     className={tipClass(startOf(index) + shares[index]! / 2)}
