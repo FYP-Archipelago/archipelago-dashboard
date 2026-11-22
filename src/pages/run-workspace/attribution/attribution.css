@@ -134,6 +134,46 @@
   width: 1px;
   background: var(--border-strong);
 }
+.credit-whisker {
+  height: 1.5px;
+  background: var(--ink);
+  box-shadow: 0 0 3px var(--bg);
+}
+.credit-error-bar {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+.credit-whisker::before,
+.credit-whisker::after {
+  position: absolute;
+  top: 50%;
+  width: 1.5px;
+  height: 10px;
+  background: inherit;
+  box-shadow: inherit;
+  transform: translate(-50%, -50%);
+  content: '';
+}
+.credit-whisker::before {
+  left: 0;
+}
+.credit-whisker::after {
+  left: 100%;
+}
+.credit-error-note {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+  font-size: 12px;
+}
+.credit-error-symbol {
+  position: relative;
+  flex: 0 0 16px;
+  margin-inline: 1px;
+}
 .credit-value {
   display: flex;
   white-space: nowrap;
@@ -150,8 +190,25 @@
   font-size: 11.5px;
 }
 @media (prefers-reduced-motion: no-preference) {
+  .credit-bars {
+    --credit-grow-delay: 0.15s;
+    --credit-grow-duration: 0.9s;
+  }
   .credit-fill {
-    animation: grow-x 0.9s var(--ease) 0.15s backwards;
+    animation: grow-x var(--credit-grow-duration) var(--ease) var(--credit-grow-delay) backwards;
+  }
+  .credit-error-bar {
+    animation: expand-credit-error 0.42s var(--ease) calc(var(--credit-grow-delay) + var(--credit-grow-duration) - 0.08s) both;
+  }
+}
+@keyframes expand-credit-error {
+  from {
+    opacity: 0;
+    transform: translateY(-50%) scaleX(0);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(-50%) scaleX(1);
   }
 }
 .player-route {

@@ -95,11 +95,16 @@ function Shared({ shapley, game, view, maximising }: { shapley: ShapleyAttributi
 // Ranked credit per player, as bars from a zero line, so negative credit reads as pulling the other way.
 function Credit({ game, view }: { game: ShapleyGame; view: View }) {
   const shared = game.full_value - game.empty_value;
-  const players = [...game.players].sort((a, b) => b.value - a.value);
-  const values = players.map((p) => p.value);
-  const lo = Math.min(0, ...values);
-  const span = Math.max(...values, 0) - lo || 1;
+  const players = game.players
+    .map((player) => ({ ...player, errorMargin: Math.max(0, player.standard_error ?? 0) }))
+    .sort((a, b) => b.value - a.value);
+  const lo = Math.min(0, ...players.map(({ value, errorMargin }) => value - errorMargin));
+  const hi = Math.max(0, ...players.map(({ value, errorMargin }) => value + errorMargin));
+  const span = hi - lo || 1;
   const at = (v: number) => ((v - lo) / span) * 100;
+  // Whiskers under 0.5% of the track would read as stray ticks; the ± text still shows them.
+  const showsWhisker = (errorMargin: number) => (2 * errorMargin) / span >= 0.005;
+  const hasWhiskers = players.some(({ errorMargin }) => showsWhisker(errorMargin));
   const [first, second] = players;
   return (
     <section className="card">
@@ -119,7 +124,7 @@ function Credit({ game, view }: { game: ShapleyGame; view: View }) {
         </p>
       )}
       <div className="credit-bars">
-        {players.map(({ player, value, standard_error: error }) => (
+        {players.map(({ player, value, standard_error: error, errorMargin }) => (
           <div key={playerKey(player)} className="credit-row">
             <span className="credit-name">
               <Swatch player={player} />
@@ -136,17 +141,30 @@ function Credit({ game, view }: { game: ShapleyGame; view: View }) {
                   transformOrigin: value < 0 ? 'right' : 'left',
                 }}
               />
+              {showsWhisker(errorMargin) && (
+                <i
+                  className="credit-whisker credit-error-bar"
+                  style={{ left: `${at(value - errorMargin)}%`, width: `${at(value + errorMargin) - at(value - errorMargin)}%` }}
+                  aria-hidden="true"
+                />
+              )}
             </span>
             <span className="credit-value">
               <b>{percent(value / shared || 0)}</b>
               <small>
                 {credit(value)}
-                {error !== null && ` ± ${credit(error)}`}
+                {error != null && ` ± ${credit(error)}`}
               </small>
             </span>
           </div>
         ))}
       </div>
+      {hasWhiskers && (
+        <p className="credit-error-note muted">
+          <i className="credit-whisker credit-error-symbol" aria-hidden="true" />
+          Whiskers show a ±1 standard error.
+        </p>
+      )}
       <p className="hint">
         {view === 'islands'
           ? 'An improvement counts for a coalition only if every island in its ancestry is a member.'

@@ -88,7 +88,7 @@ describe('AttributionTab', () => {
     expect(marks).toEqual({ '0 → 1': '−75%', '1 → 2': '−25%', '1 → 0': '±0' });
   });
 
-  it('shows the error of sampled credit, and says why groups cannot be tried', async () => {
+  it('shows sampled credit with whiskers for positive standard errors and explains why groups cannot be tried', async () => {
     const result = makeResult();
     const shapley = shapleyOf(result);
     await renderWorkspace('attribution', {
@@ -101,7 +101,7 @@ describe('AttributionTab', () => {
               ...shapley.islands,
               sampled_orders: 1024,
               coalitions: [],
-              players: shapley.islands.players.map((p) => ({ ...p, standard_error: 1.5 })),
+              players: shapley.islands.players.map((p) => ({ ...p, standard_error: p.player === 2 ? 0 : 1.5 })),
             },
           },
         },
@@ -110,6 +110,13 @@ describe('AttributionTab', () => {
 
     expect(document.querySelector('.credit-row small')!.textContent).toBe('22 ± 1.5');
     expect(screen.getByText(/Sampled game \(1,024 orders over 3 players\)/)).toBeTruthy();
+    expect(document.querySelectorAll('.credit-error-bar')).toHaveLength(2);
+    expect(screen.getByText(/ ± 0$/).closest('.credit-row')?.querySelector('.credit-error-bar')).toBeNull();
+    expect(screen.getByText('Whiskers show a ±1 standard error.').querySelector('.credit-error-symbol')).toBeTruthy();
+
+    fireEvent.click(button('Migration route attribution'));
+    expect(document.querySelector('.credit-error-bar')).toBeNull();
+    expect(screen.queryByText('Whiskers show a ±1 standard error.')).toBeNull();
   });
 
   it("says when a run could not be attributed, with the analysis's reason on hover", async () => {
