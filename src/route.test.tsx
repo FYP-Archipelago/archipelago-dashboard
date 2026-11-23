@@ -26,10 +26,10 @@ describe('routing', () => {
     expect(renderHook(useRoute).result.current).toEqual({ name: 'run', id: 'run-1', tab: RUN_TABS[0] });
   });
 
-  it('falls back to the runs list for unknown paths', () => {
-    window.history.replaceState(null, '', '/somewhere/else');
+  it.each(['/somewhere/else', '/runs/run-1/details/extra'])('reads %s as a page that does not exist', (path) => {
+    window.history.replaceState(null, '', path);
 
-    expect(renderHook(useRoute).result.current).toEqual({ name: 'runs' });
+    expect(renderHook(useRoute).result.current).toEqual({ name: 'not-found' });
   });
 
   it('follows navigate() and the back button', () => {

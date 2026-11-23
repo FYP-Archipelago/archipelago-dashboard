@@ -246,11 +246,6 @@
 .run-page {
   padding-top: 28px;
 }
-.run-not-found {
-  color: var(--ink);
-  font-size: 22px;
-  font-weight: 600;
-}
 
 @media (max-width: 1300px) {
   .run-header-inner {

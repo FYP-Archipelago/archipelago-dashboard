@@ -82,7 +82,7 @@ describe('RunWorkspace loading', () => {
     await settle();
     await act(() => vi.advanceTimersByTimeAsync(15000));
 
-    expect(screen.getByText('Run not found')).toBeTruthy();
+    expect(screen.getByText('Run Not Found')).toBeTruthy();
     expect(requests(fetchMock, 'GET', '/runs/run-gone')).toBe(1);
   });
 
@@ -256,7 +256,7 @@ describe('RunWorkspace delete', () => {
     window.history.pushState(null, '', '/runs/run-1');
     act(() => void window.dispatchEvent(new PopStateEvent('popstate')));
     await settle();
-    expect(screen.getByText('Run not found')).toBeTruthy();
+    expect(screen.getByText('Run Not Found')).toBeTruthy();
   });
 
   it('keeps the run and shows why when the backend refuses', async () => {

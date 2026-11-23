@@ -3,9 +3,8 @@ import { useState } from 'react';
 import { isNotFound } from '@/api/client.ts';
 import { useRun, useRunResult } from '@/api/queries.ts';
 import Icon from '@/components/Icon.tsx';
-import Link from '@/components/Link.tsx';
 import Unavailable from '@/components/Unavailable.tsx';
-import { runsHref, type RunTab } from '@/route.ts';
+import type { RunTab } from '@/route.ts';
 import type { Run } from '@/types.ts';
 
 import AttributionTab from './attribution/AttributionTab.tsx';
@@ -14,6 +13,7 @@ import DetailsTab from './details/DetailsTab.tsx';
 import DivergenceTab from './divergence/DivergenceTab.tsx';
 import Header from './Header.tsx';
 import MigrationTab from './migration/MigrationTab.tsx';
+import RunNotFound from './RunNotFound.tsx';
 
 import './workspace.css';
 import './shared.css';
@@ -32,21 +32,11 @@ export default function RunWorkspace({ id, tab }: { id: string; tab: RunTab }) {
   if (!run.data)
     return (
       <div className="page">
-        <div className="page-state">
-          {run.isError && isNotFound(run.error) ? (
-            <>
-              <h1 className="run-not-found">Run not found</h1>
-              <span className="monospace">{id}</span>
-              <Link className="button" href={runsHref}>
-                Back to runs
-              </Link>
-            </>
-          ) : run.isError ? (
-            <Unavailable />
-          ) : (
-            <span className="page-spinner" aria-label="Loading the run" />
-          )}
-        </div>
+        {run.isError && isNotFound(run.error) ? (
+          <RunNotFound id={id} />
+        ) : (
+          <div className="page-state">{run.isError ? <Unavailable /> : <span className="page-spinner" aria-label="Loading the run" />}</div>
+        )}
       </div>
     );
 

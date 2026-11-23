@@ -232,6 +232,27 @@
   min-height: 280px;
 }
 
+/* A page for something that does not exist: a drawing, a heading and the way back. */
+.not-found {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: calc(100vh - 180px);
+  text-align: center;
+}
+.not-found h1 {
+  margin-top: 28px;
+  font-size: 28px;
+  font-weight: 600;
+  letter-spacing: -0.035em;
+}
+.not-found-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 28px;
+}
+
 .table-card {
   padding: 0;
   overflow-x: auto;
