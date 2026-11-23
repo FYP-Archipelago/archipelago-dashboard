@@ -23,7 +23,11 @@ function detail(body: unknown): string | null {
   return null;
 }
 
-export async function request<T>(method: 'GET' | 'POST', path: string, { body, signal, tolerate }: RequestOptions = {}): Promise<T> {
+export async function request<T>(
+  method: 'GET' | 'POST' | 'PATCH' | 'DELETE',
+  path: string,
+  { body, signal, tolerate }: RequestOptions = {}
+): Promise<T> {
   const timeout = AbortSignal.timeout(TIMEOUT_MS);
   const headers: Record<string, string> = { accept: 'application/json' };
   if (body !== undefined) headers['content-type'] = 'application/json';
@@ -42,6 +46,7 @@ export async function request<T>(method: 'GET' | 'POST', path: string, { body, s
   const payload: unknown = await response.json().catch(() => null);
   if (!response.ok && response.status !== tolerate)
     throw new ApiError(detail(payload) ?? `Backend request failed (HTTP ${response.status}).`, response.status);
+  if (response.status === 204) return undefined as T;
   if (payload === null) throw new Error('Backend returned a non-JSON response.');
   return payload as T;
 }

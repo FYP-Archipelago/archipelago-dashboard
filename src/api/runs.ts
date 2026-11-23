@@ -2,6 +2,10 @@ import type { NewRun, Run, RunPage, RunResult, RunStatusName } from '@/types.ts'
 
 import { request } from './client.ts';
 
+export const NAME_MAX = 100;
+
+export const isFinished = (status: RunStatusName) => status === 'done' || status === 'failed' || status === 'cancelled';
+
 type RunQuery = { status?: RunStatusName; cursor?: string };
 
 export function getRuns(query: RunQuery, signal?: AbortSignal): Promise<RunPage> {
@@ -26,4 +30,12 @@ export function getRunResult(id: string, signal?: AbortSignal): Promise<RunResul
 
 export function cancelRun(id: string): Promise<Run> {
   return request<Run>('POST', `${runPath(id)}/cancel`);
+}
+
+export function renameRun(id: string, name: string): Promise<Run> {
+  return request<Run>('PATCH', runPath(id), { body: { run_name: name } });
+}
+
+export function deleteRun(id: string): Promise<void> {
+  return request<void>('DELETE', runPath(id));
 }

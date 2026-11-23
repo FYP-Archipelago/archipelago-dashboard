@@ -1,5 +1,6 @@
 import { adjectives, animals, colors, uniqueNamesGenerator } from 'unique-names-generator';
 
+import { NAME_MAX } from '@/api/runs.ts';
 import { numberFormat } from '@/format.ts';
 import type { Clustering, NewRun, OverrideSpec, Preset, Presets, RunSettings } from '@/types.ts';
 
@@ -54,8 +55,6 @@ export function torusNeeds(overrides: Presets['overrides']): string {
 // archipelago's clustering Config allows detail in this range.
 export const DETAIL_MIN = 0.5;
 export const DETAIL_MAX = 2;
-
-export const NAME_MAX = 100;
 
 export const randomName = () => uniqueNamesGenerator({ dictionaries: [adjectives, colors, animals], separator: '-', length: 3 });
 

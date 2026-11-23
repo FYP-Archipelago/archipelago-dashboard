@@ -14,7 +14,7 @@ import type { NewRun, Run, RunPage, RunStatusName } from '@/types.ts';
 import { isNotFound } from './client.ts';
 import { getHealth } from './health.ts';
 import { getPresets } from './presets.ts';
-import { cancelRun, createRun, getRun, getRunResult, getRuns } from './runs.ts';
+import { cancelRun, createRun, deleteRun, getRun, getRunResult, getRuns, isFinished, renameRun } from './runs.ts';
 
 function runList(status?: RunStatusName) {
   return infiniteQueryOptions({
@@ -59,8 +59,6 @@ export function useCreateRun() {
   });
 }
 
-const FINISHED: RunStatusName[] = ['done', 'failed', 'cancelled'];
-
 // The run's row from the most recently fetched runs list that has it, and when that list was fetched.
 function listedRun(queryClient: QueryClient, id: string): { run: Run; at: number } | null {
   let found: { run: Run; at: number } | null = null;
@@ -83,8 +81,8 @@ export function useRun(id: string) {
     queryFn: ({ signal }) => getRun(id, signal),
     initialData: () => listedRun(queryClient, id)?.run,
     initialDataUpdatedAt: () => listedRun(queryClient, id)?.at,
-    staleTime: ({ state }) => (state.data && FINISHED.includes(state.data.status) ? Infinity : 0),
-    refetchInterval: ({ state }) => ((state.data ? !FINISHED.includes(state.data.status) : !isNotFound(state.error)) ? 5000 : false),
+    staleTime: ({ state }) => (state.data && isFinished(state.data.status) ? Infinity : 0),
+    refetchInterval: ({ state }) => ((state.data ? !isFinished(state.data.status) : !isNotFound(state.error)) ? 5000 : false),
     retry: (failures, error) => failures < 1 && !isNotFound(error),
   });
 }
@@ -99,6 +97,39 @@ export function useCancelRun(id: string) {
     mutationFn: () => cancelRun(id),
     onSuccess: (run) => {
       queryClient.setQueryData(['run', id], run);
+      void queryClient.invalidateQueries({ queryKey: ['runs'] });
+    },
+  });
+}
+
+// Rewrites the run's row in every loaded runs list, so a change shows at once instead of at the next poll.
+function patchListedRuns(queryClient: QueryClient, update: (runs: Run[]) => Run[]) {
+  queryClient.setQueriesData<InfiniteData<RunPage>>(
+    { queryKey: ['runs', 'list'] },
+    (data) => data && { ...data, pages: data.pages.map((page) => ({ ...page, runs: update(page.runs) })) }
+  );
+}
+
+export function useRenameRun(id: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (name: string) => renameRun(id, name),
+    onSuccess: (run) => {
+      queryClient.setQueryData(['run', id], run);
+      patchListedRuns(queryClient, (runs) => runs.map((row) => (row.run_id === id ? run : row)));
+    },
+  });
+}
+
+// A finished run is never refetched, so its cached copy is dropped too, or going back to it would show it as if it still existed.
+export function useDeleteRun(id: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => deleteRun(id),
+    onSuccess: () => {
+      patchListedRuns(queryClient, (runs) => runs.filter((row) => row.run_id !== id));
+      queryClient.removeQueries({ queryKey: ['run', id], exact: true });
+      queryClient.removeQueries({ queryKey: ['run-result', id], exact: true });
       void queryClient.invalidateQueries({ queryKey: ['runs'] });
     },
   });
