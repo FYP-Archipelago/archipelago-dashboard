@@ -8,6 +8,7 @@ export default defineConfig({
     environment: 'jsdom',
     environmentOptions: { jsdom: { url: 'http://localhost/' } },
     setupFiles: './src/test/setup.ts',
+    testTimeout: 15_000,
     exclude: [...configDefaults.exclude, 'local/**'],
   },
 });
