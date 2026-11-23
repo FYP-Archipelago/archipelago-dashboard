@@ -103,3 +103,75 @@
 .pair-chip.pair-chip-off .legend-line {
   opacity: 0.25;
 }
+
+.hover-tip:has(.divergence-hover-window) {
+  width: clamp(170px, calc(40% - 14px), 320px);
+}
+.divergence-hover-window {
+  display: block;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border);
+  color: var(--ink);
+  font-weight: 600;
+}
+.divergence-hover-migrations {
+  display: grid;
+  gap: 7px;
+  padding-block: 6px;
+  border-bottom: 1px solid var(--border);
+}
+.divergence-hover-event + .divergence-hover-event {
+  padding-top: 7px;
+  border-top: 1px solid var(--border);
+}
+.divergence-hover-generation {
+  margin-bottom: 5px;
+  font-variant-numeric: tabular-nums;
+}
+.divergence-hover-direction {
+  display: grid;
+  gap: 3px;
+}
+.divergence-hover-direction + .divergence-hover-direction {
+  margin-top: 5px;
+}
+.divergence-hover-direction-label {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--ink);
+  font-weight: 500;
+}
+.divergence-migration-arrow {
+  flex: none;
+  width: 8px;
+  height: 6px;
+  background: var(--muted);
+  clip-path: polygon(0 0, 100% 0, 50% 100%);
+}
+.divergence-migration-arrow[data-direction='apart'] {
+  rotate: 180deg;
+}
+.divergence-hover-tags-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.divergence-hover-tags-list > li {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 1px 5px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  color: var(--ink-2);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.divergence-hover-tags-list .swatch {
+  width: 5px;
+  height: 5px;
+}

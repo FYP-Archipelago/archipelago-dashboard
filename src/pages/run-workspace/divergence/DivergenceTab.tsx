@@ -19,6 +19,45 @@ const REAL_DIFFERENCE = 0.05;
 
 const pairName = (a: number, b: number) => `${a} ↔ ${b}`;
 
+const MIGRATION_DIRECTIONS = [
+  { key: 'closer', label: 'Drew closer' },
+  { key: 'apart', label: 'Moved apart' },
+] as const;
+type MigrationSeries = { key: number; label: string; shortLabel: string; color: string };
+type MigrationChange = Record<(typeof MIGRATION_DIRECTIONS)[number]['key'], MigrationSeries[]>;
+
+function MigrationHover({ migrations }: { migrations: [number, MigrationChange][] }) {
+  return (
+    <div className="divergence-hover-migrations">
+      {migrations.map(([generation, change]) => (
+        <div key={generation} className="divergence-hover-event">
+          <div className="divergence-hover-generation">After migration at generation {generation}</div>
+          {MIGRATION_DIRECTIONS.map(({ key, label }) => {
+            const affected = change[key];
+            if (!affected.length) return null;
+            return (
+              <div key={key} className="divergence-hover-direction">
+                <div className="divergence-hover-direction-label">
+                  <i className="divergence-migration-arrow" data-direction={key} aria-hidden="true" />
+                  {label}
+                </div>
+                <ul className="divergence-hover-tags-list" role="list">
+                  {affected.map((series) => (
+                    <li key={series.key} aria-label={series.label}>
+                      <i className="swatch" style={{ background: series.color }} aria-hidden="true" />
+                      {series.shortLabel}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            );
+          })}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function Matrix({
   islands,
   values,
@@ -96,20 +135,21 @@ function Divergence({ run, result }: { run: Run; result: RunResult }) {
   const trend = describeTrend(means, starts);
   const real = pairs.filter((p) => p.p < REAL_DIFFERENCE).length;
 
-  const mean = { key: -1, label: 'Mean of all pairs', color: 'var(--muted)', xs: starts, ys: means };
+  const mean = { key: -1, label: 'Mean of all pairs', shortLabel: 'Mean of all pairs', color: 'var(--muted)', xs: starts, ys: means };
   // Keys: the mean is -1; each pair is its index in `pairs`.
   const pairSeries = pairs
     .filter((p) => picked.has(p.key))
     .map((p) => ({
       key: pairs.indexOf(p),
       label: `Islands ${pairName(p.a, p.b)}`,
+      shortLabel: pairName(p.a, p.b),
       color: pairColor(pairs.indexOf(p)),
       xs: starts,
       ys: windows.map((window) => window.get(p.key) ?? null),
     }));
   const settings = run.run_settings;
   const migrationEnabled = settings['migration.enabled'];
-  const changesByGeneration = new Map<number, { closer: string[]; apart: string[] }>();
+  const changesByGeneration = new Map<number, MigrationChange>();
   const lastGeneration = result.generation_history.reduce((last, row) => Math.max(last, row.generation), starts.at(-1) ?? 0);
   // The migrations after which the mean of all pairs jumped, marked on the chart with the pairs' and counted above it.
   const meanMigrations = migrationEnabled ? notableMigrations(settings['migration.interval'], lastGeneration, starts, means) : [];
@@ -122,7 +162,7 @@ function Divergence({ run, result }: { run: Run; result: RunResult }) {
     for (const series of [mean, ...pairSeries]) {
       for (const { x, mark } of notableMigrations(settings['migration.interval'], lastGeneration, starts, series.ys)) {
         const change = changesByGeneration.get(x) ?? { closer: [], apart: [] };
-        change[mark === 'down' ? 'closer' : 'apart'].push(series.label);
+        change[mark === 'down' ? 'closer' : 'apart'].push(series);
         changesByGeneration.set(x, change);
       }
     }
@@ -151,13 +191,12 @@ function Divergence({ run, result }: { run: Run; result: RunResult }) {
   const hoverTitle = (x: number) => {
     const index = starts.indexOf(x);
     const migrations = migrationChanges.filter(([generation]) => generation > (starts[index - 1] ?? -Infinity) && generation <= x);
-    const details = migrations.map(([generation, { closer, apart }]) => {
-      const directions = [closer.length ? `${closer.join(', ')} drew closer` : '', apart.length ? `${apart.join(', ')} moved apart` : ''].filter(
-        Boolean
-      );
-      return `after migration at generation ${generation}, ${directions.join(' and ')}`;
-    });
-    return [windowLabel(index), ...details].join(' · ');
+    return (
+      <>
+        <span className="divergence-hover-window">{windowLabel(index)}</span>
+        {migrations.length > 0 && <MigrationHover migrations={migrations} />}
+      </>
+    );
   };
   const verdict = (p: Pair) => (p.p < REAL_DIFFERENCE ? 'Real difference' : 'Could be chance');
 
@@ -257,12 +296,13 @@ function Divergence({ run, result }: { run: Run; result: RunResult }) {
               <i className="legend-line muted-line" />
               Mean of all pairs
             </span>
-            {guides.length > 0 && (
-              <>
-                <span>▼ Drew closer after migration</span>
-                <span>▲ Moved apart after migration</span>
-              </>
-            )}
+            {guides.length > 0 &&
+              MIGRATION_DIRECTIONS.map(({ key, label }) => (
+                <span key={key}>
+                  <i className="divergence-migration-arrow" data-direction={key} aria-hidden="true" />
+                  {label} after migration
+                </span>
+              ))}
             {pairSeries.length > 0 && guides.length === 0 && (
               <span>
                 <Icon name={migrationEnabled ? 'info' : 'migrationOff'} size={13} />

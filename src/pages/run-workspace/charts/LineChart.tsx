@@ -1,4 +1,4 @@
-import { useLayoutEffect, useMemo, useRef, useState, type PointerEvent } from 'react';
+import { useLayoutEffect, useMemo, useRef, useState, type PointerEvent, type ReactNode } from 'react';
 
 import './chart.css';
 
@@ -11,7 +11,7 @@ type Props = {
   height?: number;
   log: boolean;
   xTitle: string;
-  hoverTitle: (x: number) => string;
+  hoverTitle: (x: number) => ReactNode;
   formatY: (y: number | null) => string;
   // The tooltip lists the series best value first.
   better: 'lower' | 'higher';

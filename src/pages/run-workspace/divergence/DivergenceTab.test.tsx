@@ -1,4 +1,4 @@
-import { fireEvent, screen } from '@testing-library/react';
+import { fireEvent, screen, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 import { makeResult, makeRun } from '@/test/fixtures.ts';
@@ -71,15 +71,31 @@ describe('DivergenceTab', () => {
     expect(count('.chart-line')).toBe(4);
     expect(count('.chart-guides line')).toBe(1);
     expect(count('.chart-guides path')).toBe(2);
-    expect(screen.getByText('▼ Drew closer after migration')).toBeTruthy();
-    expect(screen.getByText('▲ Moved apart after migration')).toBeTruthy();
+    expect(screen.getByText('Drew closer after migration').querySelector('.divergence-migration-arrow')?.getAttribute('data-direction')).toBe(
+      'closer'
+    );
+    expect(screen.getByText('Moved apart after migration').querySelector('.divergence-migration-arrow')?.getAttribute('data-direction')).toBe(
+      'apart'
+    );
 
+    fireEvent.click(button('All'));
     const hoverTarget = chart.querySelector('rect')!;
     vi.spyOn(hoverTarget, 'getBoundingClientRect').mockReturnValue(DOMRect.fromRect({ width: 524, height: 302 }));
     fireEvent.pointerMove(hoverTarget, { clientX: 524, clientY: 40 });
-    expect(
-      screen.getByText(/after migration at generation 10, Islands 1 ↔ 2 drew closer and Mean of all pairs, Islands 0 ↔ 1 moved apart/)
-    ).toBeTruthy();
+
+    const tooltip = document.querySelector<HTMLElement>('.hover-tip')!;
+    const tip = within(tooltip);
+    expect(tip.getByText('From generation 10', { selector: '.divergence-hover-window' })).toBeTruthy();
+    expect(tip.getByText('After migration at generation 10')).toBeTruthy();
+    const closer = within(tip.getByText('Drew closer').parentElement!);
+    const apart = within(tip.getByText('Moved apart').parentElement!);
+    expect(closer.getByRole('listitem', { name: 'Islands 1 ↔ 2' })).toBeTruthy();
+    expect(apart.getByRole('listitem', { name: 'Mean of all pairs' })).toBeTruthy();
+    expect(apart.getByRole('listitem', { name: 'Islands 0 ↔ 1' })).toBeTruthy();
+    expect([...tooltip.querySelectorAll('.hover-tip-row b')].map((row) => row.textContent)).toEqual(['0.6', '0.38', '0.15', '—']);
+    fireEvent.pointerMove(hoverTarget, { clientX: 0, clientY: 40 });
+    expect(tip.getByText('Generations 0 to 9', { selector: '.divergence-hover-window' })).toBeTruthy();
+    expect(tip.queryByText(/After migration/)).toBeNull();
 
     // The mean moved apart too, so its mark stays with no pairs picked.
     fireEvent.click(button('None'));
