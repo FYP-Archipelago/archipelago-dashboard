@@ -1,6 +1,6 @@
 import { islandColor } from '@/colors.ts';
+import type { Point } from '@/drawing.ts';
 import { torusGrid } from '@/pages/new-run/form.ts';
-import type { Point } from '@/pages/new-run/shared.ts';
 
 export default function TopologyGlyph({ kind, count }: { kind: string; count: number }) {
   const size = 44;

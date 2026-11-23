@@ -1,6 +1,6 @@
 import { memo, type ReactNode } from 'react';
 
-import { seeded, type Point } from '@/pages/new-run/shared.ts';
+import { seeded, type Point } from '@/drawing.ts';
 import { vars } from '@/style.ts';
 
 // Every benchmark is drawn in this box.
