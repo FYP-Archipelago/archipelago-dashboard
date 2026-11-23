@@ -13,6 +13,7 @@ import DetailsTab from './details/DetailsTab.tsx';
 import DivergenceTab from './divergence/DivergenceTab.tsx';
 import Header from './Header.tsx';
 import MigrationTab from './migration/MigrationTab.tsx';
+import NetworkTab from './network/NetworkTab.tsx';
 import RunNotFound from './RunNotFound.tsx';
 
 import './workspace.css';
@@ -52,6 +53,7 @@ export default function RunWorkspace({ id, tab }: { id: string; tab: RunTab }) {
             <span>{data.error.message}</span>
           </div>
         )}
+        {tab === 'network' && <NetworkTab run={data} result={result} />}
         {tab === 'convergence' && (
           <ConvergenceTab
             run={data}

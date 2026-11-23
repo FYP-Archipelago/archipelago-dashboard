@@ -1,0 +1,191 @@
+/* The inspector beside the stage. contain: size keeps a long cluster card from stretching the stage's row. */
+.network-inspector {
+  grid-row: 1 / span 2;
+  grid-column: 2;
+  contain: size;
+  overflow-y: auto;
+  padding: 18px;
+  border-left: 1px solid var(--border);
+  background: var(--surface);
+}
+.network-inspector-section h3 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+}
+.network-best-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 12px;
+}
+.network-best {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  text-align: left;
+  transition:
+    background 0.15s,
+    opacity 0.2s;
+}
+.network-best:hover {
+  background: var(--hover);
+}
+.network-best.network-best-run {
+  margin-bottom: 4px;
+  background: var(--surface-2);
+}
+.network-best.network-best-run:hover {
+  background: var(--surface-3);
+}
+.network-best.network-best-hidden {
+  opacity: 0.5;
+}
+.network-best-text {
+  flex: 1;
+  min-width: 0;
+}
+.network-best-text small {
+  display: block;
+  color: var(--muted);
+  font-size: 12px;
+}
+.network-best b {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.network-best-mark {
+  flex: none;
+  width: 10px;
+  height: 10px;
+  border: 1.75px solid var(--ink);
+  border-radius: 50%;
+}
+.network-best-mark.network-best-mark-run {
+  border: 0;
+  border-radius: 0;
+  background: var(--ink);
+  clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%);
+}
+.network-cluster {
+  animation: network-fade 0.3s var(--ease);
+}
+@keyframes network-fade {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+}
+.network-cluster-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.network-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+.network-badge-best {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--ink);
+}
+.network-badge-best .network-best-mark {
+  width: 8px;
+  height: 8px;
+}
+.network-cluster .key-value-list {
+  margin-top: 16px;
+}
+.network-hash-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 9px;
+  font-size: 13px;
+}
+.network-hash {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  color: var(--ink-2);
+  transition: color 0.15s;
+}
+.network-hash span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 150px;
+}
+.network-hash:hover {
+  color: var(--ink);
+}
+.network-hash svg {
+  flex: none;
+}
+.network-cluster-migrations {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 16px;
+  font-size: 13px;
+}
+.network-cluster-migrations > .muted {
+  margin-bottom: 4px;
+}
+.network-cluster-link {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 8px;
+  margin: 0 -8px;
+  border-radius: 6px;
+  font-size: 12.5px;
+  text-align: left;
+  transition: background 0.15s;
+}
+.network-cluster-link:hover {
+  background: var(--hover);
+}
+.network-cluster-link b {
+  margin-left: auto;
+  font-weight: 500;
+  white-space: nowrap;
+}
+.network-cluster-link-direction {
+  width: 34px;
+  color: var(--muted);
+  font-size: 11.5px;
+}
+.network-fly {
+  width: 100%;
+  margin-top: 18px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .network-cluster {
+    animation: none;
+  }
+}
+
+@media (max-width: 1100px) {
+  .network-inspector {
+    grid-row: 3;
+    grid-column: 1;
+    contain: none;
+    border-left: 0;
+    border-top: 1px solid var(--border);
+  }
+}

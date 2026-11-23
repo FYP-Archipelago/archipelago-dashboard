@@ -66,6 +66,37 @@ const PATHS = {
   shuffle: <path d="M16 3h5v5M4 20 21 3M21 16v5h-5M15 15l6 6M4 4l5 5" />,
   migrationOff: <path d="M15.5 4h5v5M4.5 20 20.5 4M4.5 4l5 5m6 6 5 5m0-5-5 5" />,
   cloudOff: <path d="m2 2 20 20M5.78 5.78A7 7 0 0 0 9 19h8.5a4.5 4.5 0 0 0 1.31-.19M21.53 16.5A4.5 4.5 0 0 0 17.5 10h-1.79A7 7 0 0 0 10 5.07" />,
+  chevD: <path d="m6 9 6 6 6-6" />,
+  islands: (
+    <>
+      <circle cx="12" cy="5.5" r="2.5" />
+      <circle cx="5.5" cy="17" r="2.5" />
+      <circle cx="18.5" cy="17" r="2.5" />
+      <path d="M10.3 7.6 7 14.6M13.7 7.6l3.3 7M8.3 17h7.4" strokeDasharray="2 2.2" />
+    </>
+  ),
+  reset: (
+    <>
+      <path d="M3 12a9 9 0 1 0 2.6-6.4L3 8" />
+      <path d="M3 3v5h5" />
+    </>
+  ),
+  download: <path d="M12 4v11M7 10l5 5 5-5M5 20h14" />,
+  expand: <path d="M15 3h6v6M21 3l-7 7M9 21H3v-6M3 21l7-7" />,
+  shrink: <path d="M4 14h6v6M10 14l-7 7M20 10h-6V4M14 10l7-7" />,
+  help: (
+    <>
+      <circle cx="12" cy="12" r="9.5" />
+      <path d="M9.5 9.2a2.6 2.6 0 0 1 5 .9c0 1.7-2.5 2.3-2.5 3.9M12 17h.01" />
+    </>
+  ),
+  target: (
+    <>
+      <circle cx="12" cy="12" r="7" />
+      <path d="M12 2v4M12 18v4M2 12h4M18 12h4" />
+      <circle cx="12" cy="12" r="1.5" />
+    </>
+  ),
 };
 
 export type IconName = keyof typeof PATHS;

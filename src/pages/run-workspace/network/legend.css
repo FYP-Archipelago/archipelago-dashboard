@@ -1,0 +1,251 @@
+/* The bar along the bottom of the stage: island dots, then the layer switches. */
+.network-layers {
+  position: absolute;
+  left: 14px;
+  bottom: 14px;
+  z-index: 3;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px;
+  max-width: calc(100% - 28px);
+  padding: 4px;
+}
+.network-layers > * {
+  flex-shrink: 0;
+}
+.network-layers-divider {
+  width: 1px;
+  height: 16px;
+  margin: 0 4px;
+  background: var(--border-strong);
+}
+.network-island-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 1px;
+}
+.network-island-dot {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 30px;
+  padding: 0 8px;
+  border-radius: 7px;
+  color: var(--ink);
+  font-size: 12.5px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  transition:
+    background 0.15s,
+    color 0.2s;
+}
+.network-island-dot:hover {
+  background: var(--hover);
+}
+.network-island-dot:active {
+  transform: scale(0.94);
+}
+.network-island-dot i {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  transition:
+    background 0.25s,
+    box-shadow 0.25s,
+    transform 0.4s var(--spring);
+}
+.network-island-dot.network-island-dot-hidden {
+  color: var(--muted);
+}
+.network-island-dot.network-island-dot-hidden i {
+  box-shadow: inset 0 0 0 1.5px var(--axis);
+  transform: scale(0.85);
+}
+.network-layer,
+.network-layer-filter .network-menu-button {
+  display: inline-flex;
+  align-items: center;
+  height: 30px;
+  border-radius: 7px;
+  font-size: 12.5px;
+  font-weight: 500;
+  white-space: nowrap;
+  transition:
+    background 0.15s,
+    color 0.2s;
+}
+.network-layer {
+  gap: 7px;
+  padding: 0 10px 0 7px;
+  color: var(--ink);
+}
+.network-layer:hover,
+.network-layer-filter .network-menu-button:hover,
+.network-layer-filter .network-menu-button.network-menu-button-open {
+  background: var(--hover);
+}
+.network-layer:active {
+  transform: scale(0.97);
+}
+.network-layer.network-layer-off {
+  color: var(--muted);
+}
+.network-glyph {
+  flex: none;
+  transition:
+    opacity 0.2s,
+    filter 0.2s;
+}
+.network-layer-off .network-glyph {
+  opacity: 0.4;
+  filter: grayscale(1);
+}
+.network-layer-group {
+  display: inline-flex;
+  align-items: center;
+}
+.network-layer-group > .network-layer {
+  padding-right: 6px;
+}
+.network-layer-filter .network-menu-button {
+  position: relative;
+  gap: 4px;
+  padding: 0 6px;
+  color: var(--muted);
+}
+.network-layer-filter .network-menu-button::before {
+  content: '';
+  position: absolute;
+  top: 9px;
+  bottom: 9px;
+  left: 0;
+  width: 1px;
+  background: var(--border-strong);
+}
+.network-layer-count {
+  min-width: 16px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: var(--surface-3);
+  color: var(--ink-2);
+  font-size: 11px;
+  text-align: center;
+}
+/* A narrow stage, such as a laptop with the sidebar open, keeps the bottom bar on one line. */
+@container (max-width: 760px) {
+  .network-island-dot span {
+    display: none;
+  }
+  .network-island-dot {
+    padding: 0 3px;
+  }
+  .network-layer {
+    padding: 0 8px 0 6px;
+  }
+}
+
+/* The route switches: one cell per route, filled in the source island's colour when shown. */
+.network-routes {
+  display: grid;
+  gap: 3px;
+  padding: 2px 8px 4px;
+  font-size: 11.5px;
+  font-variant-numeric: tabular-nums;
+}
+.network-routes-corner {
+  display: flex;
+  align-items: center;
+  padding-right: 6px;
+  color: var(--muted);
+  font-size: 10.5px;
+  white-space: nowrap;
+}
+.network-routes-axis {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-height: 20px;
+  color: var(--muted);
+}
+.network-routes-axis.network-routes-axis-row {
+  justify-content: flex-end;
+  padding-right: 6px;
+}
+.network-routes-axis .swatch {
+  width: 7px;
+  height: 7px;
+}
+.network-route {
+  display: grid;
+  place-items: center;
+  aspect-ratio: 1.3;
+  min-width: 0;
+  border-radius: 5px;
+  font-weight: 600;
+}
+button.network-route {
+  box-shadow: inset 0 0 0 1px var(--border-strong);
+  color: var(--muted);
+  transition:
+    background 0.2s,
+    color 0.2s,
+    transform 0.15s var(--ease),
+    box-shadow 0.2s;
+}
+button.network-route:hover {
+  transform: scale(1.08);
+  box-shadow: inset 0 0 0 1px var(--ink-2);
+}
+button.network-route.network-route-on {
+  background: color-mix(in srgb, var(--route) calc(var(--strength) * 100%), var(--surface-3));
+  box-shadow: none;
+  color: #fff;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+.network-route.network-route-same {
+  background: repeating-linear-gradient(135deg, var(--surface-3) 0 3px, transparent 3px 6px);
+}
+.network-route.network-route-empty {
+  box-shadow: inset 0 0 0 1px var(--border);
+}
+
+/* What each click does under the route grid, with its keys on the right as in a menu. */
+.network-hints {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 10px 8px 6px;
+  font-size: 12px;
+}
+.network-hints > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.network-hints dt {
+  color: var(--ink-2);
+}
+.network-hints dd {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin: 0;
+  color: var(--muted);
+}
+.network-hints kbd {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 20px;
+  padding: 0 6px;
+  border: 1px solid var(--border-strong);
+  border-bottom-width: 2px;
+  border-radius: 5px;
+  background: var(--surface-3);
+  color: var(--ink);
+  font-family: var(--font);
+  font-size: 11px;
+}
