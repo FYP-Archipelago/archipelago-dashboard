@@ -12,6 +12,7 @@ import { useEffect } from 'react';
 import type { NewRun, Run, RunPage, RunStatusName } from '@/types.ts';
 
 import { isNotFound } from './client.ts';
+import { isStreaming } from './events.ts';
 import { getHealth } from './health.ts';
 import { getPresets } from './presets.ts';
 import { cancelRun, createRun, deleteRun, getRun, getRunResult, getRuns, isFinished, renameRun } from './runs.ts';
@@ -70,10 +71,8 @@ function listedRun(queryClient: QueryClient, id: string): { run: Run; at: number
   return found;
 }
 
-// Opened from the runs list or the sidebar, the run's row is already loaded. A finished run's row can no longer
-// change, so it is used as is and /runs/{id} is never asked; an unfinished one is fetched at once and polled until
-// it finishes. Opened from a typed or shared URL, nothing is loaded, so the run is fetched first.
-// A failed first load keeps trying too, unless the run does not exist.
+// Starts from the run's row in a loaded runs list; a finished run is never refetched. An unfinished one is polled
+// until it finishes, except while its live stream reports its status.
 export function useRun(id: string) {
   const queryClient = useQueryClient();
   return useQuery({
@@ -82,7 +81,7 @@ export function useRun(id: string) {
     initialData: () => listedRun(queryClient, id)?.run,
     initialDataUpdatedAt: () => listedRun(queryClient, id)?.at,
     staleTime: ({ state }) => (state.data && isFinished(state.data.status) ? Infinity : 0),
-    refetchInterval: ({ state }) => ((state.data ? !isFinished(state.data.status) : !isNotFound(state.error)) ? 5000 : false),
+    refetchInterval: ({ state }) => ((state.data ? !isFinished(state.data.status) && !isStreaming(id) : !isNotFound(state.error)) ? 5000 : false),
     retry: (failures, error) => failures < 1 && !isNotFound(error),
   });
 }

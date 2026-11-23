@@ -118,6 +118,88 @@ export type Separation = {
   window_pairs: { window: number[]; a: number[]; b: number[]; mmd2: number[] };
 };
 
+// The search clusters as columns: cluster i is position i in each list. x and y place a cluster on the layout's
+// ground plane and z is the layout's third axis.
+export type GraphNodes = {
+  id: number[];
+  island: number[];
+  x: number[];
+  y: number[];
+  z: number[];
+  // Evaluations that landed in the cluster, and how many distinct genomes they were.
+  visits: number[];
+  members: number[];
+  mean_fitness: (number | null)[];
+  best_fitness: (number | null)[];
+  fitness_percentile: number[];
+  // The cluster's mean evaluation index as a share of its island's budget.
+  progress: number[];
+  first_eval: number[];
+  last_eval: number[];
+  in_degree: number[];
+  out_degree: number[];
+  islands_sharing: number[];
+  island_best: boolean[];
+  overall_best: boolean[];
+  migration_endpoint: boolean[];
+  genome_hash: string[];
+  // DenStream's decaying weight; null without DenStream.
+  weight: (number | null)[] | null;
+};
+
+// Parent -> child steps within an island; weight is how many times the step was taken.
+export type GraphEdges = { id: number[]; source: number[]; target: number[]; weight: number[] };
+
+// Migrants that went from one cluster (source id) to another (target id), and how many.
+export type GraphMigrations = { id: number[]; source: number[]; target: number[]; count: number[] };
+
+export type Graph = {
+  nodes: GraphNodes;
+  edges: GraphEdges;
+  migrations: GraphMigrations;
+  // Mean number of islands per occupied cluster.
+  overlap: number;
+};
+
+type Columns<T extends string> = { id: number[] } & Record<T, unknown[]>;
+
+// What changed since the previous streamed update, applied in field order; removed nodes take their edges and
+// migrations with them before new ones are added.
+export type GraphDelta = {
+  new_nodes: GraphNodes;
+  updated_nodes: Columns<
+    | 'x'
+    | 'y'
+    | 'z'
+    | 'visits'
+    | 'members'
+    | 'mean_fitness'
+    | 'best_fitness'
+    | 'progress'
+    | 'first_eval'
+    | 'last_eval'
+    | 'in_degree'
+    | 'out_degree'
+    | 'islands_sharing'
+    | 'migration_endpoint'
+  >;
+  percentiles: Columns<'fitness_percentile'>;
+  weights: Columns<'weight'> | null;
+  removed_nodes: number[];
+  // Every node's position, sent when the layout was refitted.
+  positions: Columns<'x' | 'y' | 'z'> | null;
+  new_edges: GraphEdges;
+  edge_updates: Columns<'weight'>;
+  new_migrations: GraphMigrations;
+  migration_updates: Columns<'count'>;
+  island_best: number[];
+  overall_best: number | null;
+  overlap: number;
+};
+
+// One streamed update of a live run.
+export type RunUpdate = { status: 'warming_up' | 'live'; graph: GraphDelta };
+
 // archipelago's Result, trimmed to the parts the run page reads so far.
 export type RunResult = {
   run: {
@@ -132,14 +214,7 @@ export type RunResult = {
     stagnation_generations: number | null;
   };
   layout: { method: 'pca' | 'mds' | 'none'; variance_kept_2d: number; variance_kept_3d: number };
-  graph: {
-    // Columns of the search clusters: cluster i is position i in each list.
-    nodes: { id: number[]; island: number[]; best_fitness: (number | null)[] };
-    edges: { id: number[] };
-    // Migrants that went from one cluster (source id) to another (target id), and how many.
-    migrations: { id: number[]; source: number[]; target: number[]; count: number[] };
-    overlap: number;
-  };
+  graph: Graph;
   separation: Separation;
   migration_routes: { source: number; destination: number; migrants: number }[];
   clustering: {

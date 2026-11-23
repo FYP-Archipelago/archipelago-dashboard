@@ -15,6 +15,8 @@ export const isNotFound = (error: unknown) => error instanceof ApiError && error
 const TIMEOUT_MS = 15000;
 const base = (import.meta.env.VITE_BACKEND_URL || 'http://127.0.0.1:8000').replace(/\/+$/, '');
 
+export const backendUrl = (path: string) => base + path;
+
 // FastAPI sends `detail` as a string for HTTPException and as a list of {msg} for validation errors.
 function detail(body: unknown): string | null {
   const value = (body as { detail?: unknown } | null)?.detail;
