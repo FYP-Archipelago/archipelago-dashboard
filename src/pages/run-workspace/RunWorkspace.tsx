@@ -1,12 +1,15 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 
 import { isNotFound } from '@/api/client.ts';
-import { useCancelRun, useRun, useRunResult } from '@/api/queries.ts';
+import { useCancelRun, useRenameRun, useRun, useRunResult } from '@/api/queries.ts';
+import { isFinished, NAME_MAX } from '@/api/runs.ts';
 import Icon from '@/components/Icon.tsx';
 import Link from '@/components/Link.tsx';
+import Menu from '@/components/Menu.tsx';
+import { DeleteRunDialog } from '@/components/RunDialogs.tsx';
 import Unavailable from '@/components/Unavailable.tsx';
 import { ago, dateTime, duration, TOPOLOGIES } from '@/format.ts';
-import { rerunHref, RUN_TABS, runHref, runsHref, type RunTab } from '@/route.ts';
+import { navigate, rerunHref, RUN_TABS, runHref, runsHref, type RunTab } from '@/route.ts';
 import type { Run } from '@/types.ts';
 
 import AttributionTab from './attribution/AttributionTab.tsx';
@@ -32,8 +35,6 @@ const FAILED_IN: Record<NonNullable<Run['error']>['phase'], string> = {
   clustering: 'The run failed while clustering',
   internal: 'The run failed inside the backend',
 };
-
-const isFinished = (status: Run['status']) => status === 'done' || status === 'failed' || status === 'cancelled';
 
 // Started but unfinished runs count up every second; others show the time they took, or when they were created.
 function RunTime({ run }: { run: Run }) {
@@ -117,6 +118,81 @@ function CancelButton({ run }: { run: Run }) {
   );
 }
 
+// The title turns into a field when clicked. Enter or clicking away saves, and Escape keeps the old name.
+function RunName({ run }: { run: Run }) {
+  const rename = useRenameRun(run.run_id);
+  const [draft, setDraft] = useState<string | null>(null);
+  const discard = useRef(false);
+  const shown = rename.isPending ? rename.variables : run.run_name;
+
+  const finish = () => {
+    const name = draft?.trim();
+    setDraft(null);
+    if (!discard.current && name && name !== run.run_name) rename.mutate(name);
+    discard.current = false;
+  };
+
+  return (
+    <>
+      <h1>
+        {draft === null ? (
+          <button
+            className={`run-name-button${rename.isPending ? ' run-name-saving' : ''}`}
+            onClick={() => {
+              rename.reset();
+              setDraft(shown);
+            }}
+          >
+            {shown}
+          </button>
+        ) : (
+          <span className="run-name-field" data-value={draft}>
+            <input
+              autoFocus
+              aria-label="Run name"
+              value={draft}
+              size={1}
+              maxLength={NAME_MAX}
+              spellCheck={false}
+              onFocus={(event) => event.target.select()}
+              onChange={(event) => setDraft(event.target.value)}
+              onBlur={finish}
+              onKeyDown={(event) => {
+                if (event.key !== 'Enter' && event.key !== 'Escape') return;
+                discard.current = event.key === 'Escape';
+                event.currentTarget.blur();
+              }}
+            />
+          </span>
+        )}
+      </h1>
+      {rename.isError && (
+        <span className="action-error" title={rename.error.message}>
+          Couldn&apos;t rename the run
+        </span>
+      )}
+    </>
+  );
+}
+
+function RunMenu({ run }: { run: Run }) {
+  const [deleting, setDeleting] = useState(false);
+  return (
+    <>
+      <Menu
+        className="run-menu"
+        label="Run actions"
+        icon="dotsHorizontal"
+        items={[
+          { label: 'Re-run with same settings', icon: 'rerun', onSelect: () => navigate(rerunHref(run.run_id)) },
+          { label: 'Delete run', icon: 'trash', danger: true, onSelect: () => setDeleting(true) },
+        ]}
+      />
+      {deleting && <DeleteRunDialog run={run} onClose={() => setDeleting(false)} />}
+    </>
+  );
+}
+
 // The underline slides between tabs; it is placed without a transition the first time.
 function Tabs({ id, tab }: { id: string; tab: RunTab }) {
   const nav = useRef<HTMLElement>(null);
@@ -170,22 +246,13 @@ function Header({ run, tab }: { run: Run; tab: RunTab }) {
           <span className="ink-2">{run.run_name}</span>
         </nav>
         <div className="run-title">
-          <h1>{run.run_name}</h1>
+          <RunName run={run} />
           <span className="run-status-pill">
             <span className={`dot ${run.status}`} />
             <span className="status">{run.status}</span>
           </span>
           <CopyId id={run.run_id} />
-          <div className="run-actions">
-            {isFinished(run.status) ? (
-              <Link className="button" href={rerunHref(run.run_id)}>
-                <Icon name="rerun" size={14} />
-                Re-run with same settings
-              </Link>
-            ) : (
-              <CancelButton run={run} />
-            )}
-          </div>
+          <div className="run-actions">{isFinished(run.status) ? <RunMenu run={run} /> : <CancelButton run={run} />}</div>
         </div>
         <div className="run-facts">
           {facts.map((fact, i) => (

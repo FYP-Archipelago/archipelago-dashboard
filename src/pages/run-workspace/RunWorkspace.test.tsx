@@ -132,6 +132,13 @@ describe('RunWorkspace cancel', () => {
   });
 });
 
+const chooseAction = async (name: string) => {
+  fireEvent.click(button('Run actions'));
+  await settle();
+  fireEvent.click(button(name));
+  await settle();
+};
+
 describe('RunWorkspace re-run', () => {
   it.each(['done', 'failed', 'cancelled'] as const)('offers to re-run a %s run', async (status) => {
     await openApp('/runs/run-1', {
@@ -140,8 +147,9 @@ describe('RunWorkspace re-run', () => {
     });
     await settle();
 
-    expect(link('Re-run with same settings').getAttribute('href')).toBe('/runs/new?from=run-1');
     expect(screen.queryByText('Cancel run')).toBeNull();
+    await chooseAction('Re-run with same settings');
+    expect(window.location.pathname + window.location.search).toBe('/runs/new?from=run-1');
   });
 
   it('opens an editable form with the saved settings and sends them when Start Run is clicked', async () => {
@@ -166,7 +174,7 @@ describe('RunWorkspace re-run', () => {
     });
     await settle();
 
-    fireEvent.click(link('Re-run with same settings'));
+    await chooseAction('Re-run with same settings');
     await settle();
 
     expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('New Run');
@@ -191,5 +199,79 @@ describe('RunWorkspace re-run', () => {
     fireEvent.click(link('New Run'));
     expect(window.location.search).toBe('');
     expect(screen.getByText('Rastrigin').closest('button')?.getAttribute('aria-checked')).toBe('true');
+  });
+});
+
+describe('RunWorkspace rename', () => {
+  it('saves a typed name on Enter and shows it everywhere, and Escape keeps the old one', async () => {
+    const fetchMock = await openApp('/runs/run-1', {
+      'GET /runs/run-1': () => ({ body: makeRun('run-1') }),
+      'GET /runs/run-1/result': () => ({ body: makeResult() }),
+      'PATCH /runs/run-1': (_, init) => ({ body: makeRun('run-1', { run_name: (bodyOf([null, init]) as { run_name: string }).run_name }) }),
+    });
+    await settle();
+
+    fireEvent.click(button('name-run-1'));
+    const field = screen.getByLabelText<HTMLInputElement>('Run name');
+    fireEvent.change(field, { target: { value: 'kept' } });
+    fireEvent.keyDown(field, { key: 'Escape' });
+    await settle();
+    expect(requests(fetchMock, 'PATCH', '/runs/run-1')).toBe(0);
+    expect(document.querySelector('h1')!.textContent).toBe('name-run-1');
+
+    fireEvent.click(button('name-run-1'));
+    fireEvent.change(screen.getByLabelText('Run name'), { target: { value: '  renamed  ' } });
+    fireEvent.keyDown(screen.getByLabelText('Run name'), { key: 'Enter' });
+    await settle();
+
+    expect(bodyOf(fetchMock.mock.calls.find(([, init]) => init?.method === 'PATCH')!)).toEqual({ run_name: 'renamed' });
+    expect(document.querySelector('h1')!.textContent).toBe('renamed');
+    expect(document.querySelector('.recent-item strong')!.textContent).toBe('renamed');
+  });
+});
+
+describe('RunWorkspace delete', () => {
+  it('deletes the open run, leaves for the runs list and forgets the cached run', async () => {
+    let deleted = false;
+    const fetchMock = await openApp('/runs/run-1', {
+      'GET /runs': () => ({ body: { runs: deleted ? [] : [makeRun('run-1')], next_cursor: null } }),
+      'GET /runs/run-1': () => (deleted ? { status: 404, body: { detail: 'run not found' } } : { body: makeRun('run-1') }),
+      'GET /runs/run-1/result': () => ({ body: makeResult() }),
+      'DELETE /runs/run-1': () => {
+        deleted = true;
+        return { status: 204 };
+      },
+    });
+    await settle();
+
+    await chooseAction('Delete run');
+    fireEvent.click(button('Delete run'));
+    await settle();
+
+    expect(requests(fetchMock, 'DELETE', '/runs/run-1')).toBe(1);
+    expect(window.location.pathname).toBe('/runs');
+    expect(document.querySelector('.recent-item')).toBeNull();
+
+    // A finished run is never refetched, so a cached copy would still show here.
+    window.history.pushState(null, '', '/runs/run-1');
+    act(() => void window.dispatchEvent(new PopStateEvent('popstate')));
+    await settle();
+    expect(screen.getByText('Run not found')).toBeTruthy();
+  });
+
+  it('keeps the run and shows why when the backend refuses', async () => {
+    await openApp('/runs/run-1', {
+      'GET /runs/run-1': () => ({ body: makeRun('run-1') }),
+      'GET /runs/run-1/result': () => ({ body: makeResult() }),
+      'DELETE /runs/run-1': () => ({ status: 409, body: { detail: 'run cleanup is still in progress' } }),
+    });
+    await settle();
+
+    await chooseAction('Delete run');
+    fireEvent.click(button('Delete run'));
+    await settle();
+
+    expect(screen.getByText('run cleanup is still in progress')).toBeTruthy();
+    expect(window.location.pathname).toBe('/runs/run-1');
   });
 });

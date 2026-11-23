@@ -38,6 +38,87 @@
   letter-spacing: -0.04em;
   line-height: 1.1;
 }
+.run-name-button,
+.run-name-field {
+  position: relative;
+  max-width: 100%;
+}
+.run-name-button {
+  font: inherit;
+  letter-spacing: inherit;
+  line-height: inherit;
+  text-align: left;
+  cursor: text;
+  transition: opacity 0.2s;
+}
+.run-name-button.run-name-saving {
+  opacity: 0.6;
+}
+.run-name-button::before,
+.run-name-field::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -5px;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--ink-2);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition:
+    transform 0.5s var(--ease),
+    background 0.2s;
+}
+.run-name-button:hover::before,
+.run-name-button:focus-visible::before {
+  transform: scaleX(1);
+}
+.run-name-button:focus-visible {
+  outline: none;
+}
+.run-name-field::before {
+  background: var(--ink);
+  transform: scaleX(1);
+}
+.run-name-field {
+  display: inline-grid;
+}
+.run-name-field::after,
+.run-name-field input {
+  grid-area: 1 / 1;
+  min-width: 2ch;
+  font: inherit;
+  letter-spacing: inherit;
+  line-height: inherit;
+  white-space: pre;
+}
+.run-name-field::after {
+  content: attr(data-value) ' ';
+  visibility: hidden;
+  overflow: hidden;
+}
+.run-name-field input {
+  width: 100%;
+  padding: 0;
+  border: 0;
+  outline: none;
+  background: none;
+  color: var(--ink);
+  caret-color: var(--ink);
+}
+.run-name-field input::selection {
+  background: color-mix(in srgb, var(--ink) 28%, transparent);
+}
+.run-menu {
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--border-strong);
+}
+.run-menu:hover,
+.run-menu[aria-expanded='true'] {
+  border-color: color-mix(in srgb, var(--ink) 24%, transparent);
+}
 .run-actions {
   display: flex;
   align-items: center;
