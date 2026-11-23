@@ -31,6 +31,17 @@ describe('DetailsTab', () => {
     expect(screen.queryByText('DenStream', { selector: 'h4' })).toBeNull();
   });
 
+  it("shows the stagnation limit once, falling back to the runner's for runs from before the setting", async () => {
+    const run = makeRun('run-1');
+    const older = { ...run.run_settings };
+    delete older['termination.stagnation_generations'];
+    // makeResult reports a limit of 2.
+    await renderWorkspace('details', { run: { ...run, run_settings: older } });
+
+    expect(row('Stagnation limit').textContent).toBe('Stagnation limit' + '2 generations');
+    expect(screen.queryByText(/Termination/)).toBeNull();
+  });
+
   it('lists run settings it has no label for, so new runner settings still show', async () => {
     const run = makeRun('run-1');
     await renderWorkspace('details', { run: { ...run, run_settings: { ...run.run_settings, mutation_rate: 0.05 } as typeof run.run_settings } });

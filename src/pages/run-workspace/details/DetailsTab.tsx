@@ -20,6 +20,8 @@ const humanise = (key: string) => key.charAt(0).toUpperCase() + key.slice(1).rep
 
 type Row = { label: string; value: ReactNode; off?: string };
 
+const count = (n: number, noun: string) => `${numberFormat.format(n)} ${noun}${n === 1 ? '' : 's'}`;
+
 function Settings({ title, note, rows }: { title: string; note?: string; rows: Row[] }) {
   return (
     <section className="card settings-card">
@@ -44,6 +46,7 @@ const KNOWN_SETTINGS = new Set<string>([
   'num_islands',
   'evaluation_budget',
   'target_generations',
+  'termination.stagnation_generations',
   'migration.enabled',
   'migration.topology',
   'migration.interval',
@@ -51,14 +54,24 @@ const KNOWN_SETTINGS = new Set<string>([
   'seed',
 ]);
 
-function searchRows(run: Run): Row[] {
+function searchRows(run: Run, result: RunResult | undefined): Row[] {
   const settings = run.run_settings;
   const migrationOff = settings['migration.enabled'] ? undefined : 'Not used: migration is off';
+  const stagnation = settings['termination.stagnation_generations'] ?? result?.run.stagnation_generations;
   const rows: Row[] = [
     { label: 'Preset', value: <span className="monospace">{run.preset}</span> },
     { label: 'Islands', value: settings.num_islands },
     { label: 'Evaluation budget', value: numberFormat.format(settings.evaluation_budget) },
-    { label: 'Target generations', value: numberFormat.format(settings.target_generations) },
+    { label: 'Target', value: count(settings.target_generations, 'generation') },
+    ...(stagnation == null
+      ? []
+      : [
+          {
+            label: 'Stagnation limit',
+            value: count(stagnation, 'generation'),
+            off: stagnation === 0 ? 'Off: islands ran until their budget was spent' : undefined,
+          },
+        ]),
     {
       label: 'Migration topology',
       value: TOPOLOGIES[settings['migration.topology']] ?? settings['migration.topology'],
@@ -66,7 +79,7 @@ function searchRows(run: Run): Row[] {
     },
     {
       label: 'Migration schedule',
-      value: `${settings['migration.num_migrants']} migrants every ${settings['migration.interval']} generations`,
+      value: `${count(settings['migration.num_migrants'], 'migrant')} every ${count(settings['migration.interval'], 'generation')}`,
       off: migrationOff,
     },
     { label: 'Runner seed', value: settings.seed ?? 'Random' },
@@ -102,7 +115,8 @@ function clusteringRows(run: Run, result: RunResult | undefined): Row[] {
     { label: 'BIRCH threshold', value: distance(config.birch_threshold, resolved?.birch_threshold), off: notUsed('birch') },
     { label: 'DenStream epsilon', value: distance(config.denstream_epsilon, resolved?.denstream_epsilon), off: notUsed('denstream') },
     { label: 'DenStream half-life', value: distance(config.denstream_half_life, resolved?.denstream_half_life, ' s'), off: notUsed('denstream') },
-    { label: 'DenStream μ / β', value: `${config.denstream_mu} / ${config.denstream_beta}`, off: notUsed('denstream') },
+    { label: 'DenStream μ', value: config.denstream_mu, off: notUsed('denstream') },
+    { label: 'DenStream β', value: config.denstream_beta, off: notUsed('denstream') },
     { label: 'Clustering seed', value: config.seed },
   ];
 }
@@ -351,7 +365,7 @@ export default function DetailsTab({ run, result }: { run: Run; result: ResultQu
       <Timing run={run} result={result.data} />
       {result.data && <Budget run={run} result={result.data} />}
       <div className="settings-grid">
-        <Settings title="Search settings" note={description} rows={searchRows(run)} />
+        <Settings title="Search settings" note={description} rows={searchRows(run, result.data)} />
         <Settings title="Clustering settings" rows={clusteringRows(run, result.data)} />
       </div>
       {result.data ? (

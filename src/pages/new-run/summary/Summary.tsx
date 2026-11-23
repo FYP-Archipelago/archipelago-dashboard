@@ -21,6 +21,9 @@ export default function Summary({ form, errors, submit, patch, onLaunch }: Summa
 
   const errorCount = Object.keys(errors).length;
   const stages = STAGES.filter((stage) => form.clustering[stage.key]).map((stage) => stage.label);
+  const stagnationLimit = form.text['termination.stagnation_generations'].trim();
+  const gens = (text: string) => `${text} ${Number(text) === 1 ? 'gen' : 'gens'}`;
+  const stagnation = errors['termination.stagnation_generations'] || Number(stagnationLimit) === 0 ? '—' : gens(stagnationLimit);
 
   return (
     <aside className="card new-run-summary">
@@ -61,6 +64,8 @@ export default function Summary({ form, errors, submit, patch, onLaunch }: Summa
         <dd>{errors.evaluation_budget ? '—' : numberFormat.format(Number(form.text.evaluation_budget))}</dd>
         <dt>Generations</dt>
         <dd>{errors.target_generations ? '—' : form.text.target_generations.trim()}</dd>
+        <dt>Stagnation</dt>
+        <dd>{stagnation}</dd>
         <dt>Migration</dt>
         <dd>{form.migration ? (TOPOLOGIES[form.topology] ?? form.topology) : '—'}</dd>
         {form.migration && (
@@ -69,7 +74,7 @@ export default function Summary({ form, errors, submit, patch, onLaunch }: Summa
             <dd>
               {errors['migration.interval'] || errors['migration.num_migrants']
                 ? '—'
-                : `${form.text['migration.num_migrants'].trim()} every ${form.text['migration.interval'].trim()} gens`}
+                : `${form.text['migration.num_migrants'].trim()} every ${gens(form.text['migration.interval'].trim())}`}
             </dd>
           </>
         )}

@@ -7,6 +7,7 @@ import { vars } from '@/pages/new-run/shared.ts';
 import type { Presets } from '@/types.ts';
 
 import type { FieldProps } from './fields.tsx';
+import StagnationLimit from './StagnationLimit.tsx';
 
 import './search.css';
 
@@ -95,24 +96,26 @@ export default function SearchSection({ form, errors, overrides, patch, setText 
   const { min: seedMin = 0, max: seedMax = 2 ** 32 - 1 } = limits('seed');
 
   // Quick picks outside the runner's limits for the setting are left out.
-  const chips = (key: SettingKey, picks: number[]) => {
+  const chipButtons = (key: SettingKey, picks: number[]) => {
     const { min = -Infinity, max = Infinity } = limits(key);
-    return (
-      <div className="search-setting-quick-picks">
-        {picks
-          .filter((pick) => min <= pick && pick <= max)
-          .map((pick) => (
-            <button
-              key={pick}
-              className={Number(form.text[key]) === pick ? 'search-setting-quick-pick-selected' : ''}
-              onClick={() => setText(key)(String(pick))}
-            >
-              {compactNumber.format(pick)}
-            </button>
-          ))}
-      </div>
-    );
+    return picks
+      .filter((pick) => min <= pick && pick <= max)
+      .map((pick) => (
+        <button
+          key={pick}
+          className={Number(form.text[key]) === pick ? 'search-setting-quick-pick-selected' : ''}
+          onClick={() => setText(key)(String(pick))}
+        >
+          {compactNumber.format(pick)}
+        </button>
+      ));
   };
+  const chips = (key: SettingKey, picks: number[]) => <div className="search-setting-quick-picks">{chipButtons(key, picks)}</div>;
+
+  // Hides picks longer than target gens and adds target itself if none are left
+  const target = Number(form.text.target_generations);
+  const fitting = [10, 20, 40, 60, 100].filter((pick) => !(Number.isInteger(target) && target >= 2) || pick <= target);
+  const stagnationPicks = fitting.length ? fitting : [target];
 
   return (
     <section className="new-run-step">
@@ -161,6 +164,12 @@ export default function SearchSection({ form, errors, overrides, patch, setText 
           </div>
         </NumberTile>
       </div>
+      <StagnationLimit
+        form={form}
+        error={errors['termination.stagnation_generations']}
+        setText={setText}
+        picks={chipButtons('termination.stagnation_generations', stagnationPicks)}
+      />
     </section>
   );
 }

@@ -292,6 +292,33 @@ describe('NewRunPage form', () => {
     expect(interval.value).toBe('1');
   });
 
+  it('sets the stagnation limit along the target run, and sends 0 for Off', async () => {
+    const fetchMock = await renderPage();
+    const plot = document.querySelector<HTMLElement>('[role="slider"]')!;
+    const limit = control('Stagnation limit');
+    Object.assign(plot, { setPointerCapture: vi.fn(), hasPointerCapture: () => true });
+    vi.spyOn(plot, 'getBoundingClientRect').mockReturnValue(DOMRect.fromRect({ x: 0, width: 400 }));
+
+    // A quarter of the way along DE_Rastrigin's 200 target generations.
+    fireEvent.pointerDown(plot, { clientX: 100, pointerId: 1 });
+    expect(limit.value).toBe('50');
+    fireEvent.keyDown(plot, { key: 'ArrowRight', shiftKey: true });
+    expect(limit.value).toBe('60');
+    fireEvent.pointerMove(plot, { clientX: 900, pointerId: 1 });
+    expect(limit.value).toBe('200');
+    fireEvent.change(limit, { target: { value: '201' } });
+    expect(limit.closest('.search-stagnation')!.textContent).toContain('Must not exceed target generations');
+
+    fireEvent.click(within(limit.closest('.search-stagnation')!).getByText('Off'));
+    expect(limit.value).toBe('Off');
+    expect(summary('Stagnation')).toBe('—');
+    fireEvent.click(findStart());
+    await wait(400);
+    expect((bodyOf(runRequests(fetchMock)[0]!) as { run_settings: Record<string, unknown> }).run_settings['termination.stagnation_generations']).toBe(
+      0
+    );
+  });
+
   it("keeps the migrants below the island's population, whether stepped or typed", async () => {
     await renderPage();
     const start = findStart();

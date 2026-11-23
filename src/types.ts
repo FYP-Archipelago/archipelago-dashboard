@@ -4,6 +4,7 @@ export type RunSettings = {
   num_islands: number;
   evaluation_budget: number;
   target_generations: number;
+  'termination.stagnation_generations'?: number;
   'migration.enabled': boolean;
   'migration.topology': string;
   'migration.interval': number;

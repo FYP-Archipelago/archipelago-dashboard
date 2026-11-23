@@ -11,7 +11,8 @@ export const STAGES = [
 ] as const;
 
 export type Stage = (typeof STAGES)[number]['key'];
-export type SettingKey = 'evaluation_budget' | 'target_generations' | 'migration.interval' | 'migration.num_migrants' | 'seed';
+export type SettingKey =
+  'evaluation_budget' | 'target_generations' | 'termination.stagnation_generations' | 'migration.interval' | 'migration.num_migrants' | 'seed';
 export type ScheduleKey = 'migration.interval' | 'migration.num_migrants';
 export type AdvancedKey = 'lsh_hashes' | 'birch_threshold' | 'denstream_epsilon' | 'denstream_half_life' | 'denstream_mu' | 'denstream_beta' | 'seed';
 
@@ -136,6 +137,7 @@ export function presetSettings(
     text: {
       evaluation_budget: String(defaults.evaluation_budget),
       target_generations: String(defaults.target_generations),
+      'termination.stagnation_generations': String(defaults['termination.stagnation_generations'] ?? ''),
       'migration.interval': String(defaults['migration.interval']),
       'migration.num_migrants': String(defaults['migration.num_migrants']),
       seed: defaults.seed == null ? '' : String(defaults.seed),
@@ -161,7 +163,13 @@ export function validate(form: Form, overrides: Presets['overrides']): Record<st
   const name = form.name.trim();
   flag('name', !name ? 'Give the run a name.' : name.length > NAME_MAX ? `At most ${NAME_MAX} characters.` : '');
 
-  for (const key of ['evaluation_budget', 'target_generations', 'seed'] as const) flag(key, numberError(form.text[key], intRule(overrides[key])));
+  for (const key of ['evaluation_budget', 'target_generations', 'termination.stagnation_generations', 'seed'] as const)
+    flag(key, numberError(form.text[key], intRule(overrides[key])));
+
+  // A limit longer than target generations doesn't help
+  const stagnationTooLong = Number(form.text['termination.stagnation_generations']) > Number(form.text.target_generations);
+  if (!errors['termination.stagnation_generations'] && !errors.target_generations && stagnationTooLong)
+    flag('termination.stagnation_generations', 'Must not exceed target generations');
 
   if (form.migration) {
     for (const key of ['migration.interval', 'migration.num_migrants'] as const) flag(key, numberError(form.text[key], intRule(overrides[key])));
@@ -192,6 +200,7 @@ export function toNewRun(form: Form): NewRun {
     num_islands: form.islands,
     evaluation_budget: numberOf('evaluation_budget'),
     target_generations: numberOf('target_generations'),
+    'termination.stagnation_generations': numberOf('termination.stagnation_generations'),
     'migration.enabled': form.migration,
     // With migration off, use the starting values and drop any half-edited values.
     'migration.topology': form.migration ? form.topology : defaults['migration.topology'],
