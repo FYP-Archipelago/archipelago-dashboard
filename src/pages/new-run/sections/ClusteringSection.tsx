@@ -1,8 +1,10 @@
 import { Fragment } from 'react';
 
 import Icon from '@/components/Icon.tsx';
-import { ADVANCED, DETAIL_MAX, DETAIL_MIN, STAGES, type AdvancedKey, type ClusterForm, type Stage } from '@/pages/new-run/form.ts';
-import { seeded, vars, type Pt } from '@/pages/new-run/shared.ts';
+import type { ClusteringStage } from '@/format.ts';
+import { ADVANCED, DETAIL_MAX, DETAIL_MIN, STAGES, type AdvancedKey, type ClusterForm } from '@/pages/new-run/form.ts';
+import { seeded, type Point } from '@/pages/new-run/shared.ts';
+import { vars } from '@/style.ts';
 
 import { NumberField, Switch } from './fields.tsx';
 
@@ -16,21 +18,21 @@ type ClusteringProps = {
 };
 
 // Fixed sample points for the detail preview: three loose blobs.
-const PREVIEW_POINTS: Pt[] = (() => {
+const PREVIEW_POINTS: Point[] = (() => {
   const random = seeded('');
   const centres = [
     [56, 40],
     [140, 30],
     [222, 48],
   ];
-  return centres.flatMap(([cx, cy]) => Array.from({ length: 14 }, () => [cx! + (random() - 0.5) * 78, cy! + (random() - 0.5) * 46] as Pt));
+  return centres.flatMap(([cx, cy]) => Array.from({ length: 14 }, () => [cx! + (random() - 0.5) * 78, cy! + (random() - 0.5) * 46] as Point));
 })();
 
 // Groups the preview points the way BIRCH does: join the first cluster within the radius, else start one.
 function previewClusters(detail: number) {
   // A radius of 30 at detail 1; detail divides it, as it divides the auto BIRCH threshold.
   const reach = 30 / detail;
-  const clusters: { x: number; y: number; points: Pt[] }[] = [];
+  const clusters: { x: number; y: number; points: Point[] }[] = [];
 
   for (const point of PREVIEW_POINTS) {
     const near = clusters.find((cluster) => Math.hypot(cluster.x - point[0], cluster.y - point[1]) <= reach);
@@ -44,7 +46,7 @@ function previewClusters(detail: number) {
   }
 
   return clusters.map((cluster) => {
-    const offsets = cluster.points.map((member) => [member[0] - cluster.x, member[1] - cluster.y] as Pt);
+    const offsets = cluster.points.map((member) => [member[0] - cluster.x, member[1] - cluster.y] as Point);
     const aspect = (Math.max(...offsets.map(([dx]) => Math.abs(dx))) + 1) / (Math.max(...offsets.map(([, dy]) => Math.abs(dy))) + 1);
     const scale = Math.max(...offsets.map(([dx, dy]) => Math.hypot(dx / aspect, dy)));
     return {
@@ -119,7 +121,7 @@ function DetailSlider({ clustering, patchCluster }: Pick<ClusteringProps, 'clust
 }
 
 function AdvancedPanel({ clustering, errors, patchCluster, setClusterText }: ClusteringProps) {
-  const groups = [...STAGES.map((stage) => ({ key: stage.key as Stage | null, label: stage.label })), { key: null, label: 'General' }];
+  const groups = [...STAGES.map((stage) => ({ key: stage.key as ClusteringStage | null, label: stage.label })), { key: null, label: 'General' }];
   const settingCount = ADVANCED.filter((field) => !field.stage || clustering[field.stage]).length + 1;
 
   return (

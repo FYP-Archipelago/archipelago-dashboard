@@ -1,17 +1,8 @@
+import { humanise } from '@/format.ts';
+import type { IslandHistory } from '@/pages/run-workspace/history.ts';
 import type { GenerationSummary } from '@/types.ts';
 
-// One island's generation history as columns, one entry per logged generation.
-export type IslandHistory = {
-  island: number;
-  generation: number[];
-  evaluations: (number | null)[];
-  best: (number | null)[];
-  bestSoFar: (number | null)[];
-  mean: (number | null)[];
-  diversity: (number | null)[];
-};
-
-export type IslandSummary = {
+type IslandSummary = {
   island: number;
   finalBest: number | null;
   // The generation (and evaluation count) whose best-so-far was the island's final best: when it last improved.
@@ -20,24 +11,6 @@ export type IslandSummary = {
   finalMean: number | null;
   finalDiversity: number | null;
 };
-
-export function historyByIsland(rows: GenerationSummary[]): IslandHistory[] {
-  const islands = new Map<number, IslandHistory>();
-  for (const row of [...rows].sort((a, b) => a.island_id - b.island_id || a.generation - b.generation)) {
-    let history = islands.get(row.island_id);
-    if (!history) {
-      history = { island: row.island_id, generation: [], evaluations: [], best: [], bestSoFar: [], mean: [], diversity: [] };
-      islands.set(row.island_id, history);
-    }
-    history.generation.push(row.generation);
-    history.evaluations.push(row.evaluations_total);
-    history.best.push(row.best_fitness);
-    history.bestSoFar.push(row.best_so_far_fitness);
-    history.mean.push(row.mean_fitness);
-    history.diversity.push(row.diversity);
-  }
-  return [...islands.values()];
-}
 
 const lastOf = (values: (number | null)[]) => values.filter((value) => value !== null).at(-1) ?? null;
 
@@ -72,9 +45,7 @@ export function runBest(summaries: IslandSummary[], maximising: boolean): Island
 // The runner names its diversity measure in snake case, e.g. mean_pairwise_hamming_normalised.
 export function describeDiversity(rows: GenerationSummary[]): string | null {
   const metric = rows.find((row) => row.diversity_metric)?.diversity_metric;
-  if (!metric) return null;
-  const words = metric.replaceAll('_', ' ');
-  return words.charAt(0).toUpperCase() + words.slice(1);
+  return metric ? humanise(metric) : null;
 }
 
 // Where the run as a whole had made all but `remainingShare` of its improvement, from the best starting value to the

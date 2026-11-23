@@ -1,0 +1,296 @@
+/* Pieces several tabs share. */
+.swatch {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex: none;
+}
+
+.run-banner {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  column-gap: 12px;
+  margin-bottom: 20px;
+  padding: 14px 16px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+}
+.run-banner.run-banner-critical {
+  border-color: rgba(208, 59, 59, 0.45);
+  background: rgba(208, 59, 59, 0.08);
+}
+.run-banner.run-banner-critical > svg {
+  color: var(--critical);
+}
+.run-banner strong {
+  font-weight: 600;
+}
+.run-banner span {
+  grid-column: 2;
+  color: var(--ink-2);
+  overflow-wrap: anywhere;
+}
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  min-height: calc(100vh - 340px);
+  color: var(--muted);
+  text-align: center;
+}
+.empty-state h3 {
+  margin: 0;
+  color: var(--ink);
+  font-size: 16px;
+  font-weight: 600;
+}
+.card-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 12px;
+  margin-bottom: 12px;
+}
+.card-heading {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: baseline;
+  gap: 12px;
+}
+.card-heading > h3 {
+  flex: none;
+}
+.card-heading > .muted {
+  overflow-wrap: anywhere;
+}
+.card-header h3 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+}
+.card-header .muted {
+  font-size: 13px;
+}
+.card-header .card-header-end {
+  margin-left: auto;
+}
+.tag {
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: var(--surface-3);
+  color: var(--ink-2);
+  font-size: 11px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+.section-title {
+  margin: 48px 0 4px;
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: -0.025em;
+}
+/* A title without a subtitle needs the space the subtitle would have given. */
+.section-title + :not(.section-subtitle) {
+  margin-top: 16px;
+}
+.section-subtitle {
+  margin: 0 0 16px;
+  color: var(--muted);
+  line-height: 1.5;
+}
+.hint {
+  margin: 12px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+.key-value-list {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  margin: 12px 0 0;
+  font-size: 13px;
+}
+.key-value-list > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+.key-value-list dt {
+  color: var(--muted);
+}
+.key-value-list dd {
+  margin: 0;
+  text-align: right;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+/* A row of headline numbers, each with a label above and a note below. */
+.stat-strip {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  padding: 16px 0;
+  margin-bottom: 16px;
+}
+.stat-strip > div {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  padding: 0 20px;
+  font-size: 13px;
+}
+.stat-strip > div + div {
+  border-left: 1px solid var(--border);
+}
+.stat-strip.stat-strip-single-line {
+  display: flex;
+  flex-wrap: wrap;
+  row-gap: 16px;
+}
+.stat-strip.stat-strip-single-line > div {
+  flex: 1 1 auto;
+  white-space: nowrap;
+}
+.stat-strip strong {
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+.stat-strip strong small {
+  margin-left: 4px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 400;
+  letter-spacing: 0;
+}
+.stat-strip .stat-note {
+  color: var(--muted);
+  font-size: 12.5px;
+}
+.stat-strip.stat-strip-compact strong {
+  font-size: 16px;
+  font-weight: 500;
+}
+
+/* Island-by-island grids of values (migrants, divergence), shaded by size. */
+.heat-grid {
+  display: grid;
+  gap: 3px;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.heat-row {
+  display: contents;
+}
+.heat-axis {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 24px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.heat-axis.heat-axis-row {
+  justify-content: flex-end;
+  padding-right: 8px;
+}
+.heat-axis.heat-axis-corner {
+  justify-content: flex-start;
+  font-size: 11px;
+}
+.heat-cell {
+  display: grid;
+  place-items: center;
+  aspect-ratio: 1.5;
+  border: 0;
+  border-radius: 6px;
+  color: var(--ink);
+  font: inherit;
+  font-weight: 600;
+  transition:
+    transform 0.2s var(--ease),
+    box-shadow 0.2s;
+}
+.heat-cell.heat-cell-empty {
+  box-shadow: inset 0 0 0 1px var(--border);
+  color: var(--axis);
+}
+.heat-cell.heat-cell-same {
+  background: repeating-linear-gradient(135deg, var(--surface-2) 0 4px, transparent 4px 8px);
+}
+.heat-cell:not(.heat-cell-empty, .heat-cell-same):hover,
+.heat-cell.heat-cell-selected {
+  box-shadow: 0 0 0 2px var(--ink);
+  transform: scale(1.04);
+}
+button.heat-cell {
+  cursor: pointer;
+}
+.heat-total {
+  display: flex;
+  align-items: center;
+  padding-left: 8px;
+  color: var(--ink-2);
+}
+.heat-total.heat-total-column {
+  justify-content: center;
+  padding: 4px 0 0;
+}
+.heat-scale {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 14px;
+  color: var(--muted);
+  font-size: 12px;
+}
+.heat-scale i {
+  width: 120px;
+  height: 6px;
+  border-radius: 3px;
+}
+
+@keyframes grow-x {
+  from {
+    transform: scaleX(0);
+  }
+}
+
+/* Tooltips that follow the pointer over charts and diagrams. */
+.hover-tip {
+  position: absolute;
+  z-index: 2;
+  min-width: 170px;
+  padding: 8px 10px;
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--surface-2) 92%, transparent);
+  backdrop-filter: blur(8px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+  font-size: 12px;
+  pointer-events: none;
+}
+.hover-tip-title {
+  margin-bottom: 6px;
+  color: var(--muted);
+}
+.hover-tip-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  line-height: 1.7;
+  color: var(--ink-2);
+}
+.hover-tip-row b {
+  margin-left: auto;
+  padding-left: 16px;
+  font-weight: 500;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}

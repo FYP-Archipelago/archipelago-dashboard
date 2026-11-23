@@ -2,6 +2,7 @@ import { useRef, type KeyboardEvent, type PointerEvent, type ReactNode } from 'r
 
 import Icon from '@/components/Icon.tsx';
 import type { Form, SetText } from '@/pages/new-run/form.ts';
+import { arrowStep } from '@/pages/new-run/shared.ts';
 
 type Props = { form: Form; error: string | undefined; setText: SetText; picks: ReactNode };
 
@@ -24,10 +25,10 @@ export default function StagnationLimit({ form, error, setText, picks }: Props) 
     set(String(Math.max(1, Math.round(fraction * span))));
   };
   const step = (event: KeyboardEvent<HTMLDivElement>) => {
-    const by = { ArrowRight: 1, ArrowUp: 1, ArrowLeft: -1, ArrowDown: -1 }[event.key];
-    if (!by) return;
+    const delta = arrowStep(event, true);
+    if (!delta) return;
     event.preventDefault();
-    set(String(Math.min(Math.max(1, (valid ? limit : 0) + by * (event.shiftKey ? 10 : 1)), span)));
+    set(String(Math.min(Math.max(1, (valid ? limit : 0) + delta), span)));
   };
 
   return (

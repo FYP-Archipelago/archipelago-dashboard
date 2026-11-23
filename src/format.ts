@@ -8,6 +8,26 @@ export const TOPOLOGIES: Record<string, string> = {
   torus: 'Torus',
 };
 
+// archipelago's clustering stages, in pipeline order.
+export const CLUSTERING_STAGES = [
+  { key: 'lsh', label: 'LSH' },
+  { key: 'birch', label: 'BIRCH' },
+  { key: 'denstream', label: 'DenStream' },
+] as const;
+
+export type ClusteringStage = (typeof CLUSTERING_STAGES)[number]['key'];
+
+export const stageLabel = (stage: string) => CLUSTERING_STAGES.find(({ key }) => key === stage)?.label;
+
+// Preset names are <algorithm>_<problem>.
+export function presetParts(preset: string): { algorithm: string; problem: string } {
+  const cut = preset.indexOf('_');
+  return { algorithm: preset.slice(0, cut), problem: preset.slice(cut + 1) };
+}
+
+// micro_clusters_created -> Micro clusters created
+export const humanise = (key: string) => key.charAt(0).toUpperCase() + key.slice(1).replaceAll('_', ' ').replaceAll('.', ' ');
+
 export const numberFormat = new Intl.NumberFormat('en');
 
 export const compactNumber = new Intl.NumberFormat('en', { notation: 'compact', maximumFractionDigits: 1 });

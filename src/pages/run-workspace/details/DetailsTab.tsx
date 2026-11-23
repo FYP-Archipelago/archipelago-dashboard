@@ -2,7 +2,17 @@ import type { ReactNode } from 'react';
 
 import { usePresets } from '@/api/queries.ts';
 import Icon from '@/components/Icon.tsx';
-import { compactNumber, dateTime, duration, numberFormat, TOPOLOGIES } from '@/format.ts';
+import {
+  CLUSTERING_STAGES,
+  compactNumber,
+  dateTime,
+  duration,
+  humanise,
+  numberFormat,
+  stageLabel,
+  TOPOLOGIES,
+  type ClusteringStage,
+} from '@/format.ts';
 import { Sparkline } from '@/pages/run-workspace/charts/LineChart.tsx';
 import { NoResult, type ResultQuery } from '@/pages/run-workspace/shared.tsx';
 import type { Run, RunResult, StageDiagnostic } from '@/types.ts';
@@ -12,11 +22,6 @@ import Budget from './Budget.tsx';
 import './details.css';
 
 const significant = new Intl.NumberFormat('en', { maximumSignificantDigits: 3 });
-
-const STAGE_NAMES: Record<string, string> = { lsh: 'LSH', birch: 'BIRCH', denstream: 'DenStream' };
-
-// micro_clusters_created -> Micro clusters created
-const humanise = (key: string) => key.charAt(0).toUpperCase() + key.slice(1).replaceAll('_', ' ').replaceAll('.', ' ');
 
 type Row = { label: string; value: ReactNode; off?: string };
 
@@ -95,9 +100,9 @@ function clusteringRows(run: Run, result: RunResult | undefined): Row[] {
   const config = run.clustering;
   const resolved = result?.clustering.resolved;
   // Once there is a result, its stage list is what actually ran.
-  const ran = (stage: 'lsh' | 'birch' | 'denstream') => (result ? result.clustering.stages.includes(stage) : config[stage]);
-  const used = (['lsh', 'birch', 'denstream'] as const).filter(ran);
-  const notUsed = (stage: 'lsh' | 'birch' | 'denstream') => (ran(stage) ? undefined : `Not used: ${STAGE_NAMES[stage]} was off`);
+  const ran = (stage: ClusteringStage) => (result ? result.clustering.stages.includes(stage) : config[stage]);
+  const used = CLUSTERING_STAGES.filter(({ key }) => ran(key));
+  const notUsed = (stage: ClusteringStage) => (ran(stage) ? undefined : `Not used: ${stageLabel(stage)} was off`);
   // A null distance is picked automatically from the data; the result says which value was used.
   const distance = (value: number | null, picked: number | null | undefined, unit = '') =>
     value !== null ? (
@@ -109,7 +114,7 @@ function clusteringRows(run: Run, result: RunResult | undefined): Row[] {
       </>
     );
   return [
-    { label: 'Stages', value: used.length ? used.map((stage) => STAGE_NAMES[stage]).join(' → ') : 'None' },
+    { label: 'Stages', value: used.length ? used.map(({ label }) => label).join(' → ') : 'None' },
     { label: 'Detail', value: config.detail.toFixed(1) },
     { label: 'LSH hashes', value: config.lsh_hashes, off: notUsed('lsh') },
     { label: 'BIRCH threshold', value: distance(config.birch_threshold, resolved?.birch_threshold), off: notUsed('birch') },
@@ -196,7 +201,7 @@ function Stage({ stage, diagnostics }: { stage: string; diagnostics: Record<stri
   return (
     <div className="flow-stage">
       <h4>
-        {STAGE_NAMES[stage] ?? stage.toUpperCase()}
+        {stageLabel(stage) ?? stage.toUpperCase()}
         {tag && <span className="tag">{tag}</span>}
       </h4>
       {typeof out === 'number' && (

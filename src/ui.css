@@ -128,6 +128,24 @@
   background: #ffffff;
   border-color: #ffffff;
 }
+.button.button-destructive {
+  border-color: var(--critical);
+  background: var(--critical);
+  color: #fff;
+}
+.button.button-destructive:hover {
+  border-color: #e04b4b;
+  background: #e04b4b;
+}
+.button-danger {
+  border-color: color-mix(in srgb, var(--critical) 70%, transparent);
+  background: color-mix(in srgb, var(--critical) 16%, transparent);
+  color: #ffb4b4;
+}
+.button-danger:hover {
+  border-color: var(--critical);
+  background: color-mix(in srgb, var(--critical) 26%, transparent);
+}
 
 .input {
   height: 34px;

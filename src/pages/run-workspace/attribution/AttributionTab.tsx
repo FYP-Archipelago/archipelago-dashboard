@@ -2,8 +2,9 @@ import { useMemo, useState } from 'react';
 
 import { islandColor } from '@/colors.ts';
 import Icon from '@/components/Icon.tsx';
+import Segmented from '@/components/Segmented.tsx';
 import { fitness, numberFormat } from '@/format.ts';
-import { EmptyState, NoResult, type ResultQuery } from '@/pages/run-workspace/shared.tsx';
+import { EmptyState, IslandSwatch, NoResult, type ResultQuery } from '@/pages/run-workspace/shared.tsx';
 import type { Player, Run, ShapleyAttribution, ShapleyGame } from '@/types.ts';
 
 import { waterfallSlots } from './attribution.ts';
@@ -28,11 +29,11 @@ const percent = (share: number) => {
 function Swatch({ player }: { player: Player }) {
   return Array.isArray(player) ? (
     <span className="player-route">
-      <i className="swatch" style={{ background: islandColor(player[0]) }} />
-      <i className="swatch" style={{ background: islandColor(player[1]) }} />
+      <IslandSwatch island={player[0]} />
+      <IslandSwatch island={player[1]} />
     </span>
   ) : (
-    <i className="swatch" style={{ background: islandColor(player) }} />
+    <IslandSwatch island={player} />
   );
 }
 
@@ -281,13 +282,13 @@ function Orders({ game }: { game: ShapleyGame }) {
       <div className="card-header">
         <h3>Marginal contributions</h3>
         {game.orders.length > 1 && (
-          <div className="segmented-control card-header-end" role="group" aria-label="Example order">
-            {game.orders.map((_, i) => (
-              <button key={i} className={i === index ? 'on' : ''} aria-pressed={i === index} onClick={() => setIndex(i)}>
-                π{i + 1}
-              </button>
-            ))}
-          </div>
+          <Segmented
+            className="card-header-end"
+            label="Example order"
+            value={String(index)}
+            options={game.orders.map((_, i) => ({ key: String(i), label: <>π{i + 1}</> }))}
+            onChange={(key) => setIndex(Number(key))}
+          />
         )}
       </div>
       <p className="section-subtitle">
@@ -371,14 +372,15 @@ function Attribution({ shapley, maximising, migrationEnabled }: { shapley: Shapl
   return (
     <>
       <div className="attribution-head">
-        <div className="segmented-control" role="group" aria-label="Players">
-          <button className={view === 'islands' ? 'on' : ''} aria-pressed={view === 'islands'} onClick={() => change('islands')}>
-            Island attribution
-          </button>
-          <button className={view === 'routes' ? 'on' : ''} aria-pressed={view === 'routes'} onClick={() => change('routes')}>
-            Migration route attribution
-          </button>
-        </div>
+        <Segmented
+          label="Players"
+          value={view}
+          options={[
+            { key: 'islands', label: 'Island attribution' },
+            { key: 'routes', label: 'Migration route attribution' },
+          ]}
+          onChange={change}
+        />
         {!migrationOff && <span className="muted">{calculationLabel}</span>}
       </div>
       {migrationOff ? (

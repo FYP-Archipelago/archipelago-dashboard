@@ -4,13 +4,15 @@ import { heatColor, heatInk, islandColor } from '@/colors.ts';
 import Icon from '@/components/Icon.tsx';
 import Link from '@/components/Link.tsx';
 import { fitness, numberFormat, TOPOLOGIES } from '@/format.ts';
-import { EmptyState, NoResult, type ResultQuery } from '@/pages/run-workspace/shared.tsx';
+import { EmptyState, IslandSwatch, NoResult, type ResultQuery } from '@/pages/run-workspace/shared.tsx';
 import { runHref } from '@/route.ts';
 import type { Run, RunResult } from '@/types.ts';
 
+import { arrivalsOf, comparison } from './migration.ts';
+
 import './migration.css';
 
-type Route = { source: number; destination: number; migrants: number };
+type Route = RunResult['migration_routes'][number];
 
 const routeKey = (source: number, destination: number) => `${source}-${destination}`;
 
@@ -94,7 +96,7 @@ function RouteMatrix({ islands, routes, hovered, onHover }: { islands: number[];
       <span className="heat-axis heat-axis-corner">From ↓ To →</span>
       {islands.map((island) => (
         <span key={island} className="heat-axis">
-          <i className="swatch" style={{ background: islandColor(island) }} />
+          <IslandSwatch island={island} />
           {island}
         </span>
       ))}
@@ -140,51 +142,6 @@ function RouteMatrix({ islands, routes, hovered, onHover }: { islands: number[];
   );
 }
 
-type Arrival = {
-  key: number;
-  from: number;
-  to: number;
-  fromIsland: number;
-  toIsland: number;
-  fromBest: number | null;
-  toBest: number | null;
-  migrants: number;
-};
-
-// Each migration link joins the cluster migrants left to the one they arrived in. Rows show the busiest first.
-function arrivalsOf(graph: RunResult['graph']): Arrival[] {
-  const index = new Map(graph.nodes.id.map((id, i) => [id, i]));
-  return graph.migrations.id
-    .flatMap((key, i) => {
-      const from = index.get(graph.migrations.source[i]!);
-      const to = index.get(graph.migrations.target[i]!);
-      if (from === undefined || to === undefined) return [];
-      const node = (at: number) => ({ island: graph.nodes.island[at]!, best: graph.nodes.best_fitness[at] ?? null });
-      return [
-        {
-          key,
-          from: graph.nodes.id[from]!,
-          to: graph.nodes.id[to]!,
-          fromIsland: node(from).island,
-          toIsland: node(to).island,
-          fromBest: node(from).best,
-          toBest: node(to).best,
-          migrants: graph.migrations.count[i]!,
-        },
-      ];
-    })
-    .sort((a, b) => b.migrants - a.migrants);
-}
-
-// How the arrival cluster's best compares with the best of the cluster the migrants left.
-function comparison(arrival: Arrival, maximising: boolean): { label: string; tone: 'arrival-better' | 'arrival-worse' | 'arrival-same' } | null {
-  if (arrival.fromBest === null || arrival.toBest === null) return null;
-  const gap = arrival.toBest - arrival.fromBest;
-  if (gap === 0) return { label: 'Same', tone: 'arrival-same' };
-  const better = maximising ? gap > 0 : gap < 0;
-  return { label: `${better ? 'Better' : 'Worse'} by ${fitness(Math.abs(gap))}`, tone: better ? 'arrival-better' : 'arrival-worse' };
-}
-
 function Arrivals({ graph, maximising }: { graph: RunResult['graph']; maximising: boolean }) {
   const arrivals = useMemo(() => arrivalsOf(graph), [graph]);
   const [showAll, setShowAll] = useState(false);
@@ -221,9 +178,9 @@ function Arrivals({ graph, maximising }: { graph: RunResult['graph']; maximising
                 <tr key={arrival.key}>
                   <td>
                     <span className="route-name">
-                      <i className="swatch" style={{ background: islandColor(arrival.fromIsland) }} />
+                      <IslandSwatch island={arrival.fromIsland} />
                       {arrival.fromIsland} →
-                      <i className="swatch" style={{ background: islandColor(arrival.toIsland) }} />
+                      <IslandSwatch island={arrival.toIsland} />
                       {arrival.toIsland}
                     </span>
                   </td>
@@ -333,9 +290,9 @@ function Migration({ run, result }: { run: Run; result: RunResult }) {
             }
           >
             <div className="hover-tip-title route-name">
-              <i className="swatch" style={{ background: islandColor(focus.source) }} />
+              <IslandSwatch island={focus.source} />
               Island {focus.source} →
-              <i className="swatch" style={{ background: islandColor(focus.destination) }} />
+              <IslandSwatch island={focus.destination} />
               Island {focus.destination}
             </div>
             <div className="hover-tip-row">

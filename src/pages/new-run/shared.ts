@@ -1,6 +1,6 @@
-import type { CSSProperties } from 'react';
+import type { KeyboardEvent } from 'react';
 
-export type Pt = [number, number];
+export type Point = [number, number];
 
 // A small random generator seeded by text, so a drawing comes out the same on every render.
 export function seeded(text: string) {
@@ -8,5 +8,9 @@ export function seeded(text: string) {
   return () => (state = (state * 16807) % 2147483647) / 2147483647;
 }
 
-// CSS custom properties such as --c need a cast to pass as a style.
-export const vars = (values: Record<string, string | number>) => values as CSSProperties;
+// The step an arrow key asks for: 1, or 10 with Shift, up or down; null for any other key. Left and right count only
+// when `sideways`, so a text field keeps them for moving the caret.
+export function arrowStep(event: KeyboardEvent, sideways: boolean): number | null {
+  const direction = { ArrowUp: 1, ArrowDown: -1, ...(sideways ? { ArrowRight: 1, ArrowLeft: -1 } : {}) }[event.key];
+  return direction ? direction * (event.shiftKey ? 10 : 1) : null;
+}

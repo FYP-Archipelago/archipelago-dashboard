@@ -1,17 +1,15 @@
 import type { ReactNode } from 'react';
 
-import { ISLAND_COLORS } from '@/colors.ts';
-import { numberFormat } from '@/format.ts';
+import { islandColor } from '@/colors.ts';
+import { compactNumber, numberFormat } from '@/format.ts';
 import type { Form, Patch, SetText, SettingKey } from '@/pages/new-run/form.ts';
-import { vars } from '@/pages/new-run/shared.ts';
+import { vars } from '@/style.ts';
 import type { Presets } from '@/types.ts';
 
 import type { FieldProps } from './fields.tsx';
 import StagnationLimit from './StagnationLimit.tsx';
 
 import './search.css';
-
-const compactNumber = new Intl.NumberFormat('en', { notation: 'compact', maximumFractionDigits: 1 });
 
 type TileProps = Omit<FieldProps, 'decimal' | 'disabled'> & { hint: string; children?: ReactNode };
 
@@ -65,7 +63,7 @@ function IslandStepper({ form, islandCounts, patch }: { form: Form; islandCounts
       </div>
       <div className="roll-dots">
         {Array.from({ length: form.islands }, (_, i) => (
-          <span key={i} style={vars({ '--c': ISLAND_COLORS[i % ISLAND_COLORS.length]! })} />
+          <span key={i} style={vars({ '--c': islandColor(i) })} />
         ))}
       </div>
     </>

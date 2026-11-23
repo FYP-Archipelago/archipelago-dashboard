@@ -1,23 +1,23 @@
 import { adjectives, animals, colors, uniqueNamesGenerator } from 'unique-names-generator';
 
 import { NAME_MAX } from '@/api/runs.ts';
-import { numberFormat } from '@/format.ts';
+import { CLUSTERING_STAGES, numberFormat, type ClusteringStage } from '@/format.ts';
 import type { Clustering, NewRun, OverrideSpec, Preset, Presets, RunSettings } from '@/types.ts';
 
-// Clustering stages in pipeline order.
-export const STAGES = [
-  { key: 'lsh', label: 'LSH', text: 'Hashes genomes into buckets of near-duplicates. Fast first pass.' },
-  { key: 'birch', label: 'BIRCH', text: 'Builds compact sub-clusters inside each bucket.' },
-  { key: 'denstream', label: 'DenStream', text: 'Tracks density over time and fades stale regions.' },
-] as const;
+const STAGE_TEXT: Record<ClusteringStage, string> = {
+  lsh: 'Hashes genomes into buckets of near-duplicates. Fast first pass.',
+  birch: 'Builds compact sub-clusters inside each bucket.',
+  denstream: 'Tracks density over time and fades stale regions.',
+};
 
-export type Stage = (typeof STAGES)[number]['key'];
+export const STAGES = CLUSTERING_STAGES.map((stage) => ({ ...stage, text: STAGE_TEXT[stage.key] }));
+
 export type SettingKey =
   'evaluation_budget' | 'target_generations' | 'termination.stagnation_generations' | 'migration.interval' | 'migration.num_migrants' | 'seed';
 export type ScheduleKey = 'migration.interval' | 'migration.num_migrants';
 export type AdvancedKey = 'lsh_hashes' | 'birch_threshold' | 'denstream_epsilon' | 'denstream_half_life' | 'denstream_mu' | 'denstream_beta' | 'seed';
 
-export type ClusterForm = Record<Stage, boolean> & { detail: number; text: Record<AdvancedKey, string> };
+export type ClusterForm = Record<ClusteringStage, boolean> & { detail: number; text: Record<AdvancedKey, string> };
 
 export type Form = {
   preset: Preset;
@@ -63,7 +63,7 @@ type Rule = { int?: boolean; min?: number; max?: number; above?: number; optiona
 const AUTO_HINT = 'Blank measures it from the run';
 
 // Advanced clustering settings; `stage` hides a field while its stage is off.
-export const ADVANCED: { key: AdvancedKey; label: string; stage: Stage | null; rule: Rule; hint: string }[] = [
+export const ADVANCED: { key: AdvancedKey; label: string; stage: ClusteringStage | null; rule: Rule; hint: string }[] = [
   { key: 'lsh_hashes', label: 'LSH hashes', stage: 'lsh', rule: { int: true, min: 1 }, hint: 'More hashes, finer blocks' },
   { key: 'birch_threshold', label: 'BIRCH threshold', stage: 'birch', rule: { above: 0, optional: true }, hint: AUTO_HINT },
   { key: 'denstream_epsilon', label: 'DenStream epsilon', stage: 'denstream', rule: { above: 0, optional: true }, hint: AUTO_HINT },

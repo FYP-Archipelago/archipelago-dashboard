@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 
-import { ISLAND_COLORS } from '@/colors.ts';
+import { islandColor } from '@/colors.ts';
 import Icon from '@/components/Icon.tsx';
-import { vars } from '@/pages/new-run/shared.ts';
+import { vars } from '@/style.ts';
 
 import './start.css';
 
@@ -32,8 +32,6 @@ export default function StartButton({ phase, disabled, onLaunch }: StartProps) {
       onLaunch();
     });
   };
-
-  const islandColour = (i: number) => ISLAND_COLORS[i % ISLAND_COLORS.length]!;
 
   let content: ReactNode;
   if (phase === 'done')
@@ -93,7 +91,7 @@ export default function StartButton({ phase, disabled, onLaunch }: StartProps) {
                 style={vars({
                   '--dx': `${(Math.cos(angle) * reach).toFixed(1)}px`,
                   '--dy': `${(Math.sin(angle) * reach * 0.7).toFixed(1)}px`,
-                  '--c': islandColour(i),
+                  '--c': islandColor(i),
                 })}
               />
             );

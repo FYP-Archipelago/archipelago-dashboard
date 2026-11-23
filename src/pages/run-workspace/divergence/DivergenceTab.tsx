@@ -1,9 +1,10 @@
 import { useMemo, useState } from 'react';
 
-import { heatColor, heatGradient, heatInk, islandColor, pairColor } from '@/colors.ts';
+import { heatColor, heatGradient, heatInk, pairColor } from '@/colors.ts';
 import Icon from '@/components/Icon.tsx';
+import Segmented from '@/components/Segmented.tsx';
 import LineChart, { type Guide } from '@/pages/run-workspace/charts/LineChart.tsx';
-import { EmptyState, NoResult, type ResultQuery } from '@/pages/run-workspace/shared.tsx';
+import { EmptyState, IslandSwatch, NoResult, type ResultQuery } from '@/pages/run-workspace/shared.tsx';
 import type { Run, RunResult } from '@/types.ts';
 
 import { describeTrend, meanOf, notableMigrations, pairKey, wholeRunPairs, windowValues, type Pair } from './divergence.ts';
@@ -75,7 +76,7 @@ function Matrix({
       <span />
       {islands.map((island) => (
         <span key={island} className="heat-axis">
-          <i className="swatch" style={{ background: islandColor(island) }} />
+          <IslandSwatch island={island} />
           {island}
         </span>
       ))}
@@ -318,14 +319,16 @@ function Divergence({ run, result }: { run: Run; result: RunResult }) {
         <section className="card">
           <div className="card-header">
             <h3>Between islands</h3>
-            <div className="segmented-control card-header-end" role="group" aria-label="Period">
-              <button className={view === 'whole' ? 'on' : ''} aria-pressed={view === 'whole'} onClick={() => setView('whole')}>
-                Whole run
-              </button>
-              <button className={view === 'window' ? 'on' : ''} aria-pressed={view === 'window'} onClick={() => setView('window')}>
-                By window
-              </button>
-            </div>
+            <Segmented
+              className="card-header-end"
+              label="Period"
+              value={view}
+              options={[
+                { key: 'whole', label: 'Whole run' },
+                { key: 'window', label: 'By window' },
+              ]}
+              onChange={setView}
+            />
           </div>
           <Matrix
             islands={islands}

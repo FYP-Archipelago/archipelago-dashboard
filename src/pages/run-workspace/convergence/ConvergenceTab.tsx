@@ -2,12 +2,14 @@ import { useMemo, useState } from 'react';
 
 import { islandColor } from '@/colors.ts';
 import Icon from '@/components/Icon.tsx';
+import Segmented from '@/components/Segmented.tsx';
 import { compactNumber, fitness, numberFormat } from '@/format.ts';
 import LineChart, { Sparkline } from '@/pages/run-workspace/charts/LineChart.tsx';
-import { EmptyState, NoResult, type ResultQuery } from '@/pages/run-workspace/shared.tsx';
+import { historyByIsland } from '@/pages/run-workspace/history.ts';
+import { EmptyState, IslandSwatch, NoResult, type ResultQuery } from '@/pages/run-workspace/shared.tsx';
 import type { IslandEnd, Run, RunResult } from '@/types.ts';
 
-import { describeDiversity, historyByIsland, runBest, runProgress, shareAfter, summarise } from './convergence.ts';
+import { describeDiversity, runBest, runProgress, shareAfter, summarise } from './convergence.ts';
 
 import './convergence.css';
 
@@ -32,35 +34,6 @@ const PLATEAU_PACE = 0.1;
 const percentAfter = (share: number) => (share > 0 && share < 0.01 ? '<1%' : `${Math.round(share * 100)}%`);
 
 const formatDiversity = (value: number | null) => (value === null ? '—' : value.toFixed(3));
-
-function Segmented<T extends string>({
-  label,
-  value,
-  options,
-  onChange,
-}: {
-  label: string;
-  value: T;
-  options: { key: T; label: string; disabled?: string }[];
-  onChange: (value: T) => void;
-}) {
-  return (
-    <div className="segmented-control" role="group" aria-label={label}>
-      {options.map((option) => (
-        <button
-          key={option.key}
-          className={value === option.key ? 'on' : ''}
-          aria-pressed={value === option.key}
-          disabled={Boolean(option.disabled)}
-          title={option.disabled}
-          onClick={() => onChange(option.key)}
-        >
-          {option.label}
-        </button>
-      ))}
-    </div>
-  );
-}
 
 // Generations the island went without improving before it stopped: from runner
 function WithoutImprovement({ end, limit }: { end: IslandEnd | undefined; limit: number }) {
@@ -174,7 +147,7 @@ function Convergence({ result, showStagnationMarkers, onToggleStagnationMarkers 
               onPointerEnter={() => !hidden.has(island) && setHighlight(island)}
               onPointerLeave={() => setHighlight(null)}
             >
-              <i className="swatch" style={{ background: islandColor(island) }} />
+              <IslandSwatch island={island} />
               Island {island}
             </button>
           ))}
@@ -309,7 +282,7 @@ function Convergence({ result, showStagnationMarkers, onToggleStagnationMarkers 
               >
                 <td>
                   <span className="island-cell">
-                    <i className="swatch" style={{ background: islandColor(s.island) }} />
+                    <IslandSwatch island={s.island} />
                     Island {s.island}
                     {best?.island === s.island && (
                       <span

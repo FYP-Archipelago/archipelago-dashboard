@@ -3,8 +3,10 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useRuns } from '@/api/queries.ts';
 import Icon from '@/components/Icon.tsx';
 import Link from '@/components/Link.tsx';
+import Segmented from '@/components/Segmented.tsx';
 import Unavailable from '@/components/Unavailable.tsx';
-import { duration } from '@/format.ts';
+import { useNow } from '@/clock.ts';
+import { CLUSTERING_STAGES, compactNumber, duration, presetParts } from '@/format.ts';
 import { navigate, runHref } from '@/route.ts';
 import type { Run, RunStatusName } from '@/types.ts';
 
@@ -14,26 +16,12 @@ type StatusFilter = 'all' | RunStatusName;
 
 const STATUS_FILTERS: StatusFilter[] = ['all', 'queued', 'running', 'clustering', 'done', 'failed', 'cancelled'];
 
-// Clustering stages in pipeline order.
-const STAGES = [
-  ['lsh', 'LSH'],
-  ['birch', 'BIRCH'],
-  ['denstream', 'DenStream'],
-] as const;
-
-const compact = new Intl.NumberFormat('en', { notation: 'compact', maximumFractionDigits: 1 });
-
 const matches = (run: Run, q: string) => [run.run_name, run.run_id, run.preset].some((field) => field.toLowerCase().includes(q));
 
 // Done runs show their final time; started but unfinished ones count up, and failed or cancelled ones show how long they lasted.
 function DurationCell({ run }: { run: Run }) {
   const counting = run.started_at !== null && run.finished_at === null;
-  const [now, setNow] = useState(Date.now);
-  useEffect(() => {
-    if (!counting) return;
-    const timer = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(timer);
-  }, [counting]);
+  const now = useNow(counting);
 
   const start = run.started_at ? Date.parse(run.started_at) : null;
   const end = run.finished_at ? Date.parse(run.finished_at) : counting ? now : null;
@@ -45,8 +33,7 @@ function DurationCell({ run }: { run: Run }) {
 }
 
 function RunRow({ run }: { run: Run }) {
-  // Preset names are <algorithm>_<problem>.
-  const cut = run.preset.indexOf('_');
+  const { algorithm, problem } = presetParts(run.preset);
   return (
     <tr className="run-row-link" onClick={(event) => !(event.target as Element).closest('a') && navigate(runHref(run.run_id))}>
       <td>
@@ -65,10 +52,10 @@ function RunRow({ run }: { run: Run }) {
           </span>
         </div>
       </td>
-      <td className="ink-2 preset-part">{run.preset.slice(0, cut)}</td>
-      <td className="ink-2 preset-part">{run.preset.slice(cut + 1)}</td>
+      <td className="ink-2 preset-part">{algorithm}</td>
+      <td className="ink-2 preset-part">{problem}</td>
       <td className="align-right">{run.run_settings.num_islands}</td>
-      <td className="align-right">{compact.format(run.run_settings.evaluation_budget)}</td>
+      <td className="align-right">{compactNumber.format(run.run_settings.evaluation_budget)}</td>
       <td>
         <span className="run-list-mode">
           <Icon name={run.stream ? 'radio' : 'clock'} size={14} />
@@ -77,7 +64,7 @@ function RunRow({ run }: { run: Run }) {
       </td>
       <td>
         <div className="run-list-stages">
-          {STAGES.map(([key, label]) => (
+          {CLUSTERING_STAGES.map(({ key, label }) => (
             <span
               key={key}
               className={`run-list-stage${run.clustering[key] ? '' : ' run-list-stage-off'}`}
@@ -146,13 +133,12 @@ export default function RunsPage() {
           />
           <kbd className="search-keyboard-shortcut">Ctrl+K</kbd>
         </label>
-        <div className="segmented-control" role="group" aria-label="Status">
-          {STATUS_FILTERS.map((value) => (
-            <button key={value} className={status === value ? 'on' : ''} aria-pressed={status === value} onClick={() => setStatus(value)}>
-              <span className="status">{value}</span>
-            </button>
-          ))}
-        </div>
+        <Segmented
+          label="Status"
+          value={status}
+          options={STATUS_FILTERS.map((value) => ({ key: value, label: <span className="status">{value}</span> }))}
+          onChange={setStatus}
+        />
         <select
           className="input status-select"
           aria-label="Status"

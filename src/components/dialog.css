@@ -55,15 +55,6 @@
   gap: 8px;
   margin-top: 22px;
 }
-.button.button-destructive {
-  border-color: var(--critical);
-  background: var(--critical);
-  color: #fff;
-}
-.button.button-destructive:hover {
-  border-color: #e04b4b;
-  background: #e04b4b;
-}
 .dialog-actions .button:has(.button-spinner):disabled {
   opacity: 1;
   cursor: progress;

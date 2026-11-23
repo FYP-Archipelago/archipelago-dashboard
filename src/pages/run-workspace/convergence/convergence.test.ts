@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest';
 
 import { makeResult } from '@/test/fixtures.ts';
 
-import { describeDiversity, historyByIsland, runBest, runProgress, summarise } from './convergence.ts';
+import { historyByIsland } from '@/pages/run-workspace/history.ts';
+
+import { describeDiversity, runBest, runProgress, summarise } from './convergence.ts';
 
 const rows = makeResult().generation_history;
 

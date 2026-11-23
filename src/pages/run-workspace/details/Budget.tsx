@@ -2,7 +2,9 @@ import { useState } from 'react';
 
 import { islandColor } from '@/colors.ts';
 import { numberFormat } from '@/format.ts';
-import { historyByIsland } from '@/pages/run-workspace/convergence/convergence.ts';
+import { historyByIsland } from '@/pages/run-workspace/history.ts';
+import { IslandSwatch } from '@/pages/run-workspace/shared.tsx';
+import { vars } from '@/style.ts';
 import type { IslandEnd, Run, RunResult, TerminationReason } from '@/types.ts';
 
 import './budget.css';
@@ -106,7 +108,7 @@ export default function Budget({ run, result }: { run: Run; result: RunResult })
   });
   const tipTitle = (island: number) => (
     <b>
-      <i className="swatch" style={{ background: islandColor(island) }} />
+      <IslandSwatch island={island} />
       Island {island}
     </b>
   );
@@ -187,11 +189,11 @@ export default function Budget({ run, result }: { run: Run; result: RunResult })
                     <b
                       key={island.island}
                       className={`budget-dot ${markerOf(island.end)}${hovered === island ? ' budget-dot-active' : ''}`}
-                      style={{
+                      style={vars({
                         left: `calc(50% + ${offset}px)`,
                         zIndex: hovered === island ? 2 : 1,
-                        ['--island' as string]: islandColor(island.island),
-                      }}
+                        '--island': islandColor(island.island),
+                      })}
                       {...hoverProps(island.island, 'generations')}
                     />
                   );
@@ -214,7 +216,7 @@ export default function Budget({ run, result }: { run: Run; result: RunResult })
       <div className={`budget-legend${keyEntries.length ? ' budget-legend-with-reasons' : ''}`}>
         {islands.map((island) => (
           <span key={island.island} className={`budget-legend-island${dim(island.island)}`} {...hoverProps(island.island, 'legend')}>
-            <i className="swatch" style={{ background: islandColor(island.island) }} />
+            <IslandSwatch island={island.island} />
             Island {island.island}
           </span>
         ))}

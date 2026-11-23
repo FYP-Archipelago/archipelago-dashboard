@@ -1,8 +1,13 @@
 import type { useRunResult } from '@/api/queries.ts';
+import { islandColor } from '@/colors.ts';
 import Icon, { type IconName } from '@/components/Icon.tsx';
 import type { Run } from '@/types.ts';
 
 export type ResultQuery = ReturnType<typeof useRunResult>;
+
+export function IslandSwatch({ island }: { island: number }) {
+  return <i className="swatch" style={{ background: islandColor(island) }} />;
+}
 
 // A tab with nothing to show: an icon (or a spinner while something is under way) and the status, centred in the space
 // below the tabs. `detail` shows on hover.

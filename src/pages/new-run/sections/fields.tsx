@@ -1,3 +1,5 @@
+import { arrowStep } from '@/pages/new-run/shared.ts';
+
 export type FieldProps = {
   id: string;
   label: string;
@@ -51,10 +53,10 @@ export function InlineNumber({ label, value, onChange, onStep, invalid }: Inline
       style={{ width: `calc(${Math.max(2, value.length)}ch + 10px)` }}
       onChange={(event) => onChange(event.target.value)}
       onKeyDown={(event) => {
-        const delta = { ArrowUp: 1, ArrowDown: -1 }[event.key];
+        const delta = arrowStep(event, false);
         if (!delta) return;
         event.preventDefault();
-        onStep(delta * (event.shiftKey ? 10 : 1));
+        onStep(delta);
       }}
     />
   );
