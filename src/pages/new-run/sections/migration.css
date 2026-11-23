@@ -16,7 +16,9 @@
 }
 
 .migration-toggle {
-  display: flex;
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
   gap: 2px;
   padding: 3px;
   border-radius: 9px;
@@ -24,16 +26,29 @@
   background: var(--surface-2);
 }
 
+.migration-toggle-thumb {
+  position: absolute;
+  top: 3px;
+  bottom: 3px;
+  left: 3px;
+  width: calc(50% - 4px);
+  border-radius: 6px;
+  background: var(--accent);
+}
+
+.migration-toggle.migration-toggle-on .migration-toggle-thumb {
+  transform: translateX(calc(100% + 2px));
+}
+
 .migration-toggle button {
+  position: relative;
   min-width: 56px;
   padding: 5px 16px;
   border-radius: 6px;
   color: var(--muted);
   font-size: 13px;
   font-weight: 600;
-  transition:
-    background 0.2s,
-    color 0.2s;
+  transition: color 0.2s;
 }
 
 .migration-toggle button:hover {
@@ -41,8 +56,13 @@
 }
 
 .migration-toggle button.migration-toggle-selected {
-  background: var(--accent);
   color: var(--accent-ink);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .migration-toggle-thumb {
+    transition: transform 0.3s var(--ease);
+  }
 }
 
 .migration-fieldset {

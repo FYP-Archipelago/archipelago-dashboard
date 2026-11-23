@@ -309,7 +309,8 @@ export default function MigrationSection({ form, errors, overrides, patch, setTe
     <section className="new-run-step">
       <div className="migration-header">
         <h2>Migration</h2>
-        <div className="migration-toggle" role="radiogroup" aria-label="Migration">
+        <div className={`migration-toggle${form.migration ? ' migration-toggle-on' : ''}`} role="radiogroup" aria-label="Migration">
+          <i className="migration-toggle-thumb" aria-hidden="true" />
           {[false, true].map((on) => (
             <button
               key={String(on)}
