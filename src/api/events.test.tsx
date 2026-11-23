@@ -1,11 +1,11 @@
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { type InfiniteData, QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act, renderHook } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 
 import { mockBackend } from '@/test/backend.ts';
 import { makeResult, makeRun } from '@/test/fixtures.ts';
-import type { Graph, GraphDelta, RunStatusName } from '@/types.ts';
+import type { Graph, GraphDelta, RunPage, RunStatusName } from '@/types.ts';
 
 import { useLiveGraph } from './events.ts';
 import { useRun } from './queries.ts';
@@ -110,13 +110,20 @@ describe('useLiveGraph', () => {
     expect(nodes()).toBe(5);
   });
 
-  it('pauses polling the run while its stream is open and resumes when the stream is lost', async () => {
+  it('pauses polling the run while its stream is open, resumes when the stream is lost, and keeps the lists in step', async () => {
     vi.useFakeTimers();
     vi.stubGlobal('EventSource', FakeSource);
     FakeSource.opened = [];
     let status: RunStatusName = 'running';
     const fetches = mockBackend({ 'GET /runs/run-1': () => ({ body: makeRun('run-1', { status }) }) });
     const client = new QueryClient();
+    // The sidebar's list, loaded before the run page opened.
+    const listKey = ['runs', 'list', 'all'];
+    client.setQueryData<InfiniteData<RunPage>>(listKey, {
+      pages: [{ runs: [makeRun('run-1', { status })], next_cursor: null }],
+      pageParams: [undefined],
+    });
+    const listedStatus = () => client.getQueryData<InfiniteData<RunPage>>(listKey)?.pages[0]!.runs[0]!.status;
     const wrapper = ({ children }: { children: ReactNode }) => <QueryClientProvider client={client}>{children}</QueryClientProvider>;
     const { result } = renderHook(() => [useRun('run-1'), useLiveGraph('run-1', true)] as const, { wrapper });
     await act(() => vi.advanceTimersByTimeAsync(100));
@@ -135,6 +142,7 @@ describe('useLiveGraph', () => {
     await act(() => vi.advanceTimersByTimeAsync(100));
     expect(fetches).toHaveBeenCalledTimes(afterOpen + 1);
     expect(result.current[0].data?.status).toBe('clustering');
+    expect(listedStatus()).toBe('clustering');
 
     // Lost, the run is fetched at once and polled again; the retry 2 s later never opens.
     act(() => FakeSource.opened[0]!.giveUp());

@@ -72,10 +72,10 @@ function listedRun(queryClient: QueryClient, id: string): { run: Run; at: number
 }
 
 // Starts from the run's row in a loaded runs list; a finished run is never refetched. An unfinished one is polled
-// until it finishes, except while its live stream reports its status.
+// until it finishes, except while its live stream reports its status, and a newer status is copied into the lists.
 export function useRun(id: string) {
   const queryClient = useQueryClient();
-  return useQuery({
+  const query = useQuery({
     queryKey: ['run', id],
     queryFn: ({ signal }) => getRun(id, signal),
     initialData: () => listedRun(queryClient, id)?.run,
@@ -84,6 +84,14 @@ export function useRun(id: string) {
     refetchInterval: ({ state }) => ((state.data ? !isFinished(state.data.status) && !isStreaming(id) : !isNotFound(state.error)) ? 5000 : false),
     retry: (failures, error) => failures < 1 && !isNotFound(error),
   });
+  const { data: run, dataUpdatedAt } = query;
+  useEffect(() => {
+    const listed = listedRun(queryClient, id);
+    // Only fresher news: a list fetched after the run already knows at least as much.
+    if (!run || !listed || listed.run.status === run.status || listed.at >= dataUpdatedAt) return;
+    patchListedRuns(queryClient, (runs) => runs.map((row) => (row.run_id === id ? run : row)));
+  }, [queryClient, id, run, dataUpdatedAt]);
+  return query;
 }
 
 // A result never changes once stored. Its key sits outside ['runs'], so refreshing the lists never refetches it.
