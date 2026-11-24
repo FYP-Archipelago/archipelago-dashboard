@@ -28,7 +28,10 @@ export type Scene = {
   y: Float32Array;
   heights: Record<HeightMode, Float32Array>;
   bestFitness: (number | null)[];
+  meanFitness: (number | null)[];
   visits: number[];
+  // The evaluation on its island at which the cluster was first reached.
+  firstEval: number[];
   size: Float32Array;
   // 0 when only one island visited the cluster, 1 when all of them did.
   shared: Float32Array;
@@ -122,7 +125,9 @@ export function buildScene(graph: Graph, islands: number[], maximising: boolean)
     y: Float32Array.from(nodes.y),
     heights,
     bestFitness: nodes.best_fitness,
+    meanFitness: nodes.mean_fitness,
     visits: nodes.visits,
+    firstEval: nodes.first_eval,
     size: Float32Array.from(nodes.visits, (v) => 1 + Math.log2(1 + v) * 0.85),
     shared,
     reveal,

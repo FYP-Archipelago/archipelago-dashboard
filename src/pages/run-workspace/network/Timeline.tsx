@@ -1,10 +1,11 @@
-import { useEffect, useEffectEvent, useRef, useState } from 'react';
+import { useEffect, useEffectEvent, useState } from 'react';
 
 import type { LiveGraphState } from '@/api/events.ts';
 import { useNow } from '@/clock.ts';
 import { numberFormat } from '@/format.ts';
-import { reducedMotion, vars } from '@/style.ts';
+import { vars } from '@/style.ts';
 
+import MorphIcon, { PAUSE, PLAY } from './MorphIcon.tsx';
 import type { Scene } from './scene.ts';
 
 import './timeline.css';
@@ -12,71 +13,6 @@ import './timeline.css';
 // A full replay takes 20 seconds at 1×.
 const REPLAY_SECONDS = 20;
 const SPEEDS = [0.5, 1, 2, 4];
-
-// The play triangle cut in two halves whose corners line up with the two pause bars', corner by corner (top left,
-// top right, bottom right, bottom left), so one shape can slide into the other. On a 14px grid, so edges stay sharp.
-const PLAY = [
-  [
-    [4, 2],
-    [8.25, 4.5],
-    [8.25, 9.5],
-    [4, 12],
-  ],
-  [
-    [8.25, 4.5],
-    [12.5, 7],
-    [12.5, 7],
-    [8.25, 9.5],
-  ],
-];
-const PAUSE = [
-  [
-    [3.4, 2],
-    [5.6, 2],
-    [5.6, 12],
-    [3.4, 12],
-  ],
-  [
-    [8.4, 2],
-    [10.6, 2],
-    [10.6, 12],
-    [8.4, 12],
-  ],
-];
-
-// Play morphs into pause and back, as YouTube's button does.
-function PlayPauseIcon({ playing }: { playing: boolean }) {
-  // 0 is play, 1 is pause.
-  const [shown, setShown] = useState(playing ? 1 : 0);
-  const at = useRef(shown);
-  useEffect(() => {
-    const from = at.current;
-    const goal = playing ? 1 : 0;
-    const start = performance.now();
-    const duration = reducedMotion() ? 0 : 220;
-    let frame = requestAnimationFrame(function step(now) {
-      const t = duration ? Math.min(1, (now - start) / duration) : 1;
-      at.current = from + (goal - from) * (t < 0.5 ? 2 * t * t : 1 - (-2 * t + 2) ** 2 / 2);
-      setShown(at.current);
-      if (t < 1) frame = requestAnimationFrame(step);
-    });
-    return () => cancelAnimationFrame(frame);
-  }, [playing]);
-  return (
-    <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true">
-      {PLAY.map((half, h) => (
-        <polygon
-          key={h}
-          points={half.map(([x, y], k) => `${x! + (PAUSE[h]![k]![0]! - x!) * shown},${y! + (PAUSE[h]![k]![1]! - y!) * shown}`).join(' ')}
-          fill="currentColor"
-          stroke="currentColor"
-          strokeWidth="0.8"
-          strokeLinejoin="round"
-        />
-      ))}
-    </svg>
-  );
-}
 
 // What the replay has reached so far; all of it once the replay is at the end or the run is live.
 function Counts({ scene, progress, evaluations }: { scene: Scene; progress: number; evaluations: number | null }) {
@@ -198,7 +134,7 @@ export default function Timeline({
         title={playing ? 'Pause' : 'Replay the run: clusters appear in the order the search found them'}
         onClick={toggle}
       >
-        <PlayPauseIcon playing={playing} />
+        <MorphIcon from={PLAY} to={PAUSE} on={playing} />
       </button>
       <span className="network-timeline-caption">{playing ? 'Replaying' : progress < 1 ? 'Paused' : 'Replay'}</span>
       <input

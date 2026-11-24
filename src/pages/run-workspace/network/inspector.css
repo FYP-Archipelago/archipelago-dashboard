@@ -47,6 +47,54 @@
 .network-best.network-best-hidden {
   opacity: 0.5;
 }
+.network-best.network-best-touring {
+  background: var(--surface-3);
+}
+.network-tour-controls {
+  display: flex;
+  gap: 6px;
+  margin-top: 12px;
+}
+.network-tour {
+  position: relative;
+  flex: 1;
+  overflow: hidden;
+}
+.network-tour > :not(.network-tour-progress) {
+  position: relative;
+}
+.network-tour-progress {
+  position: absolute;
+  inset: 0;
+  background: var(--surface-3);
+  transform-origin: left;
+  transition: transform 1.6s var(--ease);
+}
+.network-tour-label {
+  animation: network-tour-label 0.22s var(--ease);
+}
+@keyframes network-tour-label {
+  from {
+    opacity: 0;
+    transform: translateY(3px);
+  }
+}
+.network-tour.network-tour-on {
+  border-color: color-mix(in srgb, var(--ink) 30%, transparent);
+}
+.network-tour-stop {
+  flex: none;
+  width: 32px;
+  padding: 0;
+  animation: network-tour-stop 0.24s var(--ease);
+}
+@keyframes network-tour-stop {
+  from {
+    width: 0;
+    margin-left: -6px;
+    opacity: 0;
+  }
+}
 .network-best-text {
   flex: 1;
   min-width: 0;
@@ -175,8 +223,13 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .network-cluster {
+  .network-cluster,
+  .network-tour-label,
+  .network-tour-stop {
     animation: none;
+  }
+  .network-tour-progress {
+    transition: none;
   }
 }
 

@@ -12,7 +12,7 @@ import { saveNetworkImage } from './image.ts';
 import Inspector from './Inspector.tsx';
 import Legend from './Legend.tsx';
 import type { Menu } from './MenuButton.tsx';
-import { createRenderer, type Renderer, type ViewSettings } from './renderer.ts';
+import { createRenderer, type Renderer, type TourState, type ViewSettings } from './renderer.ts';
 import { buildScene, HEIGHTS, inferMaximising } from './scene.ts';
 import type { Settings } from './settings.ts';
 import Timeline, { RetryCountdown } from './Timeline.tsx';
@@ -46,6 +46,7 @@ function Network({
   const [progress, setProgress] = useState(1);
   const [fullScreen, setFullScreen] = useState(false);
   const [supported, setSupported] = useState(true);
+  const [tour, setTour] = useState<TourState | null>(null);
 
   const workspace = useRef<HTMLDivElement>(null);
   const stage = useRef<HTMLDivElement>(null);
@@ -63,6 +64,7 @@ function Network({
       {
         onHover: (node, x, y) => hover.set(node >= 0 ? { node, x, y } : null),
         onSelect: (node) => selectNode(node),
+        onTour: setTour,
       },
       cameraRef.current ?? undefined
     );
@@ -111,6 +113,13 @@ function Network({
     setSelectedId(scene.ids[node]!);
     renderer.current?.flyTo(node);
   };
+  const toggleTour = () => {
+    if (!tour) {
+      setProgress(1);
+      setSelectedId(null);
+    }
+    renderer.current?.toggleTour();
+  };
   const save = () => {
     const snapshot = renderer.current?.snapshot();
     if (snapshot) void saveNetworkImage(snapshot, run, HEIGHTS[settings.height].label);
@@ -119,8 +128,10 @@ function Network({
   const onKeyDown = (event: React.KeyboardEvent) => {
     if (event.metaKey || event.ctrlKey || event.altKey || (event.target as HTMLElement).closest('input, .network-panel')) return;
     const key = event.key.toLowerCase();
-    if (key === 'escape') setSelectedId(null);
-    else if (key === 'r') renderer.current?.resetView();
+    if (key === 'escape') {
+      setSelectedId(null);
+      if (tour) renderer.current?.toggleTour();
+    } else if (key === 'r') renderer.current?.resetView();
     else if (key === 'f') void toggleFullScreen();
     else return;
     event.preventDefault();
@@ -161,6 +172,9 @@ function Network({
         graph={graph}
         selected={selected}
         hiddenIslands={settings.hiddenIslands}
+        tour={tour}
+        onTour={toggleTour}
+        onPauseTour={() => renderer.current?.pauseTour()}
         onPick={pick}
         onFly={(node) => renderer.current?.flyTo(node)}
         onClose={() => setSelectedId(null)}

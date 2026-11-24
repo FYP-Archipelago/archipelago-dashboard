@@ -5,6 +5,8 @@ import { fitness, numberFormat } from '@/format.ts';
 import { IslandSwatch } from '@/pages/run-workspace/shared.tsx';
 import type { Graph } from '@/types.ts';
 
+import MorphIcon, { PAUSE, PLAY } from './MorphIcon.tsx';
+import type { TourState } from './renderer.ts';
 import type { Scene } from './scene.ts';
 
 import './inspector.css';
@@ -28,14 +30,29 @@ function CopyHash({ hash }: { hash: string }) {
   );
 }
 
-function BestList({ scene, hiddenIslands, onPick }: { scene: Scene; hiddenIslands: number[]; onPick: (node: number) => void }) {
+function BestList({
+  scene,
+  hiddenIslands,
+  tour,
+  onTour,
+  onPauseTour,
+  onPick,
+}: {
+  scene: Scene;
+  hiddenIslands: number[];
+  tour: TourState | null;
+  onTour: () => void;
+  onPauseTour: () => void;
+  onPick: (node: number) => void;
+}) {
   const runBest = scene.runBest;
+  const touringClass = (node: number) => (node === tour?.node ? ' network-best-touring' : '');
   return (
     <section className="network-inspector-section">
       <h3>Best solutions</h3>
       <div className="network-best-list">
         {runBest >= 0 && (
-          <button className="network-best network-best-run" onClick={() => onPick(runBest)}>
+          <button className={`network-best network-best-run${touringClass(runBest)}`} onClick={() => onPick(runBest)}>
             <span className="network-best-mark network-best-mark-run" />
             <span className="network-best-text">
               Run best
@@ -53,7 +70,7 @@ function BestList({ scene, hiddenIslands, onPick }: { scene: Scene; hiddenIsland
           return (
             <button
               key={island}
-              className={`network-best${hidden ? ' network-best-hidden' : ''}`}
+              className={`network-best${hidden ? ' network-best-hidden' : ''}${node === runBest ? '' : touringClass(node)}`}
               onClick={() => onPick(node)}
               title={hidden ? 'Shows the island again' : undefined}
             >
@@ -66,6 +83,27 @@ function BestList({ scene, hiddenIslands, onPick }: { scene: Scene; hiddenIsland
             </button>
           );
         })}
+      </div>
+      <div className="network-tour-controls">
+        <button
+          className={`button network-tour${tour ? ' network-tour-on' : ''}`}
+          onClick={tour ? onPauseTour : onTour}
+          title={tour ? (tour.paused ? 'Continue the tour' : 'Pause the tour') : 'Visit each best in turn'}
+        >
+          {/* Fills across the button as the tour moves from stop to stop. */}
+          <span className="network-tour-progress" style={{ transform: `scaleX(${tour?.progress ?? 0})` }} />
+          <MorphIcon from={PLAY} to={PAUSE} on={!!tour && !tour.paused} />
+          <span key={tour ? (tour.paused ? 'resume' : 'pause') : 'tour'} className="network-tour-label">
+            {tour ? (tour.paused ? 'Resume tour' : 'Pause tour') : 'Tour the best solutions'}
+          </span>
+        </button>
+        {tour && (
+          <button className="button network-tour-stop" onClick={onTour} aria-label="Stop tour" title="Stop tour">
+            <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true">
+              <rect x="4" y="4" width="6" height="6" fill="currentColor" />
+            </svg>
+          </button>
+        )}
       </div>
     </section>
   );
@@ -210,6 +248,9 @@ export default function Inspector({
   graph,
   selected,
   hiddenIslands,
+  tour,
+  onTour,
+  onPauseTour,
   onPick,
   onFly,
   onClose,
@@ -218,6 +259,9 @@ export default function Inspector({
   graph: Graph;
   selected: number;
   hiddenIslands: number[];
+  tour: TourState | null;
+  onTour: () => void;
+  onPauseTour: () => void;
   onPick: (node: number) => void;
   onFly: (node: number) => void;
   onClose: () => void;
@@ -227,7 +271,7 @@ export default function Inspector({
       {selected >= 0 ? (
         <ClusterDetails scene={scene} graph={graph} node={selected} onPick={onPick} onFly={() => onFly(selected)} onClose={onClose} />
       ) : (
-        <BestList scene={scene} hiddenIslands={hiddenIslands} onPick={onPick} />
+        <BestList scene={scene} hiddenIslands={hiddenIslands} tour={tour} onTour={onTour} onPauseTour={onPauseTour} onPick={onPick} />
       )}
     </aside>
   );

@@ -29,9 +29,14 @@ export type ViewSettings = {
   selected: number;
 };
 
+export type TourState = { node: number; progress: number; paused: boolean };
+
 type RendererEvents = {
   onHover: (node: number, x: number, y: number) => void;
   onSelect: (node: number) => void;
+  // While the tour runs: the best it is at (-1 between bests), how far through its stops it is (0 to 1), and whether
+  // it is paused.
+  onTour: (tour: TourState | null) => void;
 };
 
 export type Renderer = {
@@ -39,6 +44,10 @@ export type Renderer = {
   setSettings: (settings: ViewSettings) => void;
   flyTo: (node: number) => void;
   resetView: () => void;
+  // Starts the tour of the best clusters, or stops it.
+  toggleTour: () => void;
+  // Freezes the tour where it is, camera mid-glide included, or carries on from there.
+  pauseTour: () => void;
   // The network and its markers as one picture, at device pixels, with the device pixels per CSS pixel.
   snapshot: () => { image: HTMLCanvasElement; scale: number };
   camera: () => Camera;
@@ -109,6 +118,9 @@ export function createRenderer(canvas: HTMLCanvasElement, overlay: HTMLCanvasEle
   let cam: Camera = { ...(start ?? HOME) };
   let tween: { from: Camera; to: Camera; start: number; duration: number } | null = null;
   let zoom: { target: number; nx: number; ny: number; node: number } | null = null;
+  // Stops are cluster ids, so a live update cannot send the tour to the wrong cluster; null is the overview of all the
+  // bests first and the way back last. `paused` is when it was paused, or null while it runs.
+  let tour: { stops: (number | null)[]; index: number; start: number; paused: number | null; overview: Camera; origin: Camera } | null = null;
   let hover = -1;
   let viewProjection: Float32Array | null = null;
   let screenX = new Float32Array(0);
@@ -227,6 +239,10 @@ export function createRenderer(canvas: HTMLCanvasElement, overlay: HTMLCanvasEle
   const stopMotion = () => {
     tween = null;
     zoom = null;
+    if (tour) {
+      tour = null;
+      events.onTour(null);
+    }
   };
   const glide = (next: Camera, duration = 900) => {
     tween = { from: { ...cam }, to: next, start: performance.now(), duration: reducedMotion() ? 1 : duration };
@@ -346,6 +362,7 @@ export function createRenderer(canvas: HTMLCanvasElement, overlay: HTMLCanvasEle
   const onWheel = (event: WheelEvent) => {
     event.preventDefault();
     tween = null;
+    if (tour) stopMotion();
     const [x, y] = local(event);
     // Lines and pages become pixels. A pinch arrives as ctrl+wheel with much smaller steps, so it gets more gain.
     const delta = Math.max(-240, Math.min(240, event.deltaY * (event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? 400 : 1)));
@@ -382,6 +399,63 @@ export function createRenderer(canvas: HTMLCanvasElement, overlay: HTMLCanvasEle
     stopMotion();
     const [x, y, z] = worldOf(node);
     glide({ ...cam, tx: x, ty: y, tz: z, dist: Math.min(cam.dist, 1.1) }, 1100);
+  }
+
+  // The tour's cluster at its current stop, or -1 at the overview, the way back or a cluster gone or hidden since.
+  const tourNode = () => {
+    const id = tour?.stops[tour.index];
+    const node = id === null || id === undefined ? -1 : (scene?.index.get(id) ?? -1);
+    return node >= 0 && visibleSlot(scene!.slot[node]!) ? node : -1;
+  };
+
+  const tourState = (): TourState | null =>
+    tour && { node: tourNode(), progress: tour.index / (tour.stops.length - 1), paused: tour.paused !== null };
+
+  function pauseTour() {
+    if (!tour) return;
+    const now = performance.now();
+    if (tour.paused === null) tour.paused = now;
+    else {
+      // Everything timed from before the pause moves on by its length, so the glide and the hold carry on where they were.
+      const held = now - tour.paused;
+      tour.start += held;
+      if (tween) tween.start += held;
+      tour.paused = null;
+    }
+    events.onTour(tourState());
+    invalidate();
+  }
+
+  // Each stop glides in for 1.6 s, then holds: long enough at a best to read its card, briefly at the overview.
+  function beginTourStop(now: number) {
+    if (!tour) return;
+    const node = tourNode();
+    const k = tour.index;
+    let target = k === 0 ? tour.overview : tour.origin;
+    if (node >= 0) {
+      const [tx, ty, tz] = worldOf(node);
+      // Close in, since the bests often sit near each other, with a small turn at each stop so moving between them
+      // still reads as travel.
+      target = { ...tour.overview, az: tour.overview.az + k * 0.42, tx, ty, tz, dist: Math.min(tour.overview.dist, 0.55) };
+    }
+    tour.start = now;
+    glide(target, 1600);
+    events.onTour(tourState());
+  }
+
+  function toggleTour() {
+    if (tour) return stopMotion();
+    if (!scene || !settings) return;
+    const current = scene;
+    const bests = [current.runBest, ...current.islandBest.filter((node) => node !== current.runBest)].filter(
+      (node) => node >= 0 && visibleSlot(current.slot[node]!)
+    );
+    if (!bests.length) return;
+    stopMotion();
+    const origin = { ...cam };
+    const overview = fitOnScreen(bests.map(worldOf), canvas.clientWidth, canvas.clientHeight, { top: 60, bottom: 66, side: 56 }, cam) ?? origin;
+    tour = { stops: [null, ...bests.map((node) => current.ids[node]!), null], index: 0, start: 0, paused: null, overview, origin };
+    beginTourStop(performance.now());
   }
 
   /* ── frame ──────────────────────────────────────────────────── */
@@ -423,7 +497,7 @@ export function createRenderer(canvas: HTMLCanvasElement, overlay: HTMLCanvasEle
       busy = true;
     }
 
-    if (tween) {
+    if (tween && !tour?.paused) {
       const t = (now - tween.start) / tween.duration;
       cam = between(tween.from, tween.to, t);
       if (t >= 1) tween = null;
@@ -439,6 +513,14 @@ export function createRenderer(canvas: HTMLCanvasElement, overlay: HTMLCanvasEle
         busy = true;
       }
     }
+    if (tour && tour.paused === null && now - tour.start >= 1600 + (tourNode() >= 0 ? 2600 : 900)) {
+      tour.index++;
+      // Bests that went away in a live update are skipped.
+      while (tour.index < tour.stops.length - 1 && tourNode() < 0) tour.index++;
+      if (tour.index < tour.stops.length) beginTourStop(now);
+      else stopMotion();
+    }
+    if (tour && tour.paused === null) busy = true;
     if (now - lastBorn * 1000 - clock < 900) busy = true;
     // Comets fade out as the islands group: there each link's colour and taper show its direction instead.
     const flow = view.animateMigrations && !reducedMotion() ? 1 - shown.group : 0;
@@ -566,8 +648,18 @@ export function createRenderer(canvas: HTMLCanvasElement, overlay: HTMLCanvasEle
       scene,
       view,
       width: canvas.clientWidth,
+      height: canvas.clientHeight,
       at,
       grow: (i) => screenGrow[i] ?? 0,
+      // The card fades in once the camera has arrived at the best.
+      tour: tour
+        ? {
+            node: tourNode(),
+            step: tour.index,
+            steps: tour.stops.length - 2,
+            alpha: Math.max(0, Math.min(1, ((tour.paused ?? now) - tour.start - (reducedMotion() ? 0 : 1600)) / 250)),
+          }
+        : null,
       focus: shown.focus,
       hover,
       // Island names show once the islands have mostly moved apart.
@@ -632,6 +724,8 @@ export function createRenderer(canvas: HTMLCanvasElement, overlay: HTMLCanvasEle
     },
     flyTo,
     resetView,
+    toggleTour,
+    pauseTour,
     snapshot() {
       // The WebGL buffer is only readable in the frame that drew it, so draw one now.
       render(performance.now());

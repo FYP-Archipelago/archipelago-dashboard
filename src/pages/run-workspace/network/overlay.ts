@@ -1,5 +1,5 @@
 import { islandColor } from '@/colors.ts';
-import { fitness } from '@/format.ts';
+import { fitness, numberFormat } from '@/format.ts';
 
 import type { ViewSettings } from './renderer.ts';
 import type { Scene } from './scene.ts';
@@ -51,11 +51,15 @@ export function islandLabels(scene: Scene, at: (node: number) => readonly [numbe
 export type OverlayFrame = {
   scene: Scene;
   view: ViewSettings;
-  // The stage's width, so the run best's tag stays inside it.
+  // The stage's size, so the tags and the tour's card stay inside it.
   width: number;
+  height: number;
   at: (node: number) => readonly [number, number] | null;
   // How far a cluster's core has grown past its unscaled size, so its markers sit that much further out.
   grow: (node: number) => number;
+  // While the best solutions tour runs: the best it is at (-1 between bests), which of them it is, and how far its card
+  // has faded in.
+  tour: { node: number; step: number; steps: number; alpha: number } | null;
   // How strongly each island shows while one is hovered in the legend, by island slot.
   focus: Float32Array;
   hover: number;
@@ -68,16 +72,19 @@ export type OverlayFrame = {
 export function drawOverlay(
   ctx: CanvasRenderingContext2D,
   dpr: number,
-  { scene, view, width, at, grow, focus, hover, islandLabels, labelAlpha }: OverlayFrame
+  { scene, view, width, height, at, grow, tour, focus, hover, islandLabels, labelAlpha }: OverlayFrame
 ) {
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+  // At a best on the tour, the other bests' marks step back so the one being shown stands out.
+  const toured = tour && tour.node >= 0 ? tour.node : -1;
+  const recede = (node: number) => (toured >= 0 && node !== toured ? 0.3 : 1);
 
   if (view.layers.islandBests)
     scene.islandBest.forEach((node, k) => {
       const p = at(node);
       if (!p || node === scene.runBest) return;
-      ctx.globalAlpha = focus[k]!;
+      ctx.globalAlpha = focus[k]! * recede(node);
       ctx.lineWidth = 3.5;
       ctx.strokeStyle = 'rgba(0,0,0,0.75)';
       ctx.beginPath();
@@ -94,6 +101,7 @@ export function drawOverlay(
     const [x, y] = runBest;
     const half = 8 + grow(scene.runBest);
     ctx.save();
+    ctx.globalAlpha = recede(scene.runBest);
     ctx.shadowColor = 'rgba(255,255,255,0.75)';
     ctx.shadowBlur = 10;
     ctx.fillStyle = BEST;
@@ -111,10 +119,13 @@ export function drawOverlay(
     ctx.restore();
   }
 
-  for (const [node, colour, unscaledGap] of [
+  const brackets: [node: number, colour: string, gap: number][] = [
     [view.selected, 'rgba(237,237,237,0.95)', 11],
     [hover !== view.selected ? hover : -1, 'rgba(237,237,237,0.55)', 9],
-  ] as const) {
+    // The tour's best, bracketed like a selection and a little wider, fading in with its card.
+    [toured, `rgba(237,237,237,${0.95 * (tour?.alpha ?? 0)})`, 13],
+  ];
+  for (const [node, colour, unscaledGap] of brackets) {
     const p = at(node);
     if (!p) continue;
     const [x, y] = p;
@@ -136,7 +147,8 @@ export function drawOverlay(
     ctx.stroke();
   }
 
-  if (runBest) {
+  // The tour's card stands in for the run best's tag while it runs.
+  if (runBest && !tour) {
     const [x, y] = runBest;
     const text = `Run best · ${fitness(scene.bestFitness[scene.runBest] ?? null)}`;
     ctx.font = `500 12px ${FONT}`;
@@ -158,6 +170,9 @@ export function drawOverlay(
     ctx.fillText(text, left + 19, y + 0.5);
   }
 
+  const stop = at(toured);
+  if (tour && stop && tour.alpha > 0) drawTourCard(ctx, scene, tour, stop, grow(tour.node), width, height);
+
   if (islandLabels.length) {
     ctx.globalAlpha = labelAlpha;
     ctx.font = `600 12px ${FONT}`;
@@ -177,4 +192,107 @@ export function drawOverlay(
     ctx.textAlign = 'start';
     ctx.globalAlpha = 1;
   }
+}
+
+// The best the tour is at, beside its cluster: which best, its fitness, then its mean, evaluations and when its
+// island first reached it, each under a small label.
+function drawTourCard(
+  ctx: CanvasRenderingContext2D,
+  scene: Scene,
+  tour: { node: number; step: number; steps: number; alpha: number },
+  [x, y]: readonly [number, number],
+  grow: number,
+  width: number,
+  height: number
+) {
+  const node = tour.node;
+  const island = scene.islands[scene.slot[node]!]!;
+  const run = node === scene.runBest;
+  const title = run ? `Run best · Island ${island}` : `Island ${island} best`;
+  const step = `${tour.step} of ${tour.steps}`;
+  const value = fitness(scene.bestFitness[node] ?? null);
+  const stats = [
+    ['Mean', fitness(scene.meanFitness[node] ?? null)],
+    ['Evaluations', numberFormat.format(scene.visits[node]!)],
+    ['Reached at', `eval ${numberFormat.format(scene.firstEval[node]!)}`],
+  ] as const;
+  const font = (weight: number, size: number) => `${weight} ${size}px ${FONT}`;
+  const measure = (text: string, weight: number, size: number) => ((ctx.font = font(weight, size)), ctx.measureText(text).width);
+
+  const pad = 14;
+  const columnGap = 18;
+  const columns = stats.map(([label, text]) => Math.max(measure(label, 400, 11), measure(text, 500, 12.5)));
+  const valueRow = measure(value, 600, 20) + 8 + measure('best fitness', 400, 11);
+  const titleRow = 14 + measure(title, 500, 12) + 16 + measure(step, 400, 11);
+  const w = Math.ceil(Math.max(titleRow, valueRow, columns.reduce((sum, c) => sum + c, 0) + columnGap * (columns.length - 1)) + pad * 2);
+  const h = 112;
+  // To the right of the cluster, or to its left where the right has no room; always inside the stage. A leader runs
+  // from the cluster's brackets to the card, so it is clear which cluster the card is about.
+  const bracket = 13 + grow;
+  const gap = bracket + 26;
+  const right = x + gap + w <= width - 8;
+  const left = right ? x + gap : Math.max(8, x - gap - w);
+  const top = Math.max(8, Math.min(height - h - 8, y - h / 2));
+
+  ctx.save();
+  ctx.globalAlpha = tour.alpha;
+  ctx.strokeStyle = 'rgba(237,237,237,0.6)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(x + (right ? bracket + 3 : -bracket - 3), y);
+  ctx.lineTo(right ? left : left + w, Math.max(top + 14, Math.min(top + h - 14, y)));
+  ctx.stroke();
+  ctx.fillStyle = 'rgba(14,14,14,0.94)';
+  ctx.strokeStyle = 'rgba(255,255,255,0.14)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.roundRect(left + 0.5, top + 0.5, w, h, 10);
+  ctx.fill();
+  ctx.stroke();
+  ctx.textBaseline = 'alphabetic';
+
+  // Which best: its mark, its name, and where it falls in the tour.
+  const titleY = top + 24;
+  ctx.fillStyle = run ? BEST : islandColor(island);
+  ctx.beginPath();
+  if (run) {
+    ctx.moveTo(left + pad + 4, titleY - 8.5);
+    ctx.lineTo(left + pad + 8, titleY - 4.5);
+    ctx.lineTo(left + pad + 4, titleY - 0.5);
+    ctx.lineTo(left + pad, titleY - 4.5);
+    ctx.closePath();
+  } else ctx.arc(left + pad + 4, titleY - 4.5, 3.5, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.font = font(500, 12);
+  ctx.fillStyle = '#ededed';
+  ctx.fillText(title, left + pad + 14, titleY);
+  ctx.font = font(400, 11);
+  ctx.fillStyle = '#8f8f8f';
+  ctx.textAlign = 'right';
+  ctx.fillText(step, left + w - pad, titleY);
+  ctx.textAlign = 'start';
+
+  const valueY = top + 52;
+  ctx.font = font(600, 20);
+  ctx.fillStyle = BEST;
+  ctx.fillText(value, left + pad, valueY);
+  const valueWidth = ctx.measureText(value).width;
+  ctx.font = font(400, 11);
+  ctx.fillStyle = '#8f8f8f';
+  ctx.fillText('best fitness', left + pad + valueWidth + 8, valueY);
+
+  ctx.fillStyle = 'rgba(255,255,255,0.08)';
+  ctx.fillRect(left + pad, top + 66, w - pad * 2, 1);
+
+  let column = left + pad;
+  stats.forEach(([label, text], k) => {
+    ctx.font = font(400, 11);
+    ctx.fillStyle = '#8f8f8f';
+    ctx.fillText(label, column, top + 85);
+    ctx.font = font(500, 12.5);
+    ctx.fillStyle = '#ededed';
+    ctx.fillText(text, column, top + 101);
+    column += columns[k]! + columnGap;
+  });
+  ctx.restore();
 }
