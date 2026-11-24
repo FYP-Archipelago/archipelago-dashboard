@@ -1,0 +1,49 @@
+.treemap {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 230px;
+  overflow: hidden;
+  border-radius: 6px;
+}
+.treemap-cell {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  padding: 8px 10px;
+  box-shadow: inset 0 0 0 1.5px var(--surface);
+  color: #0a0a0a;
+  overflow: hidden;
+}
+.treemap-cell b {
+  font-size: 18px;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+}
+.treemap-cell span {
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+/* Smaller layouts for blocks too small for the large share over the island's name. */
+.treemap-cell.treemap-stacked-small b {
+  font-size: 13px;
+}
+.treemap-cell.treemap-line span b {
+  font-size: 12px;
+}
+.treemap-cell.treemap-line {
+  justify-content: center;
+  padding-block: 0;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .treemap-cell {
+    animation: treemap-in 0.5s var(--ease) backwards;
+  }
+}
+@keyframes treemap-in {
+  from {
+    opacity: 0;
+    transform: scale(0.94);
+  }
+}

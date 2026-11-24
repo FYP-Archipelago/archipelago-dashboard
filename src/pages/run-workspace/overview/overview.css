@@ -21,8 +21,36 @@
 .overview-card-link:hover svg {
   transform: translateX(2px);
 }
+.overview-headline {
+  margin: 0 0 16px;
+  color: var(--ink-2);
+  line-height: 1.6;
+}
+.overview-headline b {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+/* The page: full-width rows, with the network beside the contributions card. */
 .overview {
   display: flex;
   flex-direction: column;
   gap: 16px;
+}
+.overview-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+  gap: 16px;
+}
+.overview-network {
+  min-width: 0;
+  --preview-height: auto;
+}
+.overview-network .preview-stage {
+  min-height: 460px;
+}
+@media (max-width: 1100px) {
+  .overview-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }

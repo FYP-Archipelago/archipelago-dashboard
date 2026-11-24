@@ -75,10 +75,10 @@ function meanDiversity(histories: IslandHistory[]): { generation: number; value:
   return [...sums].sort((a, b) => a[0] - b[0]).map(([generation, sum]) => ({ generation, value: sum.total / sum.count }));
 }
 
-type Share = { island: number; share: number };
+export type Share = { island: number; share: number };
 
 // Each island's Shapley share of the improvement, largest first.
-function sharesOf(game: ShapleyGame): Share[] {
+export function sharesOf(game: ShapleyGame): Share[] {
   const shared = game.full_value - game.empty_value;
   return game.players
     .filter((player): player is typeof player & { player: number } => typeof player.player === 'number')
