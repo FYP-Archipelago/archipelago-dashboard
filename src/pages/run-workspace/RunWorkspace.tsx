@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 
 import { isNotFound } from '@/api/client.ts';
 import { useRun, useRunResult } from '@/api/queries.ts';
@@ -13,7 +13,9 @@ import DetailsTab from './details/DetailsTab.tsx';
 import DivergenceTab from './divergence/DivergenceTab.tsx';
 import Header from './Header.tsx';
 import MigrationTab from './migration/MigrationTab.tsx';
+import type { Camera } from './network/camera.ts';
 import NetworkTab from './network/NetworkTab.tsx';
+import { DEFAULT_SETTINGS } from './network/settings.ts';
 import RunNotFound from './RunNotFound.tsx';
 
 import './workspace.css';
@@ -29,6 +31,8 @@ export default function RunWorkspace({ id, tab }: { id: string; tab: RunTab }) {
   const run = useRun(id);
   const result = useRunResult(id, run.data?.status === 'done');
   const [showStagnationMarkers, setShowStagnationMarkers] = useState(false);
+  const [networkSettings, setNetworkSettings] = useState(DEFAULT_SETTINGS);
+  const networkCameraRef = useRef<Camera | null>(null);
 
   if (!run.data)
     return (
@@ -53,7 +57,9 @@ export default function RunWorkspace({ id, tab }: { id: string; tab: RunTab }) {
             <span>{data.error.message}</span>
           </div>
         )}
-        {tab === 'network' && <NetworkTab run={data} result={result} />}
+        {tab === 'network' && (
+          <NetworkTab run={data} result={result} settings={networkSettings} onSettingsChange={setNetworkSettings} cameraRef={networkCameraRef} />
+        )}
         {tab === 'convergence' && (
           <ConvergenceTab
             run={data}

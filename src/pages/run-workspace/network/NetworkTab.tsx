@@ -1,10 +1,9 @@
-import { useCallback, useEffect, useEffectEvent, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useEffectEvent, useMemo, useRef, useState, type Dispatch, type RefObject, type SetStateAction } from 'react';
 
 import { useLiveGraph, type LiveGraphState } from '@/api/events.ts';
 import { EmptyState, NoResult, type ResultQuery } from '@/pages/run-workspace/shared.tsx';
 import type { Graph, Run, RunResult } from '@/types.ts';
 
-// The tab's shared styles load before the parts' own, which build on them.
 import './network.css';
 
 import type { Camera } from './camera.ts';
@@ -15,21 +14,29 @@ import Legend from './Legend.tsx';
 import type { Menu } from './MenuButton.tsx';
 import { createRenderer, type Renderer, type ViewSettings } from './renderer.ts';
 import { buildScene, HEIGHTS, inferMaximising } from './scene.ts';
-import { DEFAULT_SETTINGS, type Settings } from './settings.ts';
+import type { Settings } from './settings.ts';
 import Timeline, { RetryCountdown } from './Timeline.tsx';
 import Toolbar, { HeightScale } from './Toolbar.tsx';
 
-// The view each run was left in, so moving between tabs comes back to the same picture.
-const remembered = new Map<string, { settings: Settings; camera: Camera }>();
+type ViewProps = {
+  settings: Settings;
+  onSettingsChange: Dispatch<SetStateAction<Settings>>;
+  cameraRef: RefObject<Camera | null>;
+};
 
-function Network({ run, graph, result, live }: { run: Run; graph: Graph; result: RunResult | null; live: LiveGraphState | null }) {
+function Network({
+  run,
+  graph,
+  result,
+  live,
+  settings,
+  onSettingsChange,
+  cameraRef,
+}: { run: Run; graph: Graph; result: RunResult | null; live: LiveGraphState | null } & ViewProps) {
   const islands = useMemo(() => result?.run.islands ?? Array.from({ length: run.run_settings.num_islands }, (_, i) => i), [result, run]);
   const maximising = result ? result.run.maximising : inferMaximising(graph);
   const scene = useMemo(() => buildScene(graph, islands, maximising), [graph, islands, maximising]);
-  const memory = remembered.get(run.run_id);
-
-  const [settings, setSettings] = useState<Settings>(memory?.settings ?? DEFAULT_SETTINGS);
-  const change = useCallback((patch: Partial<Settings>) => setSettings((current) => ({ ...current, ...patch })), []);
+  const change = useCallback((patch: Partial<Settings>) => onSettingsChange((current) => ({ ...current, ...patch })), [onSettingsChange]);
   const [selectedId, setSelectedId] = useState<number | null>(() => {
     const asked = new URLSearchParams(window.location.search).get('cluster');
     return asked !== null && graph.nodes.id.includes(Number(asked)) ? Number(asked) : null;
@@ -49,7 +56,6 @@ function Network({ run, graph, result, live }: { run: Run; graph: Graph; result:
   const selected = selectedId === null ? -1 : (scene.index.get(selectedId) ?? -1);
 
   const selectNode = useEffectEvent((node: number) => setSelectedId(node >= 0 ? scene.ids[node]! : null));
-  const remember = useEffectEvent((camera: Camera) => remembered.set(run.run_id, { settings, camera }));
   useEffect(() => {
     const created = createRenderer(
       canvas.current!,
@@ -58,7 +64,7 @@ function Network({ run, graph, result, live }: { run: Run; graph: Graph; result:
         onHover: (node, x, y) => hover.set(node >= 0 ? { node, x, y } : null),
         onSelect: (node) => selectNode(node),
       },
-      remembered.get(run.run_id)?.camera
+      cameraRef.current ?? undefined
     );
     if (!created) {
       setSupported(false);
@@ -66,11 +72,11 @@ function Network({ run, graph, result, live }: { run: Run; graph: Graph; result:
     }
     renderer.current = created;
     return () => {
-      remember(created.camera());
+      cameraRef.current = created.camera();
       created.destroy();
       renderer.current = null;
     };
-  }, [run.run_id, hover]);
+  }, [hover, cameraRef]);
 
   const view = useMemo<ViewSettings>(() => ({ ...settings, focusIsland, reveal: progress, selected }), [settings, focusIsland, progress, selected]);
   useEffect(() => renderer.current?.setSettings(view), [view]);
@@ -174,11 +180,11 @@ function Network({ run, graph, result, live }: { run: Run; graph: Graph; result:
 
 const STREAMING: Run['status'][] = ['queued', 'running', 'clustering'];
 
-export default function NetworkTab({ run, result }: { run: Run; result: ResultQuery }) {
+export default function NetworkTab({ run, result, ...view }: { run: Run; result: ResultQuery } & ViewProps) {
   const streaming = run.stream && STREAMING.includes(run.status) && !result.data;
   const live = useLiveGraph(run.run_id, streaming);
-  if (result.data) return <Network run={run} graph={result.data.graph} result={result.data} live={null} />;
-  if (live.graph?.nodes.id.length) return <Network run={run} graph={live.graph} result={null} live={live} />;
+  if (result.data) return <Network run={run} graph={result.data.graph} result={result.data} live={null} {...view} />;
+  if (live.graph?.nodes.id.length) return <Network run={run} graph={live.graph} result={null} live={live} {...view} />;
   if (streaming && live.connection === 'lost')
     return (
       <EmptyState icon="cloudOff" title="Connection to the run lost">
