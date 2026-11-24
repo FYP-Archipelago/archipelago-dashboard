@@ -7,16 +7,13 @@ import LineChart, { type Guide } from '@/pages/run-workspace/charts/LineChart.ts
 import { EmptyState, IslandSwatch, NoResult, type ResultQuery } from '@/pages/run-workspace/shared.tsx';
 import type { Run, RunResult } from '@/types.ts';
 
-import { describeTrend, meanOf, notableMigrations, pairKey, wholeRunPairs, windowValues, type Pair } from './divergence.ts';
+import { describeTrend, meanOf, notableMigrations, pairKey, REAL_DIFFERENCE, wholeRunPairs, windowValues, type Pair } from './divergence.ts';
 
 import './divergence.css';
 
 const significant = new Intl.NumberFormat('en', { maximumSignificantDigits: 2 });
 const pValueFormat = new Intl.NumberFormat('en', { maximumSignificantDigits: 3 });
 const value = (v: number | null) => (v === null ? '—' : significant.format(v));
-
-// The generation-swap test's usual cut-off: below it, the gap is unlikely to come from chance.
-const REAL_DIFFERENCE = 0.05;
 
 const pairName = (a: number, b: number) => `${a} ↔ ${b}`;
 

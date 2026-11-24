@@ -4,6 +4,7 @@ import { islandColor } from '@/colors.ts';
 import { numberFormat } from '@/format.ts';
 import { historyByIsland } from '@/pages/run-workspace/history.ts';
 import { IslandSwatch } from '@/pages/run-workspace/shared.tsx';
+import { budgetPerIsland, reasonPhrase, REASONS, stopText } from '@/pages/run-workspace/stops.ts';
 import { vars } from '@/style.ts';
 import type { IslandEnd, Run, RunResult, TerminationReason } from '@/types.ts';
 
@@ -17,10 +18,6 @@ type Cluster = { at: number; islands: IslandUse[] };
 const percent = (share: number) => `${Math.floor(share * 100)}%`;
 const width = (share: number) => `${Math.min(share, 1) * 100}%`;
 
-// The runner's own per-island budget when the result has it, otherwise an even split.
-const budgetPerIsland = (run: Run, result: RunResult) =>
-  result.run.budget_per_island ?? run.run_settings.evaluation_budget / Math.max(1, result.run.islands.length);
-
 function islandUse(result: RunResult): IslandUse[] {
   return historyByIsland(result.generation_history).map((history) => ({
     island: history.island,
@@ -31,29 +28,8 @@ function islandUse(result: RunResult): IslandUse[] {
   }));
 }
 
-// What each stop reason says about one island or several, and the marker it gets on the generations track: hollow for
-// stopping early on stagnation, filled for using up the budget, a square for the generation cap, a bullseye for the
-// target, and a dot crossed out for a stop that cut the island short.
-const REASONS: Record<TerminationReason, { one: string; many: string; marker: string }> = {
-  stagnation: { one: 'stagnated', many: 'stagnated', marker: 'budget-marker-hollow' },
-  max_evaluations: { one: 'spent its budget', many: 'spent their budget', marker: 'budget-marker-filled' },
-  max_generations: { one: 'hit the generation cap', many: 'hit the generation cap', marker: 'budget-marker-square' },
-  target_fitness_reached: { one: 'reached the target', many: 'reached the target', marker: 'budget-marker-target' },
-  time_limit: { one: 'ran out of time', many: 'ran out of time', marker: 'budget-marker-halted' },
-  error: { one: 'failed', many: 'failed', marker: 'budget-marker-halted' },
-  aborted: { one: 'was cancelled', many: 'were cancelled', marker: 'budget-marker-halted' },
-};
-const reasonPhrase = (reason: TerminationReason, count: number) => (count === 1 ? REASONS[reason].one : REASONS[reason].many);
 // An island with no island_end, which the runner skips for one that crashed, gets a striped dot.
 const markerOf = (end: IslandEnd | null) => (end ? REASONS[end.termination_reason].marker : 'budget-marker-missing');
-
-// One island's stop as a sentence, e.g. "Stagnated after 50 generations without improvement".
-function stopText(end: IslandEnd): string {
-  const phrase = reasonPhrase(end.termination_reason, 1);
-  const text = phrase.charAt(0).toUpperCase() + phrase.slice(1);
-  const since = end.generations_since_improvement;
-  return end.termination_reason === 'stagnation' && since !== null ? `${text} after ${since} generations without improvement` : text;
-}
 
 // Dots whose islands stopped within 3.5% of the target of a neighbour would overlap, so they form one cluster.
 function clustersOf(islands: IslandUse[], target: number): Cluster[] {

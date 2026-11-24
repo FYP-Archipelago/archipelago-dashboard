@@ -8,17 +8,8 @@ import Link from '@/components/Link.tsx';
 import Menu from '@/components/Menu.tsx';
 import { DeleteRunDialog } from '@/components/RunDialogs.tsx';
 import { ago, dateTime, duration, TOPOLOGIES } from '@/format.ts';
-import { navigate, rerunHref, RUN_TABS, runHref, runsHref, type RunTab } from '@/route.ts';
+import { navigate, rerunHref, RUN_TAB_LABELS, RUN_TABS, runHref, runsHref, type RunTab } from '@/route.ts';
 import type { Run } from '@/types.ts';
-
-const TAB_LABELS: Record<RunTab, string> = {
-  network: 'Network',
-  migration: 'Migration',
-  convergence: 'Convergence',
-  divergence: 'Divergence',
-  attribution: 'Attribution',
-  details: 'Details',
-};
 
 // Started but unfinished runs count up every second; others show the time they took, or when they were created.
 function RunTime({ run }: { run: Run }) {
@@ -193,7 +184,7 @@ function Tabs({ id, tab }: { id: string; tab: RunTab }) {
           href={runHref(id, name)}
           aria-current={name === tab ? 'page' : undefined}
         >
-          {TAB_LABELS[name]}
+          {RUN_TAB_LABELS[name]}
         </Link>
       ))}
       {underline && <span className="run-tab-underline" style={{ width: underline.width, transform: `translateX(${underline.left}px)` }} />}

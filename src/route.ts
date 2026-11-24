@@ -5,6 +5,15 @@ export const RUN_TABS = ['network', 'migration', 'convergence', 'divergence', 'a
 
 export type RunTab = (typeof RUN_TABS)[number];
 
+export const RUN_TAB_LABELS: Record<RunTab, string> = {
+  network: 'Network',
+  migration: 'Migration',
+  convergence: 'Convergence',
+  divergence: 'Divergence',
+  attribution: 'Attribution',
+  details: 'Details',
+};
+
 export type Route = { name: 'runs' } | { name: 'new'; sourceId?: string } | { name: 'run'; id: string; tab: RunTab } | { name: 'not-found' };
 
 export const runsHref = '/runs';

@@ -3,6 +3,9 @@ import type { Separation } from '@/types.ts';
 // Pairs are unordered, so a key puts the lower island first.
 export const pairKey = (a: number, b: number) => `${Math.min(a, b)}-${Math.max(a, b)}`;
 
+// The generation-swap test's usual cut-off: below it, the gap is unlikely to come from chance.
+export const REAL_DIFFERENCE = 0.05;
+
 export type Pair = { a: number; b: number; key: string; value: number; p: number };
 
 export const wholeRunPairs = (separation: Separation): Pair[] =>
