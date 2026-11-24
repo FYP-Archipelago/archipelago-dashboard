@@ -12,7 +12,6 @@ import { navigate, rerunHref, RUN_TABS, runHref, runsHref, type RunTab } from '@
 import type { Run } from '@/types.ts';
 
 const TAB_LABELS: Record<RunTab, string> = {
-  overview: 'Overview',
   network: 'Network',
   migration: 'Migration',
   convergence: 'Convergence',

@@ -24,6 +24,19 @@ window.ResizeObserver = class {
   disconnect() {}
 };
 
+// Nor EventSource. A streamed run's Network tab opens one; this one stays connecting and never sends anything.
+window.EventSource = class {
+  static readonly CONNECTING = 0;
+  static readonly OPEN = 1;
+  static readonly CLOSED = 2;
+  readyState = 0;
+  addEventListener() {}
+  removeEventListener() {}
+  close() {
+    this.readyState = 2;
+  }
+} as unknown as typeof EventSource;
+
 afterEach(() => {
   cleanup();
   vi.useRealTimers();

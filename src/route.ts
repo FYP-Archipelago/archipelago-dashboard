@@ -1,7 +1,7 @@
 import { useSyncExternalStore } from 'react';
 
 // A run page's tabs in display order; the first is where a run opens.
-export const RUN_TABS = ['overview', 'network', 'migration', 'convergence', 'divergence', 'attribution', 'details'] as const;
+export const RUN_TABS = ['network', 'migration', 'convergence', 'divergence', 'attribution', 'details'] as const;
 
 export type RunTab = (typeof RUN_TABS)[number];
 
