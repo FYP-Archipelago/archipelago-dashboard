@@ -1,0 +1,170 @@
+.island-map {
+  position: relative;
+  min-width: 0;
+}
+.island-map > svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+.island-map-lanes path {
+  fill: none;
+  stroke-width: 1;
+  stroke-dasharray: 1 4;
+  stroke-linecap: round;
+  transition: opacity 0.2s;
+}
+.island-map-sailors circle {
+  offset-distance: 0%;
+  /* A wider, invisible edge makes the small migrants easier to brush. */
+  stroke: transparent;
+  stroke-width: 10;
+  transition: opacity 0.4s;
+}
+.island-map-sailors circle.island-map-gone {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.1s;
+}
+.island-map-knocked {
+  pointer-events: none;
+}
+.island-map-drift {
+  animation: island-map-drift 2.2s cubic-bezier(0.3, 0, 0.8, 0.6) forwards;
+}
+.island-map-sink {
+  animation: island-map-sink 1.4s ease-in forwards;
+}
+.island-map-speck {
+  animation: island-map-speck 0.7s var(--ease) forwards;
+}
+.island-map-best-glow {
+  fill: var(--ink);
+  opacity: 0.16;
+}
+.island-map-island {
+  cursor: default;
+  transition: opacity 0.2s;
+}
+.island-map-empty {
+  fill: none;
+  stroke-width: 1.5;
+}
+.island-map-island .island-map-share {
+  fill: var(--ink);
+  font-size: 13px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.island-map-island .island-map-name {
+  fill: var(--muted);
+  font-size: 11.5px;
+}
+.island-map-best {
+  fill: var(--ink);
+}
+.island-map-keys {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px 20px;
+  margin-top: 8px;
+  color: var(--muted);
+  font-size: 12px;
+}
+.island-map-keys span {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+.island-map-keys svg {
+  flex: none;
+  overflow: visible;
+}
+.island-map-key-dot {
+  fill: var(--ink-2);
+}
+.island-map-key-lane {
+  fill: none;
+  stroke: var(--ink-2);
+  stroke-dasharray: 1 3;
+  stroke-linecap: round;
+}
+.island-map-key-sailor {
+  fill: var(--ink);
+  offset-distance: 50%;
+}
+.island-map-dot {
+  transform-box: fill-box;
+  transform-origin: center;
+  /* Slow, so scattered dots drift back home. */
+  transition: transform 1.4s var(--ease);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .island-map-island circle {
+    transform-box: fill-box;
+    transform-origin: center;
+    animation: island-map-pop 0.35s var(--spring) var(--d, 0s) backwards;
+  }
+  .island-map-best-glow {
+    transform-box: fill-box;
+    transform-origin: center;
+    animation: island-map-glow 2.8s ease-in-out infinite;
+  }
+  .island-map-key-sailor {
+    animation: island-map-sail 2.4s linear infinite;
+  }
+  .island-map-sailors circle {
+    animation:
+      island-map-sail var(--speed) linear var(--delay) infinite,
+      island-map-fade 0.6s ease 1.2s backwards;
+  }
+}
+@keyframes island-map-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.5);
+  }
+}
+@keyframes island-map-drift {
+  to {
+    transform: translate(var(--x), var(--y)) scale(0.6);
+    opacity: 0;
+  }
+}
+@keyframes island-map-sink {
+  to {
+    transform: translateY(26px) scale(0.2);
+    opacity: 0;
+  }
+}
+@keyframes island-map-speck {
+  from {
+    transform: translate(0, 0);
+  }
+  to {
+    transform: translate(var(--x), var(--y)) scale(0.4);
+    opacity: 0;
+  }
+}
+@keyframes island-map-glow {
+  50% {
+    opacity: 0.32;
+    transform: scale(1.25);
+  }
+}
+@keyframes island-map-sail {
+  from {
+    offset-distance: 0%;
+  }
+  to {
+    offset-distance: 100%;
+  }
+}
+@keyframes island-map-fade {
+  from {
+    opacity: 0;
+  }
+}

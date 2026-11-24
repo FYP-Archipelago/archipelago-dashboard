@@ -1,0 +1,112 @@
+.hero-slot {
+  container-type: inline-size;
+  min-width: 0;
+}
+.hero {
+  height: 100%;
+}
+.hero-number {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.hero-kicker {
+  color: var(--ink-2);
+  font-size: 13px;
+}
+.hero-number strong {
+  margin-top: 2px;
+  font-size: 52px;
+  font-weight: 600;
+  letter-spacing: -0.045em;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+.hero-change {
+  margin-top: 6px;
+  color: var(--ink-2);
+}
+.hero-findings {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 12px 26px;
+  margin: 24px 0 0;
+}
+.hero-findings > div {
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns: subgrid;
+  align-items: baseline;
+}
+.hero-findings dt {
+  color: var(--muted);
+  font-size: 12.5px;
+}
+.hero-findings dd {
+  margin: 0;
+  color: var(--ink-2);
+  line-height: 1.55;
+}
+.hero-findings .hero-note {
+  display: block;
+}
+.hero-findings .hero-note + .hero-note {
+  margin-top: 4px;
+}
+.hero b {
+  color: var(--ink);
+  font-weight: 600;
+}
+.hero-facts {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, max-content));
+  justify-content: space-between;
+  gap: 18px 24px;
+  margin: 28px 0 0;
+  padding-top: 20px;
+  border-top: 1px solid var(--border);
+}
+.hero-facts dt {
+  color: var(--muted);
+  font-size: 12.5px;
+}
+.hero-facts dd {
+  margin: 2px 0 0;
+  font-size: 17px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.hero-facts small {
+  margin-left: 5px;
+  color: var(--muted);
+  font-size: 12.5px;
+  font-weight: 400;
+}
+
+.hero-story {
+  --map-min-width: 280px;
+  --story-gap: 24px;
+  display: grid;
+  grid-template-columns: minmax(min(588px, 100% - var(--map-min-width) - var(--story-gap)), 1.15fr) minmax(var(--map-min-width), 0.85fr);
+  align-items: center;
+  gap: var(--story-gap);
+  padding: 28px 28px 24px;
+}
+@container (max-width: 760px) {
+  .hero-story {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .hero-facts {
+    justify-content: start;
+    column-gap: 32px;
+  }
+}
+@container (max-width: 460px) {
+  .hero-story-map {
+    display: none;
+  }
+  .hero-number strong {
+    font-size: 40px;
+  }
+}

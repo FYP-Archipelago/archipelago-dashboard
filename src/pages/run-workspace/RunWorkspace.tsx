@@ -15,6 +15,7 @@ import Header from './Header.tsx';
 import MigrationTab from './migration/MigrationTab.tsx';
 import type { Camera } from './network/camera.ts';
 import NetworkTab from './network/NetworkTab.tsx';
+import OverviewTab from './overview/OverviewTab.tsx';
 import { DEFAULT_SETTINGS } from './network/settings.ts';
 import RunNotFound from './RunNotFound.tsx';
 
@@ -57,6 +58,7 @@ export default function RunWorkspace({ id, tab }: { id: string; tab: RunTab }) {
             <span>{data.error.message}</span>
           </div>
         )}
+        {tab === 'overview' && <OverviewTab run={data} result={result} />}
         {tab === 'network' && (
           <NetworkTab run={data} result={result} settings={networkSettings} onSettingsChange={setNetworkSettings} cameraRef={networkCameraRef} />
         )}
