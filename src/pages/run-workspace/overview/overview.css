@@ -1,3 +1,26 @@
+/* Pieces the overview's cards share. */
+.overview-card {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+.overview-card-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--muted);
+  font-size: 13px;
+  transition: color 0.15s;
+}
+.overview-card-link:hover {
+  color: var(--ink);
+}
+.overview-card-link svg {
+  transition: transform 0.2s var(--ease);
+}
+.overview-card-link:hover svg {
+  transform: translateX(2px);
+}
 .overview {
   display: flex;
   flex-direction: column;

@@ -3,10 +3,10 @@ import { runBest, shareAfter, summarise } from '@/pages/run-workspace/convergenc
 import { historyByIsland, type IslandHistory } from '@/pages/run-workspace/history.ts';
 import type { Run, RunResult, ShapleyAttribution, ShapleyGame } from '@/types.ts';
 
-type Axis = 'evaluations' | 'generation';
+export type Axis = 'evaluations' | 'generation';
 
 // From the best starting value to the run's best. On a log scale it counts orders of magnitude, like the Convergence tab.
-type Improvement = { start: number; final: number; log: boolean };
+export type Improvement = { start: number; final: number; log: boolean };
 
 export function improvementOf(histories: IslandHistory[], maximising: boolean): Improvement | null {
   const better = (a: number, b: number) => (maximising ? a > b : a < b);
@@ -45,6 +45,20 @@ export function progressCurve(histories: IslandHistory[], axis: Axis, improvemen
 
 // Where the run first had made `share` of its improvement.
 export const crossing = (curve: { x: number; share: number }[], share: number) => curve.find((point) => point.share >= share - 1e-9)?.x ?? null;
+
+// One island's span, each step that improved its best (sized against the whole run's improvement), and its last step.
+export type Lane = { island: number; start: number; end: number; steps: { x: number; size: number }[]; lastImproved: number | null };
+
+export function laneOf(history: IslandHistory, axis: Axis, improvement: Improvement): Lane | null {
+  const points = pointsOf(history, axis);
+  if (!points.length) return null;
+  const steps: Lane['steps'] = [];
+  for (let i = 1; i < points.length; i++) {
+    const size = doneShare(improvement, points[i]!.value) - doneShare(improvement, points[i - 1]!.value);
+    if (size > 0) steps.push({ x: points[i]!.x, size });
+  }
+  return { island: history.island, start: points[0]!.x, end: points.at(-1)!.x, steps, lastImproved: steps.at(-1)?.x ?? null };
+}
 
 // The islands' mean diversity at each generation, over the islands that logged one.
 function meanDiversity(histories: IslandHistory[]): { generation: number; value: number }[] {

@@ -5,6 +5,7 @@ import type { Run, RunResult } from '@/types.ts';
 
 import Hero from './Hero.tsx';
 import { overviewData } from './overview.ts';
+import RunTimeline from './RunTimeline.tsx';
 
 import './overview.css';
 
@@ -15,6 +16,7 @@ function Overview({ run, result }: { run: Run; result: RunResult }) {
       <div className="hero-slot">
         <Hero data={data} />
       </div>
+      <RunTimeline data={data} />
     </div>
   );
 }

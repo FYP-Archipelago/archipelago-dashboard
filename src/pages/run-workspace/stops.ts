@@ -17,10 +17,10 @@ export const REASONS: Record<TerminationReason, { one: string; many: string; mar
 
 export const reasonPhrase = (reason: TerminationReason, count: number) => (count === 1 ? REASONS[reason].one : REASONS[reason].many);
 
-// One island's stop as a sentence, e.g. "Stagnated after 50 generations without improvement".
+// One island's stop as a sentence, e.g. "Stagnated after 50 gens without improvement".
 export function stopText(end: IslandEnd): string {
   const phrase = reasonPhrase(end.termination_reason, 1);
   const text = phrase.charAt(0).toUpperCase() + phrase.slice(1);
   const since = end.generations_since_improvement;
-  return end.termination_reason === 'stagnation' && since !== null ? `${text} after ${since} generations without improvement` : text;
+  return end.termination_reason === 'stagnation' && since !== null ? `${text} after ${since} gens without improvement` : text;
 }

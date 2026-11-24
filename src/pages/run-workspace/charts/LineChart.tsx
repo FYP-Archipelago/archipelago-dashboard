@@ -38,7 +38,7 @@ const END_STAGNATION_CROSS = 'M0,0L-4.5,-4.5M0,0L4.5,4.5M0,0L-4.5,4.5M0,0L4.5,-4
 
 const tickFormat = new Intl.NumberFormat('en', { notation: 'compact', maximumSignificantDigits: 3 });
 
-function useSize() {
+export function useSize() {
   const ref = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState({ width: 0, height: 0 });
   useLayoutEffect(() => {

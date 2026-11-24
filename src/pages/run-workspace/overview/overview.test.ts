@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import type { IslandHistory } from '@/pages/run-workspace/history.ts';
 
-import { changeText, crossing, improvementOf, progressCurve } from './overview.ts';
+import { changeText, crossing, improvementOf, laneOf, progressCurve } from './overview.ts';
 
 const island = (id: number, evaluations: number[], bestSoFar: number[]): IslandHistory => ({
   island: id,
@@ -44,6 +44,13 @@ describe('progressCurve', () => {
     expect(up).toMatchObject({ start: 10, final: 30, log: false });
     expect(progressCurve(maximising, 'evaluations', up).map((point) => point.share)).toEqual([0, 0.25, 1]);
   });
+});
+
+it('laneOf keeps only the steps that improved the island, sized against the whole run', () => {
+  const history = island(0, [0, 5, 10, 15], [100, 100, 40, 40]);
+  const lane = laneOf(history, 'evaluations', { start: 100, final: 20, log: false })!;
+  expect(lane.steps).toEqual([{ x: 10, size: 0.75 }]);
+  expect(lane).toMatchObject({ start: 0, end: 15, lastImproved: 10 });
 });
 
 it('changeText reads as a ratio only for large changes between positive values', () => {
