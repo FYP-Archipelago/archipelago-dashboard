@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 
 import { seeded } from '@/drawing.ts';
+import { reducedMotion } from '@/style.ts';
 
 import './mode.css';
 
@@ -94,7 +95,7 @@ export default function ModeSection({ stream, setStream }: ModeProps) {
   // Progress through the simulated run, looping; it stays at the end when motion is reduced.
   const [progress, setProgress] = useState(1);
   useEffect(() => {
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    if (reducedMotion()) return;
     const start = performance.now();
     const timer = window.setInterval(() => setProgress(((performance.now() - start) % CYCLE_MS) / CYCLE_MS), 70);
     return () => window.clearInterval(timer);
