@@ -95,3 +95,20 @@ export function shareAfter(histories: IslandHistory[], axis: 'generation' | 'eva
   }
   return total ? after / total : 0;
 }
+
+// A level counts as convergence only if what improvement was left came at most this fast against the run's average
+// pace: at 0.1, the last 1% must have taken at least 10% of the run.
+const PLATEAU_PACE = 0.1;
+
+// The ending is judged by the strictest level reached, the one nearest the end: if it counts, the run levelled off
+// even if an earlier level did not (`spedUpAfter`); if not, it was still improving.
+export function convergenceVerdict<T extends { remainingShare: number; after: number }>(levels: T[]) {
+  const counts = (level: T) => level.remainingShare <= PLATEAU_PACE * level.after;
+  const strictest = levels.at(-1);
+  const levelledOff = strictest !== undefined && counts(strictest);
+  return {
+    converged: levels.filter(counts),
+    spedUpAfter: levelledOff ? (levels.filter((level) => !counts(level)).at(-1) ?? null) : null,
+    stillImproving: strictest !== undefined && !levelledOff ? strictest : null,
+  };
+}

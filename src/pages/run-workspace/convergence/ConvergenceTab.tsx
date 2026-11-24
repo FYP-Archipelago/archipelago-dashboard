@@ -9,7 +9,7 @@ import { historyByIsland } from '@/pages/run-workspace/history.ts';
 import { EmptyState, IslandSwatch, NoResult, type ResultQuery } from '@/pages/run-workspace/shared.tsx';
 import type { IslandEnd, Run, RunResult } from '@/types.ts';
 
-import { describeDiversity, runBest, runProgress, shareAfter, summarise } from './convergence.ts';
+import { convergenceVerdict, describeDiversity, runBest, runProgress, shareAfter, summarise } from './convergence.ts';
 
 import './convergence.css';
 
@@ -26,10 +26,6 @@ const CONVERGENCE_THRESHOLDS = [
   { label: '99%', remainingShare: 0.01 },
   { label: '99.9%', remainingShare: 0.001 },
 ];
-// A threshold counts as convergence only if the improvement left after it came at most this fast compared with the
-// run's average pace: at 0.1, the last 1% must have taken at least 10% of the run, and the last 0.1% at least 1%.
-// Faster than that, the run was still improving when it ended.
-const PLATEAU_PACE = 0.1;
 
 const percentAfter = (share: number) => (share > 0 && share < 0.01 ? '<1%' : `${Math.round(share * 100)}%`);
 
@@ -97,8 +93,7 @@ function Convergence({ result, showStagnationMarkers, onToggleStagnationMarkers 
     // When both thresholds land on the same point, the stricter one says it all.
     return points.filter((point, i) => points[i + 1]?.x !== point.x);
   }, [histories, axis, maximising, progressLog]);
-  const converged = progress.filter((point) => point.remainingShare <= PLATEAU_PACE * point.after);
-  const stillImproving = progress.filter((point) => point.remainingShare > PLATEAU_PACE * point.after);
+  const { converged, spedUpAfter, stillImproving } = convergenceVerdict(progress);
   const unit = axis === 'generation' ? 'generations' : 'evaluations';
 
   const series = useMemo(
@@ -249,11 +244,16 @@ function Convergence({ result, showStagnationMarkers, onToggleStagnationMarkers 
               Island stopped at the stagnation limit
             </span>
           )}
-          {stillImproving.length > 0 && (
+          {spedUpAfter && (
             <span className="chart-key">
               <Icon name="trend" size={12} />
-              {converged.length ? `Not converged to ${stillImproving.at(-1)!.label}` : 'No estimated convergence'}: the run was still improving at the
-              end
+              Improvement rate rose past {spedUpAfter.label}, too much to count as convergence there
+            </span>
+          )}
+          {stillImproving && (
+            <span className="chart-key">
+              <Icon name="trend" size={12} />
+              {converged.length ? `Not converged to ${stillImproving.label}` : 'No estimated convergence'}: the run was still improving at the end
             </span>
           )}
         </div>
