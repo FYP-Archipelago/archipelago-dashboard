@@ -121,9 +121,7 @@ function Network({
     const key = event.key.toLowerCase();
     if (key === 'escape') setSelectedId(null);
     else if (key === 'r') renderer.current?.resetView();
-    else if (key === 'b' && scene.runBest >= 0) pick(scene.runBest);
     else if (key === 'f') void toggleFullScreen();
-    else if (key === 's') save();
     else return;
     event.preventDefault();
   };

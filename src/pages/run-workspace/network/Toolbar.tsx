@@ -36,14 +36,12 @@ function ToolButton({ icon, label, onClick }: { icon: IconName; label: string; o
 
 const SHORTCUTS: [string, string][] = [
   ['Drag', 'Rotate'],
-  ['Shift + drag or right-drag', 'Pan'],
+  ['Shift + Drag or Right-Drag', 'Pan'],
   ['Scroll', 'Zoom toward the pointer'],
   ['Click', 'Inspect a cluster'],
   ['Double-click', 'Fly to a cluster'],
-  ['B', 'Fly to the run best'],
   ['R', 'Reset the view'],
   ['F', 'Full screen'],
-  ['S', 'Save an image'],
   ['Esc', 'Clear the selection'],
 ];
 
@@ -133,7 +131,7 @@ export default function Toolbar({
       </label>
       <div className="network-tools network-glass">
         <ToolButton icon="reset" label="Reset the view (R)" onClick={onReset} />
-        <ToolButton icon="download" label="Save an image of this view (S)" onClick={onSave} />
+        <ToolButton icon="download" label="Save an image of this view" onClick={onSave} />
         <ToolButton icon={fullScreen ? 'shrink' : 'expand'} label={fullScreen ? 'Leave full screen (F)' : 'Full screen (F)'} onClick={onFullScreen} />
         <MenuButton
           open={menu === 'help'}
