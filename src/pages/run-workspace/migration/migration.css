@@ -97,6 +97,15 @@
   gap: 6px;
   white-space: nowrap;
 }
+.cluster-link {
+  text-decoration: underline;
+  text-decoration-color: var(--axis);
+  text-underline-offset: 3px;
+  transition: text-decoration-color 0.15s;
+}
+.cluster-link:hover {
+  text-decoration-color: var(--ink);
+}
 .table .arrival-better {
   color: var(--good);
 }

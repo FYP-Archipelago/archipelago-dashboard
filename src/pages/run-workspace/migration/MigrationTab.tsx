@@ -4,7 +4,7 @@ import { heatColor, heatInk, islandColor } from '@/colors.ts';
 import Icon from '@/components/Icon.tsx';
 import Link from '@/components/Link.tsx';
 import { fitness, numberFormat, TOPOLOGIES } from '@/format.ts';
-import { EmptyState, IslandSwatch, NoResult, type ResultQuery } from '@/pages/run-workspace/shared.tsx';
+import { EmptyState, IslandSwatch, NoResult, routeKey, type ResultQuery } from '@/pages/run-workspace/shared.tsx';
 import { runHref } from '@/route.ts';
 import type { Run, RunResult } from '@/types.ts';
 
@@ -13,8 +13,6 @@ import { arrivalsOf, comparison } from './migration.ts';
 import './migration.css';
 
 type Route = RunResult['migration_routes'][number];
-
-const routeKey = (source: number, destination: number) => `${source}-${destination}`;
 
 type OnHover = (key: string | null, event?: PointerEvent) => void;
 // Shares under 10% keep a decimal, so a small but real share does not round away to 0%.
@@ -142,15 +140,19 @@ function RouteMatrix({ islands, routes, hovered, onHover }: { islands: number[];
   );
 }
 
-function Arrivals({ graph, maximising }: { graph: RunResult['graph']; maximising: boolean }) {
+function Arrivals({ runId, graph, maximising }: { runId: string; graph: RunResult['graph']; maximising: boolean }) {
   const arrivals = useMemo(() => arrivalsOf(graph), [graph]);
   const [showAll, setShowAll] = useState(false);
   if (!arrivals.length) return null;
   const better = arrivals.filter((arrival) => comparison(arrival, maximising)?.tone === 'arrival-better').length;
   const shown = showAll ? arrivals : arrivals.slice(0, 10);
+  // Each cluster opens in the Network tab, selected and centred.
   const cluster = (id: number, best: number | null) => (
     <>
-      #{id} <span className="muted">· {fitness(best)}</span>
+      <Link className="cluster-link" href={`${runHref(runId, 'network')}?cluster=${id}`} title="Show this cluster in the network">
+        #{id}
+      </Link>{' '}
+      <span className="muted">· {fitness(best)}</span>
     </>
   );
   return (
@@ -330,7 +332,7 @@ function Migration({ run, result }: { run: Run; result: RunResult }) {
         </Link>
       )}
 
-      <Arrivals graph={result.graph} maximising={result.run.maximising} />
+      <Arrivals runId={run.run_id} graph={result.graph} maximising={result.run.maximising} />
     </>
   );
 }
