@@ -1,4 +1,5 @@
 import Icon, { type IconName } from '@/components/Icon.tsx';
+import { vars } from '@/style.ts';
 
 import MenuButton, { type Menu } from './MenuButton.tsx';
 import { HEIGHTS, type HeightMode } from './scene.ts';
@@ -67,7 +68,7 @@ function HelpPanel() {
   );
 }
 
-// Along the top of the stage: what height shows, grouping by island, and the view tools.
+// Along the top of the stage: what height shows, grouping by island, node size, and the view tools.
 export default function Toolbar({
   settings,
   change,
@@ -108,12 +109,28 @@ export default function Toolbar({
       <button
         className={`network-glass network-chip-button${settings.group ? ' network-chip-button-on' : ''}`}
         aria-pressed={settings.group}
+        aria-label="Group by island"
         title="Lay each island out on its own patch, with migrations arching between them"
         onClick={() => change({ group: !settings.group })}
       >
         <Icon name="islands" size={16} />
-        Group by island
+        <span className="network-group-label">Group by island</span>
       </button>
+      <label className="network-glass network-size" title="Node size">
+        <Icon name="nodeSize" size={16} />
+        <input
+          type="range"
+          aria-label="Node size"
+          min={0.5}
+          max={2}
+          step={0.1}
+          value={settings.nodeSize}
+          style={vars({ '--fill': `${((settings.nodeSize - 0.5) / 1.5) * 100}%` })}
+          onChange={(event) => change({ nodeSize: Number(event.target.value) })}
+          onDoubleClick={() => change({ nodeSize: 1 })}
+        />
+        <b>{settings.nodeSize.toFixed(1)}×</b>
+      </label>
       <div className="network-tools network-glass">
         <ToolButton icon="reset" label="Reset the view (R)" onClick={onReset} />
         <ToolButton icon="download" label="Save an image of this view (S)" onClick={onSave} />

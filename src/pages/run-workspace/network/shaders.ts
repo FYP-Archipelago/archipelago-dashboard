@@ -11,7 +11,7 @@ vec2 place(vec2 base, vec2 off){ return mix(base, base * 0.30 + off, uSep); }`;
 export const GRAPH_VERTEX = `
 in vec2 aFromXY; in float aFromH; in vec2 aToXY; in float aToH; in vec2 aOff;
 in float aSlot; in float aSize; in float aShared; in float aReveal; in float aWeight; in float aBorn;
-uniform mat4 uVP; uniform float uMove; uniform float uHeightScale; uniform float uPointScale;
+uniform mat4 uVP; uniform float uMove; uniform float uHeightScale; uniform float uPointScale; uniform float uNodeSize;
 uniform vec3 uColour[${MAX_ISLANDS}]; uniform float uAlpha[${MAX_ISLANDS}];
 uniform float uBase; uniform float uFogNear; uniform float uFogFar; uniform float uShared;
 uniform float uReveal; uniform float uMinWeight; uniform float uNow;
@@ -30,7 +30,9 @@ void main(){
   float shown = clamp((uReveal * 1.02 - aReveal) / 0.02, 0.0, 1.0) * step(uMinWeight, aWeight) * clamp((uNow - aBorn) / 0.8, 0.0, 1.0);
   vAlpha = uBase * uAlpha[k] * mute * (0.30 + 0.70 * fog) * shown;
   vRing = hot * uShared;
-  gl_PointSize = clamp(uPointScale * aSize / depth, 1.0, 96.0);
+  // Grown, a cluster's point widens only by its core's growth (the core is 0.31 of the point's radius); shrunk, all of it shrinks.
+  float grown = 0.31 * uNodeSize + 0.69 * min(uNodeSize, 1.0);
+  gl_PointSize = clamp(uPointScale * aSize * grown / depth, 1.0, 96.0);
 }`;
 
 // .rgb gathers density-weighted colour and .a the density; the composite divides one by the other. Adding the colours
@@ -47,13 +49,18 @@ void emit(vec3 colour, float density, float mark){
 #endif
 }`;
 
-// Each cluster is a small solid core with a faint halo around it.
+// Each cluster is a small solid core with a faint halo around it. A larger cluster size grows the core; the halo and
+// the shared ring keep their width around it.
 export const POINT_FRAGMENT = `
 precision highp float;
 in vec3 vColour; in float vAlpha; in float vRing;
+uniform float uNodeSize;
 ${EMIT}
 void main(){
-  float r = length(gl_PointCoord - 0.5) * 2.0;
+  float grown = 0.31 * uNodeSize + 0.69 * min(uNodeSize, 1.0);
+  // The distance from the centre in the unscaled point's radii, less the core's growth, so outside the core the
+  // unscaled point's shape repeats.
+  float r = length(gl_PointCoord - 0.5) * 2.0 * grown / min(uNodeSize, 1.0) - 0.31 * max(uNodeSize - 1.0, 0.0);
   float a = max(1.0 - smoothstep(0.26, 0.36, r), 0.35 * pow(smoothstep(1.0, 0.3, r), 2.0));
   float ring = smoothstep(0.50, 0.72, r) * smoothstep(1.0, 0.80, r) * vRing;
   emit(vColour, a * vAlpha, ring * vAlpha * 2.2);

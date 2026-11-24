@@ -54,6 +54,8 @@ export type OverlayFrame = {
   // The stage's width, so the run best's tag stays inside it.
   width: number;
   at: (node: number) => readonly [number, number] | null;
+  // How far a cluster's core has grown past its unscaled size, so its markers sit that much further out.
+  grow: (node: number) => number;
   // How strongly each island shows while one is hovered in the legend, by island slot.
   focus: Float32Array;
   hover: number;
@@ -66,7 +68,7 @@ export type OverlayFrame = {
 export function drawOverlay(
   ctx: CanvasRenderingContext2D,
   dpr: number,
-  { scene, view, width, at, focus, hover, islandLabels, labelAlpha }: OverlayFrame
+  { scene, view, width, at, grow, focus, hover, islandLabels, labelAlpha }: OverlayFrame
 ) {
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
@@ -79,7 +81,7 @@ export function drawOverlay(
       ctx.lineWidth = 3.5;
       ctx.strokeStyle = 'rgba(0,0,0,0.75)';
       ctx.beginPath();
-      ctx.arc(p[0], p[1], 6.5, 0, Math.PI * 2);
+      ctx.arc(p[0], p[1], 6.5 + grow(node), 0, Math.PI * 2);
       ctx.stroke();
       ctx.lineWidth = 1.75;
       ctx.strokeStyle = BEST;
@@ -90,6 +92,7 @@ export function drawOverlay(
   const runBest = view.layers.runBest ? at(scene.runBest) : null;
   if (runBest) {
     const [x, y] = runBest;
+    const half = 8 + grow(scene.runBest);
     ctx.save();
     ctx.shadowColor = 'rgba(255,255,255,0.75)';
     ctx.shadowBlur = 10;
@@ -97,10 +100,10 @@ export function drawOverlay(
     ctx.strokeStyle = '#000';
     ctx.lineWidth = 1.5;
     ctx.beginPath();
-    ctx.moveTo(x, y - 8);
-    ctx.lineTo(x + 8, y);
-    ctx.lineTo(x, y + 8);
-    ctx.lineTo(x - 8, y);
+    ctx.moveTo(x, y - half);
+    ctx.lineTo(x + half, y);
+    ctx.lineTo(x, y + half);
+    ctx.lineTo(x - half, y);
     ctx.closePath();
     ctx.fill();
     ctx.shadowBlur = 0;
@@ -108,13 +111,14 @@ export function drawOverlay(
     ctx.restore();
   }
 
-  for (const [node, colour, gap] of [
+  for (const [node, colour, unscaledGap] of [
     [view.selected, 'rgba(237,237,237,0.95)', 11],
     [hover !== view.selected ? hover : -1, 'rgba(237,237,237,0.55)', 9],
   ] as const) {
     const p = at(node);
     if (!p) continue;
     const [x, y] = p;
+    const gap = unscaledGap + grow(node);
     const arm = 5;
     ctx.lineWidth = 1.5;
     ctx.strokeStyle = colour;
@@ -138,7 +142,7 @@ export function drawOverlay(
     ctx.font = `500 12px ${FONT}`;
     ctx.textBaseline = 'middle';
     const w = ctx.measureText(text).width + 26;
-    const left = Math.min(x + 14, width - w - 8);
+    const left = Math.min(x + 14 + grow(scene.runBest), width - w - 8);
     ctx.fillStyle = 'rgba(17,17,17,0.88)';
     ctx.strokeStyle = 'rgba(255,255,255,0.16)';
     ctx.lineWidth = 1;

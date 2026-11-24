@@ -22,6 +22,8 @@ export type ViewSettings = {
   minTraversals: number;
   // Comets travelling along the migrations; off, they are still lines.
   animateMigrations: boolean;
+  // Multiplies every cluster's size on screen.
+  nodeSize: number;
   // How much of the replay is shown, 0 to 1.
   reveal: number;
   selected: number;
@@ -42,6 +44,16 @@ export type Renderer = {
   camera: () => Camera;
   destroy: () => void;
 };
+
+// How many CSS pixels a cluster's core has grown past its unscaled size, as POINT_FRAGMENT draws it.
+function coreGrowth(pointScale: number, size: number, depth: number, nodeSize: number, dpr: number) {
+  if (nodeSize <= 1) return 0;
+  const unscaled = (pointScale * size) / depth;
+  const grown = 0.31 * nodeSize + 0.69;
+  // Past the 96 pixel cap the whole point is drawn smaller, core included.
+  const capped = Math.min(1, 96 / (unscaled * grown));
+  return (0.31 * (nodeSize - 1) * unscaled * capped) / 2 / dpr;
+}
 
 // Grouped islands are each a small patch, so their heights shrink with them.
 const GROUPED_HEIGHT = 0.3;
@@ -102,6 +114,8 @@ export function createRenderer(canvas: HTMLCanvasElement, overlay: HTMLCanvasEle
   let screenX = new Float32Array(0);
   let screenY = new Float32Array(0);
   let onScreen = new Uint8Array(0);
+  // How many CSS pixels each cluster's core has grown past its unscaled size, so markers and picking reach past it.
+  let screenGrow = new Float32Array(0);
 
   // Cached because place() asks for it once per cluster.
   let ring: Ring = [];
@@ -123,14 +137,15 @@ export function createRenderer(canvas: HTMLCanvasElement, overlay: HTMLCanvasEle
   // Where the cluster is in the world right now.
   const worldOf = (i: number) => place(scene!.slot[i]!, gliding('x', i), gliding('y', i), gliding('h', i));
 
-  function project(p: Vec3): [number, number] | null {
+  // A point's place on the stage in CSS pixels, and its depth.
+  function project(p: Vec3): [number, number, number] | null {
     const m = viewProjection;
     if (!m) return null;
     const w = m[3]! * p[0] + m[7]! * p[1] + m[11]! * p[2] + m[15]!;
     if (w <= 1e-6) return null;
     const x = (m[0]! * p[0] + m[4]! * p[1] + m[8]! * p[2] + m[12]!) / w;
     const y = (m[1]! * p[0] + m[5]! * p[1] + m[9]! * p[2] + m[13]!) / w;
-    return [(x * 0.5 + 0.5) * canvas.clientWidth, (1 - (y * 0.5 + 0.5)) * canvas.clientHeight];
+    return [(x * 0.5 + 0.5) * canvas.clientWidth, (1 - (y * 0.5 + 0.5)) * canvas.clientHeight, w];
   }
 
   /* ── geometry ───────────────────────────────────────────────── */
@@ -175,6 +190,7 @@ export function createRenderer(canvas: HTMLCanvasElement, overlay: HTMLCanvasEle
     screenX = new Float32Array(next.count);
     screenY = new Float32Array(next.count);
     onScreen = new Uint8Array(next.count);
+    screenGrow = new Float32Array(next.count);
     buildGraphGeometry();
   }
 
@@ -232,7 +248,8 @@ export function createRenderer(canvas: HTMLCanvasElement, overlay: HTMLCanvasEle
     for (let i = 0; i < scene.count; i++) {
       if (!onScreen[i]) continue;
       const d2 = (screenX[i]! - x) ** 2 + (screenY[i]! - y) ** 2;
-      if (d2 > 14 * 14) continue;
+      const reach = 14 + screenGrow[i]!;
+      if (d2 > reach * reach) continue;
       // Big clusters win close calls, so the one that looks hit is the one picked.
       const score = scene.size[i]! / (1 + d2 * 0.08);
       if (score > bestScore) {
@@ -466,6 +483,7 @@ export function createRenderer(canvas: HTMLCanvasElement, overlay: HTMLCanvasEle
       gl!.uniform1f(u.uSep!, shown.separation);
       gl!.uniform1f(u.uHeightScale!, shown.heightScale);
       gl!.uniform1f(u.uPointScale!, pointScale);
+      gl!.uniform1f(u.uNodeSize!, view.nodeSize);
       gl!.uniform3fv(u.uColour!, colours);
       gl!.uniform1fv(u.uAlpha!, alphas);
       gl!.uniform1f(u.uBase!, base);
@@ -484,8 +502,9 @@ export function createRenderer(canvas: HTMLCanvasElement, overlay: HTMLCanvasEle
     }
     // Cluster sizes too were tuned for huge graphs; a run's few hundred clusters would be dots a pixel or two wide.
     const pointBoost = Math.min(3, Math.max(1, Math.sqrt(1500 / Math.max(scene.count, 1))));
+    const pointScale = 1.35 * dpr * pointBoost;
     // A core and halo covers less of its square than main's soft glow did, so it gets more light to look as bright.
-    graphUniforms(points, (view.layers.paths ? 0.14 : 0.42) * nodeGain * 1.8, 1.35 * dpr * pointBoost);
+    graphUniforms(points, (view.layers.paths ? 0.14 : 0.42) * nodeGain * 1.8, pointScale);
     gl!.bindVertexArray(nodeVao);
     gl!.drawArrays(gl!.POINTS, 0, scene.count);
 
@@ -538,7 +557,9 @@ export function createRenderer(canvas: HTMLCanvasElement, overlay: HTMLCanvasEle
     for (let i = 0; i < scene.count; i++) {
       const p = scene.reveal[i]! <= shown.reveal && visibleSlot(scene.slot[i]!) ? project(worldOf(i)) : null;
       onScreen[i] = p ? 1 : 0;
-      if (p) [screenX[i], screenY[i]] = p;
+      if (!p) continue;
+      [screenX[i], screenY[i]] = p;
+      screenGrow[i] = coreGrowth(pointScale, scene.size[i]!, p[2], view.nodeSize, dpr);
     }
     const at = (i: number) => (i >= 0 && onScreen[i] ? ([screenX[i]!, screenY[i]!] as const) : null);
     drawOverlay(ctx!, dpr, {
@@ -546,6 +567,7 @@ export function createRenderer(canvas: HTMLCanvasElement, overlay: HTMLCanvasEle
       view,
       width: canvas.clientWidth,
       at,
+      grow: (i) => screenGrow[i] ?? 0,
       focus: shown.focus,
       hover,
       // Island names show once the islands have mostly moved apart.

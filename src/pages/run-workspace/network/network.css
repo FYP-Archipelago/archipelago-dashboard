@@ -105,6 +105,43 @@
   background: color-mix(in srgb, var(--surface-3) 88%, transparent);
   color: var(--ink);
 }
+/* Node size as a slider right in the top toolbar; double-click resets it. */
+.network-size {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  height: 34px;
+  padding: 0 12px;
+  color: var(--ink-2);
+  font-size: 13px;
+}
+/* Beats the stage's full-width range inputs. */
+.network-workspace .network-size input[type='range'] {
+  width: 96px;
+}
+.network-size b {
+  min-width: 30px;
+  color: var(--ink);
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+/* On a narrow stage the toolbar stays on one line: first the size loses its readout, then grouping its label. */
+@container (max-width: 690px) {
+  .network-size b {
+    display: none;
+  }
+  .network-workspace .network-size input[type='range'] {
+    width: 72px;
+  }
+}
+@container (max-width: 640px) {
+  .network-group-label {
+    display: none;
+  }
+  .network-chip-button:has(.network-group-label) {
+    padding: 0 9px;
+  }
+}
 .network-menu-button svg:last-child:not(:first-child) {
   transition: transform 0.25s var(--ease);
 }

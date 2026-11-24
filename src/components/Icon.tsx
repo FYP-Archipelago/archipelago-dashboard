@@ -90,6 +90,13 @@ const PATHS = {
       <path d="M9.5 9.2a2.6 2.6 0 0 1 5 .9c0 1.7-2.5 2.3-2.5 3.9M12 17h.01" />
     </>
   ),
+  nodeSize: (
+    <>
+      <circle cx="3.5" cy="15.5" r="1.5" />
+      <circle cx="10" cy="14" r="3" />
+      <circle cx="18" cy="12" r="5" />
+    </>
+  ),
   target: (
     <>
       <circle cx="12" cy="12" r="7" />

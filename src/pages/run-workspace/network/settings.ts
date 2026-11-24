@@ -13,4 +13,5 @@ export const DEFAULT_SETTINGS: Settings = {
   hiddenRoutes: [],
   minTraversals: 1,
   animateMigrations: true,
+  nodeSize: 1,
 };
