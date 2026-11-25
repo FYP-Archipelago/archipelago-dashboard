@@ -154,7 +154,7 @@ export default function IslandMap({ data }: { data: OverviewData }) {
     const centres = scatteredRing(
       seed,
       extents.map((extent) => extent + 14),
-      26
+      12
     );
     return islands.map((island, i) => {
       const centre = centres[i]!;
@@ -296,10 +296,7 @@ export default function IslandMap({ data }: { data: OverviewData }) {
               ) : (
                 <circle cx={centre[0]} cy={centre[1]} r={4} className="island-map-empty" stroke={islandColor(island.island)} />
               )}
-              <text className="island-map-share" x={centre[0]} y={centre[1] + extent + 15} textAnchor="middle">
-                {counts[i]}%
-              </text>
-              <text className="island-map-name" x={centre[0]} y={centre[1] + extent + 29} textAnchor="middle">
+              <text className="island-map-name" x={centre[0]} y={centre[1] + extent + 15} textAnchor="middle">
                 Island {island.island}
               </text>
             </g>
