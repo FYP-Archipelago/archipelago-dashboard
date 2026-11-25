@@ -25,9 +25,9 @@ export default function StartButton({ phase, disabled, onLaunch }: StartProps) {
     if (launching) return;
     setLaunching(true);
     const id = performance.now() + Math.random();
-    later(150, () => setBursts((list) => [...list, { id, x: button.clientWidth / 2, y: button.clientHeight / 2 }]));
-    later(1050, () => setBursts((list) => list.filter((burst) => burst.id !== id)));
-    later(400, () => {
+    later(40, () => setBursts((list) => [...list, { id, x: button.clientWidth / 2, y: button.clientHeight / 2 }]));
+    later(940, () => setBursts((list) => list.filter((burst) => burst.id !== id)));
+    later(220, () => {
       setLaunching(false);
       onLaunch();
     });

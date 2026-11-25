@@ -50,7 +50,7 @@ describe('NewRunPage start', () => {
     const start = findStart();
 
     fireEvent.click(start);
-    await wait(400);
+    await wait(220);
 
     const requests = runRequests(fetchMock);
     expect(requests).toHaveLength(1);
@@ -61,8 +61,9 @@ describe('NewRunPage start', () => {
 
     expect(start.textContent).toBe('Run started');
     expect(start.disabled).toBe(true);
-    await wait(1100);
-    expect(window.location.pathname).toBe('/runs/run-new');
+    await wait(600);
+    // The run streams, so it opens on its live network.
+    expect(window.location.pathname).toBe('/runs/run-new/network');
   });
 
   it('starts only one run when the button is clicked twice', async () => {

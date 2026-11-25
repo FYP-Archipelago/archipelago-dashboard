@@ -3,7 +3,7 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { isNotFound } from '@/api/client.ts';
 import { useCreateRun, usePresets, useRun } from '@/api/queries.ts';
 import Unavailable from '@/components/Unavailable.tsx';
-import { navigate, runHref } from '@/route.ts';
+import { navigate, runHref, type RunTab } from '@/route.ts';
 import type { Preset, Presets, Run } from '@/types.ts';
 
 // The page's shared styles load before the sections' own, which build on them.
@@ -39,7 +39,7 @@ function NewRunForm({ presets, preset, source }: { presets: Presets; preset: Pre
     stream: source?.stream ?? true,
     name: randomName(),
   }));
-  const [submit, setSubmit] = useState<{ phase: StartPhase; error: string; runId: string }>({ phase: 'idle', error: '', runId: '' });
+  const [submit, setSubmit] = useState<{ phase: StartPhase; error: string; runId: string; tab?: RunTab }>({ phase: 'idle', error: '', runId: '' });
 
   const patch = (change: Partial<Form>) => setForm((prev) => ({ ...prev, ...change }));
   const setText = (key: SettingKey) => (value: string) => setForm((prev) => ({ ...prev, text: { ...prev.text, [key]: value } }));
@@ -68,24 +68,25 @@ function NewRunForm({ presets, preset, source }: { presets: Presets; preset: Pre
     setSubmit({ phase: 'busy', error: '', runId: '' });
     try {
       const run = await createRun.mutateAsync(toNewRun(form));
-      setSubmit({ phase: 'done', error: '', runId: run.run_id });
+      // A streamed run opens on its live network; one that only reports at the end opens on its overview.
+      setSubmit({ phase: 'done', error: '', runId: run.run_id, tab: run.stream ? 'network' : 'overview' });
     } catch (reason) {
       setSubmit({ phase: 'failed', error: (reason as Error).message, runId: '' });
     }
   };
 
-  // "Run started" only shows once the backend has accepted the run, for 1.1 s before moving on to the run's page.
+  // "Run started" only shows once the backend has accepted the run, for 0.6 s before moving on to the run's page.
   // "Couldn't start" shows for 1.6 s, then the button can be held again; the error note stays until the next try.
   useEffect(() => {
     if (submit.phase === 'done') {
-      const timer = window.setTimeout(() => navigate(runHref(submit.runId)), 1100);
+      const timer = window.setTimeout(() => navigate(runHref(submit.runId, submit.tab)), 600);
       return () => window.clearTimeout(timer);
     }
     if (submit.phase === 'failed') {
       const timer = window.setTimeout(() => setSubmit((prev) => ({ ...prev, phase: 'idle' })), 1600);
       return () => window.clearTimeout(timer);
     }
-  }, [submit.phase, submit.runId]);
+  }, [submit.phase, submit.runId, submit.tab]);
 
   return (
     <div className="new-run-layout">
