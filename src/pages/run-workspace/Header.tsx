@@ -7,27 +7,22 @@ import Icon from '@/components/Icon.tsx';
 import Link from '@/components/Link.tsx';
 import Menu from '@/components/Menu.tsx';
 import { DeleteRunDialog } from '@/components/RunDialogs.tsx';
-import { ago, dateTime, duration, TOPOLOGIES } from '@/format.ts';
+import { ago, duration, longDateTime, TOPOLOGIES } from '@/format.ts';
 import { navigate, rerunHref, RUN_TAB_LABELS, RUN_TABS, runHref, runsHref, type RunTab } from '@/route.ts';
 import type { Run } from '@/types.ts';
 
-// Started but unfinished runs count up every second; others show the time they took, or when they were created.
+// Active runs count up every second. The header shows when the run started or was created.
 function RunTime({ run }: { run: Run }) {
   const counting = run.started_at !== null && run.finished_at === null && !isFinished(run.status);
   const now = useNow(counting);
 
-  if (!run.started_at) return <span title={dateTime(run.created_at)}>Created {ago(run.created_at)}</span>;
-  const started = Date.parse(run.started_at);
-  if (run.finished_at)
-    return (
-      <span>
-        {dateTime(run.started_at)} · took {duration(Date.parse(run.finished_at) - started)}
-      </span>
-    );
+  if (!run.started_at) return <span title={longDateTime(run.created_at)}>Created {ago(run.created_at)}</span>;
+  const startedAt = longDateTime(run.started_at);
+  if (run.finished_at) return <span>{startedAt}</span>;
   return (
     <span>
-      Started {dateTime(run.started_at)}
-      {counting && ` · running for ${duration(now - started)}`}
+      Started {startedAt}
+      {counting && ` · running for ${duration(now - Date.parse(run.started_at))}`}
     </span>
   );
 }

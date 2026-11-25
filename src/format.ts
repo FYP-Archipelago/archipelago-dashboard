@@ -42,9 +42,12 @@ export function fitness(value: number | null): string {
   return fitnessFormat.format(value);
 }
 
-const dateTimeFormat = new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+const dateTimeOptions: Intl.DateTimeFormatOptions = { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' };
+const dateTimeFormat = new Intl.DateTimeFormat('en-GB', dateTimeOptions);
+const longDateTimeFormat = new Intl.DateTimeFormat('en-GB', { ...dateTimeOptions, month: 'long', year: 'numeric' });
 
 export const dateTime = (iso: string) => dateTimeFormat.format(new Date(iso));
+export const longDateTime = (iso: string) => longDateTimeFormat.format(new Date(iso));
 
 export function ago(iso: string): string {
   const minutes = Math.round((Date.now() - Date.parse(iso)) / 60000);
