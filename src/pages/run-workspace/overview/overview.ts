@@ -141,7 +141,6 @@ export function overviewData(run: Run, result: RunResult): OverviewData {
   };
 }
 
-// The run's most notable patterns as short phrases. Each rule has a weight and only the strongest few are shown.
 export function runNotes(data: OverviewData, limit = 2): string[] {
   const { curve, histories, islandCount, axis, shapley, summaries, run, result } = data;
   const notes: { weight: number; text: string }[] = [];
@@ -151,7 +150,8 @@ export function runNotes(data: OverviewData, limit = 2): string[] {
     const [start, end] = [curve[0]!.x, curve.at(-1)!.x];
     let lastGain: { x: number; share: number } | undefined;
     for (let i = curve.length - 1; i > 0 && !lastGain; i--) if (curve[i]!.share > curve[i - 1]!.share + 1e-9) lastGain = curve[i];
-    if (lastGain && end > start && (lastGain.x - start) / (end - start) > 0.9) notes.push({ weight: 90, text: 'Still improving when it stopped' });
+    if (lastGain && end > start && (lastGain.x - start) / (end - start) > 0.9)
+      notes.push({ weight: 90, text: 'The run was still improving when it stopped.' });
   }
 
   // Diversity gone early: mean diversity fell to a quarter of its start within the first fifth of the run.
@@ -160,39 +160,40 @@ export function runNotes(data: OverviewData, limit = 2): string[] {
     const lastGeneration = within.at(-1)!.generation || 1;
     const collapse = within.find((point) => point.value <= within[0]!.value * 0.25);
     if (collapse && collapse.generation <= lastGeneration * 0.2)
-      notes.push({ weight: 80, text: `Diversity collapsed by generation ${collapse.generation}` });
+      notes.push({
+        weight: 80,
+        text: `Diversity dropped ${percent(1 - collapse.value / within[0]!.value)} early on, by generation ${collapse.generation}.`,
+      });
   }
 
   // From the routes' Shapley game: the share of the improvement that needed migrants.
   const routes = shapley?.routes;
   if (run.run_settings['migration.enabled'] && routes && routes.full_value) {
     const needed = (routes.full_value - routes.empty_value) / routes.full_value;
-    if (needed < 0.01) notes.push({ weight: 70, text: 'Migration made no difference to the result' });
-    else if (needed >= 0.5) notes.push({ weight: 60, text: `${percent(needed)} of the gain needed migrants` });
+    if (needed < 0.01) notes.push({ weight: 70, text: 'Migration made almost no difference to the result.' });
+    else if (needed >= 0.5) notes.push({ weight: 60, text: `${percent(needed)} of the gain depended on migrants moving between islands.` });
   }
 
-  // One population: every island ended on the same value and they mostly visited the same clusters.
+  // Every island ended on the same best value, and clusters were shared by most islands on average.
   const finals = summaries.map((s) => s.finalBest);
   if (islandCount > 1 && finals.every((value) => value !== null && value === finals[0]) && result.graph.overlap >= 0.6 * islandCount)
-    notes.push({ weight: 50, text: `All ${islandCount} islands converged on one solution` });
+    notes.push({ weight: 50, text: `All ${islandCount} islands reached the same best fitness.` });
 
   if (shapley) {
     const shares = sharesOf(shapley.islands);
     const idle = shares.filter((s) => s.share < 0.01).map((s) => `Island ${s.island}`);
-    if (idle.length && idle.length < shares.length) notes.push({ weight: 45, text: `${listed(idle)} earned no credit` });
+    if (idle.length && idle.length < shares.length) notes.push({ weight: 45, text: `${listed(idle)} added almost nothing to the improvement.` });
     if (shares[0] && shares[0].share >= 0.5)
-      notes.push({ weight: 40, text: `Island ${shares[0].island} carried ${percent(shares[0].share)} of the credit` });
+      notes.push({ weight: 40, text: `Island ${shares[0].island} carried the run, earning ${percent(shares[0].share)} of the credit.` });
   }
 
   // A long tail: the last 1% of the improvement took a large share of the search.
   const last = crossing(curve, 0.99);
   if (last !== null && curve.length > 1) {
     const after = shareAfter(histories, axis, last);
+    const unit = axis === 'evaluations' ? 'evaluations' : 'generations';
     if (after >= 0.3)
-      notes.push({
-        weight: 35,
-        text: `Stopping at 99% would have saved ${percent(after)} of the ${axis === 'evaluations' ? 'evaluations' : 'generations'}`,
-      });
+      notes.push({ weight: 35, text: `The last 1% of the gain took ${percent(after)} of the ${unit}; stopping at 99% would have saved them.` });
   }
 
   return notes

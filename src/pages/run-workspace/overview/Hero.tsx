@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { Fragment, useEffect, useMemo, useState, type ReactNode } from 'react';
 
 import { compactNumber, duration, fitness, numberFormat } from '@/format.ts';
 import { shareAfter } from '@/pages/run-workspace/convergence/convergence.ts';
@@ -43,12 +43,18 @@ function BestNumber({ data }: { data: OverviewData }) {
         Best fitness
         <span className="muted"> · {data.result.run.maximising ? 'higher is better' : 'lower is better'}</span>
       </span>
-      <strong>{fitness(shown)}</strong>
-      {improvement && best && (
-        <span className="hero-change">
-          {capitalise(changeText(improvement.start, improvement.final))} than the best at the start: {fitness(improvement.start)}
+      <div className="hero-number-row">
+        <span className="hero-number-value">
+          <strong>{fitness(shown)}</strong>
+          <strong aria-hidden="true">{fitness(best?.finalBest ?? null)}</strong>
         </span>
-      )}
+        {improvement && best && (
+          <span className={`hero-delta-chip${shown === best.finalBest ? ' hero-delta-chip-settled' : ''}`}>
+            {changeText(improvement.start, improvement.final)}
+          </span>
+        )}
+      </div>
+      {improvement && best && <span className="hero-change">from {fitness(improvement.start)}, the best at the start</span>}
     </div>
   );
 }
@@ -173,44 +179,55 @@ function facts(data: OverviewData): [string, ReactNode, string?][] {
   ];
 }
 
-// The outcome as a short story, with the run drawn as an archipelago beside it.
+// The outcome: findings led by small glyphs, the run's stats, and the run drawn as an archipelago beside them.
 export default function Hero({ data }: { data: OverviewData }) {
   const notes = useMemo(() => runNotes(data), [data]);
+  const found = foundText(data);
+  const progress = progressText(data);
   return (
     <section className="card hero hero-story">
       <div className="hero-story-text">
         <BestNumber data={data} />
-        <dl className="hero-findings">
-          {(
-            [
-              ['Run best', foundText(data)],
-              ['Progress', progressText(data)],
-              [
-                'Findings',
-                notes.length
-                  ? notes.map((note) => (
-                      <span key={note} className="hero-note">
-                        {note}
-                      </span>
-                    ))
-                  : null,
-              ],
-            ] as const
-          ).map(
-            ([label, text]) =>
-              text && (
-                <div key={label}>
-                  <dt>{label}</dt>
-                  <dd>{text}</dd>
-                </div>
-              )
+        <ul className="hero-findings">
+          {found && (
+            <li>
+              <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true">
+                <path className="hero-glyph-best" d="M7,1.8L12.2,7L7,12.2L1.8,7Z" />
+              </svg>
+              <span>{found}</span>
+            </li>
           )}
-        </dl>
-        <dl className="hero-facts">
+          {progress && (
+            <li>
+              <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true">
+                <path className="hero-glyph-progress" d="M1.5,12.5H4.5V6H8V3.5H12.5" />
+              </svg>
+              <span>{progress}</span>
+            </li>
+          )}
+          {notes.map((note) => (
+            <li key={note}>
+              <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true">
+                <path className="hero-glyph-note" d="M7,1Q7.6,6.4 13,7Q7.6,7.6 7,13Q6.4,7.6 1,7Q6.4,6.4 7,1Z" />
+              </svg>
+              <span>{note}</span>
+            </li>
+          ))}
+        </ul>
+        <dl className="hero-stats">
           {facts(data).map(([label, value, hint]) => (
             <div key={label} title={hint}>
               <dt>{label}</dt>
-              <dd>{value}</dd>
+              <dd>
+                {typeof value === 'string'
+                  ? value.split(' · ').map((part, i) => (
+                      <Fragment key={i}>
+                        {i > 0 && ' · '}
+                        <span>{part}</span>
+                      </Fragment>
+                    ))
+                  : value}
+              </dd>
             </div>
           ))}
         </dl>
