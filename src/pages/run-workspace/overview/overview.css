@@ -30,8 +30,31 @@
   color: var(--ink);
   font-weight: 600;
 }
+.overview-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  margin-top: 12px;
+  color: var(--ink-2);
+  font-size: 12.5px;
+}
+.overview-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+.overview-legend b {
+  color: var(--ink);
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+.overview-key {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+}
 
-/* The page: full-width rows, with the network beside the contributions card. */
+/* The page: full-width rows, with the network beside the contributions and migration cards. */
 .overview {
   display: flex;
   flex-direction: column;
@@ -49,8 +72,14 @@
 .overview-network .preview-stage {
   min-height: 460px;
 }
+.overview-network.overview-network-tall {
+  grid-row: span 2;
+}
 @media (max-width: 1100px) {
   .overview-grid {
     grid-template-columns: minmax(0, 1fr);
+  }
+  .overview-network.overview-network-tall {
+    grid-row: auto;
   }
 }

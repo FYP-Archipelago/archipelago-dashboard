@@ -61,7 +61,7 @@ export function laneOf(history: IslandHistory, axis: Axis, improvement: Improvem
 }
 
 // The islands' mean diversity at each generation, over the islands that logged one.
-function meanDiversity(histories: IslandHistory[]): { generation: number; value: number }[] {
+export function meanDiversity(histories: IslandHistory[]): { generation: number; value: number }[] {
   const sums = new Map<number, { total: number; count: number }>();
   for (const history of histories)
     history.generation.forEach((generation, i) => {

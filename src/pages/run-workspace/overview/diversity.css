@@ -1,0 +1,66 @@
+.diversity-trends {
+  position: relative;
+  min-width: 0;
+}
+.diversity-trends svg {
+  display: block;
+  overflow: visible;
+}
+.diversity-trends text {
+  fill: var(--muted);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+.diversity-grid line {
+  stroke: rgba(255, 255, 255, 0.06);
+}
+.diversity-line {
+  fill: none;
+  stroke-width: 1.75;
+  stroke-linejoin: round;
+}
+
+.diversity-hover line {
+  stroke: rgba(237, 237, 237, 0.4);
+}
+.diversity-tip {
+  top: 8px;
+  pointer-events: none;
+}
+.diversity-keys {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 32px;
+  margin-top: 20px;
+  font-size: 12.5px;
+}
+.diversity-keys > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--ink-2);
+}
+.diversity-keys i {
+  width: 16px;
+  height: 2px;
+  border-radius: 1px;
+}
+.diversity-keys b {
+  color: var(--ink);
+  font-weight: 500;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .diversity-line {
+    stroke-dasharray: 1;
+    animation: diversity-draw 1.4s var(--ease) both;
+  }
+}
+@keyframes diversity-draw {
+  from {
+    stroke-dashoffset: 1;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
