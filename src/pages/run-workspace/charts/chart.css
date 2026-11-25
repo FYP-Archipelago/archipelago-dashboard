@@ -1,0 +1,172 @@
+.chart {
+  --chart-draw-duration: 1.5s;
+  position: relative;
+  min-width: 0;
+}
+.chart svg {
+  display: block;
+}
+.chart.chart-fill {
+  flex: 1 1 0;
+  min-height: 260px;
+}
+.chart.chart-fill svg {
+  position: absolute;
+  inset: 0;
+}
+.chart text {
+  fill: var(--muted);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+.chart-grid line {
+  stroke: rgba(255, 255, 255, 0.06);
+}
+.chart-grid .chart-baseline {
+  stroke: var(--axis);
+}
+.chart-line {
+  fill: none;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+  transition:
+    opacity 0.2s,
+    stroke-width 0.2s;
+}
+.chart-guides line {
+  stroke: rgba(237, 237, 237, 0.35);
+  stroke-dasharray: 3 3;
+}
+.chart-guides path {
+  fill: var(--ink);
+}
+.chart-shades rect {
+  fill: rgba(237, 237, 237, 0.045);
+}
+.chart-shades line {
+  stroke: rgba(237, 237, 237, 0.3);
+}
+.chart-pill path,
+.chart-span path {
+  fill: none;
+  stroke: rgba(237, 237, 237, 0.3);
+}
+.chart-pill rect {
+  fill: var(--surface-2);
+  stroke: var(--border-strong);
+}
+.chart-pill text {
+  fill: var(--ink);
+  font-weight: 500;
+}
+.chart-span text {
+  fill: var(--ink-2);
+}
+.chart-ring {
+  fill: var(--surface);
+  stroke: var(--ink);
+  stroke-width: 1.75;
+}
+.chart-marker {
+  fill: var(--ink);
+  stroke: var(--surface);
+  stroke-width: 2;
+}
+.chart-end-cross {
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-width: 2.25;
+  transition: opacity 0.2s;
+}
+.chart-end-cross-outline {
+  stroke: var(--surface);
+  stroke-width: 5.5;
+}
+.chart-end-cross[data-visible='false'] .chart-end-cross-strokes {
+  opacity: 0;
+}
+.chart-hover line {
+  stroke: var(--border-strong);
+  stroke-dasharray: 3 3;
+}
+.chart-hover circle {
+  stroke: var(--surface);
+  stroke-width: 2;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .chart-line {
+    stroke-dasharray: 1;
+    stroke-dashoffset: 1;
+    animation: draw-line var(--chart-draw-duration) var(--ease) forwards;
+  }
+  .chart-end-cross-reveal {
+    stroke-dasharray: 0.25 1;
+    animation: draw-end-cross 0.26s ease-out var(--chart-draw-duration) both;
+  }
+  .chart-end-cross-strokes {
+    transform-box: fill-box;
+    transform-origin: center;
+    transition:
+      opacity 0.18s ease-out,
+      transform 0.45s var(--ease);
+  }
+  .chart-end-cross[data-visible='false'] .chart-end-cross-strokes {
+    transform: rotate(-45deg) scale(0.4);
+  }
+  .chart-shades rect {
+    transform-box: fill-box;
+    transform-origin: left;
+    animation: sweep-shade 0.7s var(--ease) var(--chart-draw-duration) both;
+  }
+  .chart-shades line,
+  .chart-pill,
+  .chart-span,
+  .chart-ring {
+    animation: reveal-after-draw 0.4s ease-out var(--chart-draw-duration) both;
+  }
+}
+@keyframes draw-line {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+@keyframes draw-end-cross {
+  from {
+    opacity: 0;
+    stroke-dashoffset: 0.25;
+  }
+  35% {
+    opacity: 1;
+  }
+  to {
+    opacity: 1;
+    stroke-dashoffset: 0;
+  }
+}
+@keyframes sweep-shade {
+  from {
+    transform: scaleX(0);
+  }
+}
+@keyframes reveal-after-draw {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.sparkline {
+  display: block;
+  width: 100%;
+  height: 28px;
+  overflow: visible;
+}
+.sparkline path {
+  fill: none;
+  stroke-width: 1.5;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+}

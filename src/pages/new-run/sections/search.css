@@ -1,0 +1,306 @@
+/* Search tiles */
+.search-settings {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 10px;
+}
+
+.search-setting-tile {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  transition: border-color 0.2s;
+}
+
+.search-setting-tile:focus-within,
+.search-setting-tile:hover {
+  border-color: var(--border-strong);
+}
+
+.search-setting-label {
+  color: var(--muted);
+  font-size: 12.5px;
+  font-weight: 500;
+}
+
+.search-setting-value,
+.search-setting-input {
+  font-size: 30px;
+  font-weight: 600;
+  letter-spacing: -0.04em;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+
+.search-setting-input {
+  width: 100%;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  border-bottom: 1px solid transparent;
+  background: transparent;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.search-setting-input:focus {
+  border-bottom-color: var(--accent);
+}
+
+.search-setting-input::placeholder {
+  color: var(--muted);
+}
+
+.search-setting-input.search-setting-input-invalid {
+  color: var(--critical);
+}
+
+.search-setting-value {
+  min-width: 1.2ch;
+  text-align: center;
+}
+
+.search-setting-quick-picks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.search-setting-quick-picks button {
+  padding: 1px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 11.5px;
+  transition:
+    color 0.2s,
+    border-color 0.2s,
+    background 0.2s;
+}
+
+.search-setting-quick-picks button:hover {
+  color: var(--ink);
+  border-color: var(--border-strong);
+}
+
+.search-setting-quick-picks button.search-setting-quick-pick-selected {
+  background: var(--surface-3);
+  border-color: var(--border-strong);
+  color: var(--ink);
+}
+
+.search-stagnation {
+  display: grid;
+  grid-template-areas:
+    'label value'
+    'plot picks';
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0 28px;
+  margin-top: 10px;
+}
+
+.search-stagnation-text {
+  display: flex;
+  grid-area: label;
+  align-self: start;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.search-stagnation-input {
+  grid-area: value;
+  justify-self: end;
+  width: 3.2ch;
+  text-align: right;
+}
+
+.search-stagnation > .stagnation-plot {
+  grid-area: plot;
+}
+
+.search-stagnation > .search-setting-quick-picks {
+  grid-area: picks;
+  align-self: start;
+  margin-top: 6px;
+}
+
+.search-stagnation-input.search-stagnation-input-off {
+  color: var(--muted);
+}
+
+.stagnation-plot {
+  display: flex;
+  align-items: flex-start;
+  min-width: 0;
+  height: 45px;
+}
+
+.stagnation-plot-rise {
+  flex: none;
+  width: 52px;
+  height: 40px;
+  overflow: visible;
+}
+
+.stagnation-plot-rise circle {
+  fill: var(--ink-2);
+}
+
+.stagnation-plot-rise path {
+  fill: none;
+  stroke: var(--ink-2);
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+
+.stagnation-plot-track {
+  position: relative;
+  flex: 1;
+  height: 45px;
+  cursor: ew-resize;
+  touch-action: none;
+  outline: none;
+}
+
+.stagnation-plot-track:focus-visible .stagnation-plot-cross {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 35%, transparent);
+}
+
+.stagnation-plot-flat,
+.stagnation-plot-after {
+  position: absolute;
+  top: 17px;
+  left: 0;
+  height: 2px;
+  border-radius: 1px;
+}
+
+.stagnation-plot-flat {
+  background: var(--ink-2);
+}
+
+.stagnation-plot-off .stagnation-plot-flat {
+  background: linear-gradient(to right, var(--ink-2) 70%, transparent);
+}
+
+.stagnation-plot-after {
+  right: 0;
+  height: 0;
+  border-top: 2px dotted var(--border-strong);
+  background: none;
+}
+
+.stagnation-plot-cross {
+  position: absolute;
+  top: 18px;
+  display: grid;
+  width: 22px;
+  height: 22px;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--surface);
+  color: var(--warning);
+  transform: translate(-50%, -50%);
+}
+
+.stagnation-plot-span {
+  position: absolute;
+  top: 25px;
+  left: 0;
+  height: 4px;
+  border: 1px solid var(--border-strong);
+  border-top: 0;
+}
+
+.stagnation-plot-meaning,
+.stagnation-plot-end {
+  position: absolute;
+  top: 31px;
+  color: var(--muted);
+  font-size: 11.5px;
+  line-height: 1.2;
+}
+
+.stagnation-plot-meaning {
+  left: 0;
+  white-space: nowrap;
+}
+
+.stagnation-plot-end {
+  right: 0;
+}
+
+.stagnation-plot-end::before {
+  position: absolute;
+  top: -14px;
+  right: 0;
+  width: 1px;
+  height: 8px;
+  background: var(--border-strong);
+  content: '';
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .stagnation-plot-flat,
+  .stagnation-plot-span {
+    transition: width 0.3s var(--ease);
+  }
+
+  .stagnation-plot-after,
+  .stagnation-plot-cross {
+    transition: left 0.3s var(--ease);
+  }
+
+  .stagnation-plot-track[data-dragging] * {
+    transition: none;
+  }
+}
+
+/* Islands stepper */
+.roll {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.roll-window {
+  display: block;
+  height: 33px;
+  overflow: hidden;
+}
+
+.roll-strip {
+  display: flex;
+  flex-direction: column;
+  transition: transform 0.45s var(--spring);
+}
+
+.roll-strip b {
+  height: 33px;
+  line-height: 33px;
+  text-align: center;
+}
+
+.roll-dots {
+  display: flex;
+  gap: 5px;
+  height: 10px;
+}
+
+.roll-dots span {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--c);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .roll-dots span {
+    animation: point-pop-in 0.45s var(--spring) backwards;
+  }
+}

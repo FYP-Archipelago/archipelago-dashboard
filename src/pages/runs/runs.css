@@ -1,0 +1,221 @@
+.runs-filters {
+  container: run-filters / inline-size;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+.runs-filters .status-select {
+  display: none;
+  flex: none;
+  font-size: 13px;
+  cursor: pointer;
+}
+@container run-filters (width < 890px) {
+  .runs-filters .segmented-control {
+    display: none;
+  }
+  .runs-filters .status-select {
+    display: block;
+  }
+}
+.runs-search {
+  position: relative;
+  display: flex;
+  align-items: center;
+  flex: 1 1 400px;
+  max-width: 480px;
+  min-width: 0;
+}
+.runs-search svg {
+  position: absolute;
+  left: 11px;
+  color: var(--muted);
+}
+.runs-search .input {
+  padding-left: 34px;
+  padding-right: 60px;
+  width: 100%;
+}
+.search-keyboard-shortcut {
+  position: absolute;
+  right: 8px;
+  padding: 1px 6px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  background: var(--surface-2);
+  font-family: var(--font);
+  font-size: 11px;
+  color: var(--muted);
+  pointer-events: none;
+}
+.runs-table .status-column {
+  width: 130px;
+}
+.runs-table .preset-part {
+  overflow-wrap: anywhere;
+}
+.runs-table .run-duration {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.runs-table tbody tr.run-row-link {
+  cursor: pointer;
+}
+.runs-table tbody tr.run-row-link td {
+  transition: background 0.15s;
+}
+.runs-table tbody tr.run-row-link:hover td {
+  background: var(--hover);
+}
+.runs-table tbody tr.run-row-link td:last-child svg {
+  transition: transform 0.25s var(--ease);
+}
+.runs-table tbody tr.run-row-link:hover td:last-child svg {
+  transform: translateX(3px);
+  color: var(--ink);
+}
+.table-note {
+  padding: 40px 14px !important;
+  text-align: center;
+  color: var(--muted);
+}
+
+.status-cell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--ink-2);
+}
+.run-cell {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  max-width: 260px;
+}
+.run-cell > * {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.run-list-stages {
+  display: flex;
+  gap: 4px;
+}
+.run-list-stage {
+  padding: 2px 6px;
+  border-radius: 6px;
+  background: var(--surface-3);
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--ink-2);
+  white-space: nowrap;
+}
+.run-list-stage.run-list-stage-off {
+  background: none;
+  color: var(--muted);
+  opacity: 0.5;
+}
+.run-list-mode {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+  color: var(--ink);
+}
+.run-cell a {
+  font-weight: 500;
+}
+
+/* Shown in place of Load more once every run is loaded. */
+.table-end {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 16px 0 0;
+  width: min(360px, 100%);
+  color: var(--muted);
+  font-size: 12.5px;
+  white-space: nowrap;
+}
+.table-end::before,
+.table-end::after {
+  content: '';
+  flex: 1;
+  border-top: 1px solid var(--border);
+}
+
+@media (max-width: 1440px) {
+  .runs-page {
+    padding: 28px 24px 64px;
+  }
+  .runs-table th,
+  .runs-table td {
+    padding-inline: 10px;
+  }
+  .runs-table .status-column {
+    width: 104px;
+  }
+  .run-cell {
+    max-width: clamp(120px, 14vw, 200px);
+  }
+}
+
+@media (max-width: 1300px) {
+  .app:has(.runs-page) {
+    grid-template-columns: clamp(200px, 20%, 248px) minmax(0, 1fr);
+  }
+  .runs-page {
+    padding-inline: 16px;
+  }
+  .runs-table th,
+  .runs-table td {
+    padding-inline: 8px;
+  }
+  .runs-table td {
+    padding-block: 9px;
+  }
+  .runs-table th {
+    white-space: normal;
+  }
+  .runs-table .status-column {
+    width: auto;
+  }
+  .runs-table .problem-column {
+    min-width: 88px;
+  }
+  .run-list-stages {
+    flex-wrap: wrap;
+  }
+}
+
+@media (max-width: 1160px) {
+  .runs-table {
+    font-size: 13px;
+  }
+  .runs-table th,
+  .runs-table td {
+    padding-inline: 6px;
+  }
+  .runs-table th {
+    font-size: 12px;
+  }
+  .run-cell {
+    max-width: 130px;
+  }
+  .run-list-stage {
+    padding-inline: 4px;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .runs-table tbody tr {
+    animation: fade-in 0.5s ease backwards;
+  }
+}
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}

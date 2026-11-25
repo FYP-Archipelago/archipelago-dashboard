@@ -1,0 +1,476 @@
+/* The stage and the inspector side by side, with the replay under the stage. */
+.network-workspace {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 320px;
+  grid-template-rows: auto auto;
+  padding: 0;
+  overflow: hidden;
+}
+.network-workspace.network-workspace-full {
+  grid-template-rows: minmax(0, 1fr) auto;
+  border: 0;
+  border-radius: 0;
+}
+
+.network-stage {
+  position: relative;
+  container-type: inline-size;
+  /* Room for the run header, the tabs and the replay bar, so the whole workspace fits on screen. */
+  --stage-height: clamp(480px, calc(100vh - 284px), 1000px);
+  height: var(--stage-height);
+  overflow: hidden;
+  background: #000;
+  outline: none;
+}
+.network-workspace-full .network-stage {
+  --stage-height: calc(100vh - 48px);
+  height: auto;
+}
+.network-stage:focus-visible {
+  box-shadow: inset 0 0 0 2px var(--border-strong);
+}
+.network-canvas,
+.network-overlay {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+.network-canvas {
+  cursor: grab;
+  touch-action: none;
+}
+.network-canvas.network-dragging {
+  cursor: grabbing;
+}
+.network-overlay {
+  pointer-events: none;
+}
+
+/* Frosted controls floating over the stage. */
+.network-glass {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--surface-2) 72%, transparent);
+  backdrop-filter: blur(12px) saturate(1.3);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+}
+.network-toolbar {
+  position: absolute;
+  top: 14px;
+  left: 14px;
+  right: 14px;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  pointer-events: none;
+}
+.network-toolbar > * {
+  pointer-events: auto;
+}
+.network-toolbar .segmented-control.network-glass {
+  padding: 3px;
+}
+.network-chip-button,
+.network-menu-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 34px;
+  padding: 0 12px;
+  color: var(--ink-2);
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+  transition:
+    color 0.15s,
+    background 0.2s,
+    border-color 0.2s,
+    transform 0.12s var(--ease);
+}
+.network-chip-button:hover,
+.network-menu-button:hover,
+.network-menu-button.network-menu-button-open {
+  color: var(--ink);
+}
+.network-chip-button:active,
+.network-menu-button:active {
+  transform: scale(0.97);
+}
+.network-chip-button.network-chip-button-on {
+  border-color: color-mix(in srgb, var(--ink) 40%, transparent);
+  background: color-mix(in srgb, var(--surface-3) 88%, transparent);
+  color: var(--ink);
+}
+/* Node size as a slider right in the top toolbar; double-click resets it. */
+.network-size {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  height: 34px;
+  padding: 0 12px;
+  color: var(--ink-2);
+  font-size: 13px;
+}
+/* Beats the stage's full-width range inputs. */
+.network-workspace .network-size input[type='range'] {
+  width: 96px;
+}
+.network-size b {
+  min-width: 30px;
+  color: var(--ink);
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+/* On a narrow stage the toolbar stays on one line: first the size loses its readout, then grouping its label. */
+@container (max-width: 690px) {
+  .network-size b {
+    display: none;
+  }
+  .network-workspace .network-size input[type='range'] {
+    width: 72px;
+  }
+}
+@container (max-width: 640px) {
+  .network-group-label {
+    display: none;
+  }
+  .network-chip-button:has(.network-group-label) {
+    padding: 0 9px;
+  }
+}
+.network-menu-button svg:last-child:not(:first-child) {
+  transition: transform 0.25s var(--ease);
+}
+.network-menu-button.network-menu-button-open svg:last-child:not(:first-child) {
+  transform: rotate(180deg);
+}
+.network-tools {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  margin-left: auto;
+  padding: 3px;
+}
+.network-tool,
+.network-help .network-menu-button,
+.network-icon-button {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 28px;
+  padding: 0;
+  border-radius: 7px;
+  color: var(--ink-2);
+  transition:
+    color 0.15s,
+    background 0.15s;
+}
+.network-tool:hover,
+.network-help .network-menu-button:hover,
+.network-help .network-menu-button.network-menu-button-open,
+.network-icon-button:hover {
+  background: var(--surface-3);
+  color: var(--ink);
+}
+/* Menus: a panel under its button, or above it in the legend. */
+.network-menu {
+  position: relative;
+}
+.network-panel {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  z-index: 10;
+  width: 310px;
+  /* Menus open below the toolbar and stay inside the stage, which clips them. */
+  max-height: min(560px, calc(var(--stage-height) - 76px));
+  overflow-y: auto;
+  padding: 6px;
+  border: 1px solid var(--border-strong);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--surface-2) 94%, transparent);
+  backdrop-filter: blur(14px) saturate(1.3);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.6);
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 400;
+  text-align: left;
+  transform-origin: top left;
+  animation: network-pop 0.2s var(--ease);
+}
+.network-panel.network-panel-end {
+  left: auto;
+  right: 0;
+  transform-origin: top right;
+}
+/* An open menu sits above the other floating controls. */
+.network-toolbar:has(.network-panel),
+.network-layers:has(.network-panel) {
+  z-index: 6;
+}
+/* As wide as its options, which are short. */
+.network-height-menu .network-panel {
+  width: max-content;
+}
+.network-layers .network-panel {
+  top: auto;
+  bottom: calc(100% + 8px);
+  width: 300px;
+  transform-origin: bottom left;
+}
+@keyframes network-pop {
+  from {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.98);
+  }
+}
+.network-panel hr {
+  margin: 6px 2px;
+  border: 0;
+  border-top: 1px solid var(--border);
+}
+.network-panel-title {
+  padding: 8px 8px 4px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.network-panel-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-right: 2px;
+}
+.network-panel-title-row .network-text-button {
+  font-size: 11px;
+  letter-spacing: 0.04em;
+}
+.network-panel-hint {
+  margin: 6px 8px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+.network-text-button {
+  padding: 5px 8px;
+  border-radius: 6px;
+  color: var(--ink-2);
+  font-size: 12.5px;
+  transition:
+    color 0.15s,
+    background 0.15s;
+}
+.network-text-button:hover {
+  background: var(--hover);
+  color: var(--ink);
+}
+.network-option,
+.network-switch-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 6px 8px;
+  border-radius: 8px;
+  text-align: left;
+  transition: background 0.15s;
+}
+.network-option:hover,
+.network-switch-row:hover:not(:disabled) {
+  background: var(--hover);
+}
+.network-switch-row:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.network-option.network-option-on {
+  background: var(--surface-3);
+}
+.network-option-check {
+  display: grid;
+  place-items: center;
+  width: 16px;
+  flex: none;
+}
+.network-row-text {
+  flex: 1;
+  min-width: 0;
+}
+.network-row-text small {
+  display: block;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.4;
+}
+/* An on/off switch with its label, in a menu. */
+.network-switch {
+  display: flex;
+  align-items: center;
+  flex: none;
+  width: 30px;
+  height: 18px;
+  padding: 2px;
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  background: var(--surface-3);
+  transition:
+    background 0.15s,
+    border-color 0.15s;
+}
+.network-switch::after {
+  content: '';
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--ink-2);
+  transition:
+    transform 0.22s var(--ease),
+    background 0.15s;
+}
+.network-switch-row[aria-checked='true'] .network-switch {
+  border-color: var(--accent);
+  background: var(--accent);
+}
+.network-switch-row small {
+  white-space: nowrap;
+}
+.network-switch-row[aria-checked='true'] .network-switch::after {
+  transform: translateX(12px);
+  background: var(--accent-ink);
+}
+
+.network-slider {
+  display: block;
+  padding: 7px 8px 8px;
+}
+.network-slider-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 4px;
+}
+.network-slider-head b {
+  color: var(--ink-2);
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+.network-workspace input[type='range'] {
+  appearance: none;
+  display: block;
+  width: 100%;
+  height: 18px;
+  margin: 0;
+  background: transparent;
+  cursor: pointer;
+}
+.network-workspace input[type='range']::-webkit-slider-runnable-track {
+  height: 3px;
+  border-radius: 2px;
+  background: linear-gradient(to right, var(--accent) var(--fill, 0%), var(--surface-3) var(--fill, 0%));
+}
+.network-workspace input[type='range']::-webkit-slider-thumb {
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  margin-top: -5.5px;
+  border: 2px solid var(--surface-2);
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 0 1px var(--border-strong);
+  transition: transform 0.15s var(--ease);
+}
+.network-workspace input[type='range']:active::-webkit-slider-thumb {
+  transform: scale(1.2);
+}
+.network-workspace input[type='range']::-moz-range-track {
+  height: 3px;
+  border-radius: 2px;
+  background: var(--surface-3);
+}
+.network-workspace input[type='range']::-moz-range-progress {
+  height: 3px;
+  border-radius: 2px;
+  background: var(--accent);
+}
+.network-workspace input[type='range']::-moz-range-thumb {
+  width: 10px;
+  height: 10px;
+  border: 2px solid var(--surface-2);
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+.network-menu-caption {
+  color: var(--muted);
+}
+
+/* Which end of the height is which. */
+.network-scale {
+  position: absolute;
+  top: 50%;
+  right: 18px;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 11px;
+  transform: translateY(-50%);
+  transition: opacity 0.3s;
+  pointer-events: none;
+}
+.network-scale i {
+  width: 3px;
+  height: 120px;
+  border-radius: 2px;
+  background: linear-gradient(to bottom, color-mix(in srgb, var(--ink) 12%, transparent), color-mix(in srgb, var(--ink) 75%, transparent));
+}
+.network-scale.network-scale-off {
+  opacity: 0;
+}
+
+.network-shortcuts {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  padding: 2px 8px 4px;
+}
+.network-shortcuts > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 3px 0;
+}
+.network-shortcuts dt {
+  color: var(--ink);
+  font-family: var(--mono);
+  font-size: 11.5px;
+}
+.network-shortcuts dd {
+  margin: 0;
+  color: var(--ink-2);
+}
+
+.network-hover {
+  z-index: 4;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .network-panel {
+    animation: none;
+  }
+}
+
+@media (max-width: 1100px) {
+  .network-workspace {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

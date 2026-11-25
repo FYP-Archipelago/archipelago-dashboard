@@ -1,0 +1,136 @@
+/* The replay of a finished run, or the live status while it streams. */
+.network-timeline {
+  grid-row: 2;
+  grid-column: 1;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: 48px;
+  padding: 0 14px 0 10px;
+  border-top: 1px solid var(--border);
+  background: var(--surface);
+  font-size: 13px;
+}
+/* The live status and the replay controls swap in place when a streamed run finishes; the new ones rise into view. */
+.network-timeline > * {
+  animation: network-timeline-in 0.4s var(--ease) both;
+}
+@keyframes network-timeline-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+.network-play {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--accent-ink);
+  transition: transform 0.15s var(--ease);
+}
+.network-play:hover {
+  transform: scale(1.03);
+}
+.network-play:active {
+  transform: scale(0.95);
+}
+.network-timeline-caption {
+  flex: none;
+  width: 66px;
+  color: var(--ink-2);
+  font-weight: 500;
+}
+.network-timeline input[type='range'] {
+  flex: 1;
+  min-width: 0;
+}
+.network-timeline-status {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.network-counts {
+  display: inline-flex;
+  flex: none;
+  gap: 14px;
+  padding: 4px 12px;
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  color: var(--muted);
+  font-size: 12.5px;
+  font-variant-numeric: tabular-nums;
+}
+.network-counts b {
+  color: var(--ink);
+  font-weight: 600;
+}
+.network-speed {
+  flex: none;
+  min-width: 38px;
+  height: 26px;
+  padding: 0 8px;
+  border: 1px solid var(--border-strong);
+  border-radius: 7px;
+  color: var(--ink-2);
+  font-size: 12px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  transition:
+    background 0.15s,
+    color 0.15s;
+}
+.network-speed:hover {
+  background: var(--hover);
+  color: var(--ink);
+}
+.network-live {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+}
+.network-live-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--good);
+  box-shadow: 0 0 0 0 color-mix(in srgb, var(--good) 60%, transparent);
+  animation: network-pulse 1.6s infinite;
+}
+.network-live-dot.network-live-dot-waiting {
+  background: var(--warning);
+  animation: none;
+}
+.network-live-dot.network-live-dot-lost {
+  background: var(--critical);
+  animation: none;
+}
+.network-retry {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.network-retry .network-text-button {
+  color: var(--ink);
+}
+@keyframes network-pulse {
+  70% {
+    box-shadow: 0 0 0 7px transparent;
+  }
+  100% {
+    box-shadow: 0 0 0 0 transparent;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .network-live-dot,
+  .network-timeline > * {
+    animation: none;
+  }
+}

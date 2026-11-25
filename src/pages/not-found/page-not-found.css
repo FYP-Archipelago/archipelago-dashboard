@@ -1,0 +1,59 @@
+.island-code {
+  width: 450px;
+  height: 200px;
+  overflow: visible;
+}
+.island-code-edge {
+  stroke-width: 1.5;
+  stroke-opacity: 0.4;
+}
+.island-code-empty {
+  fill: none;
+  stroke: var(--muted);
+  stroke-width: 1.3;
+  stroke-dasharray: 2 2.2;
+  animation: island-code-fade 2.4s ease-in-out infinite;
+  animation-delay: var(--d);
+}
+.island-code-migration {
+  fill: none;
+  stroke: var(--border-strong);
+  stroke-dasharray: 3 5;
+}
+.island-code-migrant {
+  fill: var(--ink);
+  animation: island-code-vanish 2.6s ease-in infinite;
+  animation-delay: var(--d);
+}
+
+@keyframes island-code-fade {
+  50% {
+    opacity: 0.25;
+  }
+}
+@keyframes island-code-vanish {
+  0% {
+    offset-distance: 0%;
+    opacity: 0;
+  }
+  15% {
+    opacity: 1;
+  }
+  75% {
+    offset-distance: 100%;
+    opacity: 1;
+  }
+  90%,
+  100% {
+    offset-distance: 100%;
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .island-code-empty {
+    animation: none;
+  }
+  .island-code-migrant {
+    display: none;
+  }
+}

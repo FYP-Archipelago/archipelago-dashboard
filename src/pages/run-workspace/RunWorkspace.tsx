@@ -1,0 +1,80 @@
+import { useRef, useState } from 'react';
+
+import { isNotFound } from '@/api/client.ts';
+import { useRun, useRunResult } from '@/api/queries.ts';
+import Icon from '@/components/Icon.tsx';
+import Unavailable from '@/components/Unavailable.tsx';
+import type { RunTab } from '@/route.ts';
+import type { Run } from '@/types.ts';
+
+import AttributionTab from './attribution/AttributionTab.tsx';
+import ConvergenceTab from './convergence/ConvergenceTab.tsx';
+import DetailsTab from './details/DetailsTab.tsx';
+import DivergenceTab from './divergence/DivergenceTab.tsx';
+import Header from './Header.tsx';
+import MigrationTab from './migration/MigrationTab.tsx';
+import type { Camera } from './network/camera.ts';
+import NetworkTab from './network/NetworkTab.tsx';
+import OverviewTab from './overview/OverviewTab.tsx';
+import { DEFAULT_SETTINGS } from './network/settings.ts';
+import RunNotFound from './RunNotFound.tsx';
+
+import './workspace.css';
+import './shared.css';
+
+const FAILED_IN: Record<NonNullable<Run['error']>['phase'], string> = {
+  runner: 'The run failed in the runner',
+  clustering: 'The run failed while clustering',
+  internal: 'The run failed inside the backend',
+};
+
+export default function RunWorkspace({ id, tab }: { id: string; tab: RunTab }) {
+  const run = useRun(id);
+  const result = useRunResult(id, run.data?.status === 'done');
+  const [showStagnationMarkers, setShowStagnationMarkers] = useState(false);
+  const [networkSettings, setNetworkSettings] = useState(DEFAULT_SETTINGS);
+  const networkCameraRef = useRef<Camera | null>(null);
+
+  if (!run.data)
+    return (
+      <div className="page">
+        {run.isError && isNotFound(run.error) ? (
+          <RunNotFound id={id} />
+        ) : (
+          <div className="page-state">{run.isError ? <Unavailable /> : <span className="page-spinner" aria-label="Loading the run" />}</div>
+        )}
+      </div>
+    );
+
+  const data = run.data;
+  return (
+    <>
+      <Header run={data} tab={tab} />
+      <div className="page run-page">
+        {data.status === 'failed' && data.error && (
+          <div className="run-banner run-banner-critical">
+            <Icon name="alert" size={18} />
+            <strong>{FAILED_IN[data.error.phase]}</strong>
+            <span>{data.error.message}</span>
+          </div>
+        )}
+        {tab === 'overview' && <OverviewTab run={data} result={result} />}
+        {tab === 'network' && (
+          <NetworkTab run={data} result={result} settings={networkSettings} onSettingsChange={setNetworkSettings} cameraRef={networkCameraRef} />
+        )}
+        {tab === 'convergence' && (
+          <ConvergenceTab
+            run={data}
+            result={result}
+            showStagnationMarkers={showStagnationMarkers}
+            onToggleStagnationMarkers={() => setShowStagnationMarkers((show) => !show)}
+          />
+        )}
+        {tab === 'migration' && <MigrationTab run={data} result={result} />}
+        {tab === 'divergence' && <DivergenceTab run={data} result={result} />}
+        {tab === 'attribution' && <AttributionTab run={data} result={result} />}
+        {tab === 'details' && <DetailsTab run={data} result={result} />}
+      </div>
+    </>
+  );
+}

@@ -1,0 +1,121 @@
+.migration-grid {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  align-items: stretch;
+}
+.flow-diagram {
+  display: block;
+  width: 100%;
+  max-width: 400px;
+  margin: 0 auto;
+}
+.flow-route {
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+.flow-route.flow-route-dimmed {
+  opacity: 0.15;
+}
+.flow-route-line {
+  stroke-linecap: round;
+}
+/* Each line draws from its source, and its head grows out of the line's end as the line arrives. */
+@media (prefers-reduced-motion: no-preference) {
+  .flow-route-line {
+    stroke-dasharray: 1;
+    stroke-dashoffset: 1;
+    animation: draw-route 0.9s var(--ease) 0.15s forwards;
+  }
+  .flow-route-head {
+    animation: grow-head 0.35s var(--ease) 0.4s backwards;
+  }
+}
+@keyframes draw-route {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+/* The head's own origin is its base, where it meets the line. */
+@keyframes grow-head {
+  from {
+    opacity: 0;
+    transform: scale(0.2);
+  }
+}
+.flow-island text {
+  fill: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  pointer-events: none;
+}
+.route-link {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-top: 16px;
+  transition:
+    border-color 0.2s,
+    background 0.2s;
+}
+.route-link:hover {
+  border-color: var(--border-strong);
+  background: var(--surface-2);
+}
+.route-link > svg {
+  flex: none;
+  color: var(--ink-2);
+}
+.route-link > span:nth-child(2) {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.route-link-go {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+  padding: 0 14px;
+  height: 32px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  font-weight: 500;
+  white-space: nowrap;
+}
+.route-link-go svg {
+  transition: transform 0.25s var(--ease);
+}
+.route-link:hover .route-link-go svg {
+  transform: translateX(3px);
+}
+
+.route-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+.cluster-link {
+  text-decoration: underline;
+  text-decoration-color: var(--axis);
+  text-underline-offset: 3px;
+  transition: text-decoration-color 0.15s;
+}
+.cluster-link:hover {
+  text-decoration-color: var(--ink);
+}
+.table .arrival-better {
+  color: var(--good);
+}
+.table .arrival-worse,
+.table .arrival-same {
+  color: var(--muted);
+}
+
+@media (max-width: 1200px) {
+  .migration-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

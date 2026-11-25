@@ -1,0 +1,80 @@
+.arrivals {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: 24px;
+}
+.arrivals-waffle {
+  display: grid;
+  grid-template-columns: repeat(10, 14px);
+  gap: 3px;
+}
+.arrivals-waffle i {
+  aspect-ratio: 1;
+  border-radius: 3px;
+}
+/* Neutral shades: neither way of landing is good or bad in itself. */
+.arrivals-lift {
+  background: var(--ink);
+}
+.arrivals-same {
+  background: var(--surface-3);
+  box-shadow: inset 0 0 0 1px var(--border-strong);
+}
+.arrivals-behind {
+  background: #3d5a80;
+}
+.arrivals-islands {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  font-size: 12.5px;
+}
+.arrivals-islands-head {
+  color: var(--muted);
+  font-size: 11.5px;
+}
+.arrivals-row {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) 36px;
+  align-items: center;
+  gap: 10px;
+}
+.arrivals-row > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--ink-2);
+}
+.arrivals-row small {
+  color: var(--ink-2);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.arrivals-bar {
+  display: flex;
+  gap: 1px;
+  height: 10px;
+  overflow: hidden;
+  border-radius: 3px;
+}
+.arrivals-bar i {
+  flex-basis: 0;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .arrivals-waffle i {
+    animation: arrivals-fade 0.3s ease backwards;
+  }
+}
+@keyframes arrivals-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+.arrivals-note {
+  margin-top: auto;
+  padding-top: 12px;
+  text-align: right;
+}

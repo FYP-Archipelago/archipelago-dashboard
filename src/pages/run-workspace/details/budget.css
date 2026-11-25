@@ -1,0 +1,230 @@
+.budget-card {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 24px 56px;
+  margin-bottom: 16px;
+}
+@media (max-width: 900px) {
+  .budget-card {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.budget-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+}
+.budget-row strong {
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+.budget-row strong small {
+  margin-left: 6px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 400;
+  letter-spacing: 0;
+}
+.budget-bar {
+  position: relative;
+  height: 8px;
+  margin: 12px 0 4px;
+  border-radius: 999px;
+  background: var(--surface-3);
+}
+.budget-fill {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  border-radius: 999px;
+  overflow: hidden;
+}
+.budget-fill i {
+  flex: none;
+  height: 100%;
+  box-shadow: inset -1px 0 0 var(--surface);
+  transition: opacity 0.15s;
+}
+.budget-fill i.budget-reached {
+  background: var(--ink-2);
+  box-shadow: none;
+}
+.budget-fill i.budget-range {
+  background: var(--border-strong);
+  box-shadow: none;
+}
+
+/* A stack of dots for islands that stopped close together; it fans out while hovered. */
+.budget-cluster {
+  position: absolute;
+  top: 50%;
+  height: 22px;
+  margin-top: -11px;
+  transform: translateX(-50%);
+  transition:
+    left 0.25s var(--ease),
+    width 0.25s var(--ease);
+}
+.budget-dot {
+  position: absolute;
+  top: 50%;
+  width: 14px;
+  height: 14px;
+  margin: -7px 0 0 -7px;
+  border-radius: 50%;
+  transition:
+    left 0.25s var(--ease),
+    transform 0.2s var(--ease);
+}
+.budget-dot.budget-marker-filled {
+  background: var(--island);
+  box-shadow: 0 0 0 2px var(--surface);
+}
+.budget-dot.budget-marker-hollow {
+  background: var(--surface);
+  box-shadow:
+    inset 0 0 0 2.5px var(--island),
+    0 0 0 2px var(--surface);
+}
+.budget-dot.budget-marker-square {
+  border-radius: 3px;
+  background: var(--island);
+  box-shadow: 0 0 0 2px var(--surface);
+}
+.budget-dot.budget-marker-target {
+  background: radial-gradient(circle, var(--island) 0 2.5px, var(--surface) 3px 4.5px, var(--island) 5px);
+  box-shadow: 0 0 0 2px var(--surface);
+}
+.budget-dot.budget-marker-halted {
+  background:
+    linear-gradient(45deg, transparent 42%, var(--surface) 42% 58%, transparent 58%),
+    linear-gradient(-45deg, transparent 42%, var(--surface) 42% 58%, transparent 58%), var(--island);
+  box-shadow: 0 0 0 2px var(--surface);
+}
+.budget-dot.budget-marker-missing {
+  background: repeating-linear-gradient(45deg, var(--island) 0 2px, transparent 2px 4px);
+  box-shadow:
+    inset 0 0 0 1.5px var(--island),
+    0 0 0 2px var(--surface);
+}
+.budget-card .budget-dim {
+  opacity: 0.25;
+}
+.budget-cluster .budget-dim {
+  opacity: 1;
+}
+.budget-dot.budget-dot-active {
+  transform: scale(1.25);
+}
+
+/* A small card over the hovered part or dot. Near either end of a bar it lines up with that end instead. */
+.budget-tip {
+  position: absolute;
+  bottom: calc(100% + 10px);
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 10px;
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  background: var(--surface-2);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+  font-size: 12.5px;
+  white-space: nowrap;
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+.budget-tip.budget-tip-left {
+  transform: translateX(-12px);
+}
+.budget-tip.budget-tip-right {
+  transform: translateX(calc(-100% + 12px));
+}
+.budget-tip b {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+.budget-tip span {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.budget-legend {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+  color: var(--ink-2);
+  font-size: 12.5px;
+}
+.budget-legend-island {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  cursor: default;
+  transition: opacity 0.15s;
+}
+/* The stop reasons follow the islands on the right. The auto margin keeps the islands left, and reasons that do not
+   fit wrap one by one onto the next line, which flex-end keeps on the right. */
+.budget-legend.budget-legend-with-reasons {
+  justify-content: flex-end;
+}
+.budget-legend-reason.budget-legend-first {
+  margin-left: auto;
+}
+.budget-legend-reason {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+.budget-key-dot {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+}
+.budget-key-dot.budget-marker-filled {
+  background: var(--ink-2);
+}
+.budget-key-dot.budget-marker-hollow {
+  box-shadow: inset 0 0 0 2px var(--ink-2);
+}
+.budget-key-dot.budget-marker-square {
+  border-radius: 2px;
+  background: var(--ink-2);
+}
+.budget-key-dot.budget-marker-target {
+  background: radial-gradient(circle, var(--ink-2) 0 1.5px, transparent 2px 3px, var(--ink-2) 3.5px);
+}
+.budget-key-dot.budget-marker-halted {
+  background:
+    linear-gradient(45deg, transparent 44%, var(--surface) 44% 56%, transparent 56%),
+    linear-gradient(-45deg, transparent 44%, var(--surface) 44% 56%, transparent 56%), var(--ink-2);
+}
+.budget-key-dot.budget-marker-missing {
+  background: repeating-linear-gradient(45deg, var(--ink-2) 0 1.5px, transparent 1.5px 3px);
+  box-shadow: inset 0 0 0 1.2px var(--ink-2);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .budget-fill i {
+    transform-origin: left;
+    animation: grow-x 0.9s var(--ease) 0.15s backwards;
+  }
+  .budget-cluster {
+    animation: budget-pop-in 0.45s var(--spring) 0.6s backwards;
+  }
+}
+@keyframes budget-pop-in {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) scale(0.4);
+  }
+}

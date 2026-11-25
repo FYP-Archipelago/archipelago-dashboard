@@ -1,0 +1,85 @@
+/* Pieces the overview's cards share. */
+.overview-card {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+.overview-card-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--muted);
+  font-size: 13px;
+  transition: color 0.15s;
+}
+.overview-card-link:hover {
+  color: var(--ink);
+}
+.overview-card-link svg {
+  transition: transform 0.2s var(--ease);
+}
+.overview-card-link:hover svg {
+  transform: translateX(2px);
+}
+.overview-headline {
+  margin: 0 0 16px;
+  color: var(--ink-2);
+  line-height: 1.6;
+}
+.overview-headline b {
+  color: var(--ink);
+  font-weight: 600;
+}
+.overview-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  margin-top: 12px;
+  color: var(--ink-2);
+  font-size: 12.5px;
+}
+.overview-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+.overview-legend b {
+  color: var(--ink);
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+.overview-key {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+}
+
+/* The page: full-width rows, with the network beside the contributions and migration cards. */
+.overview {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.overview-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+  gap: 16px;
+}
+.overview-network {
+  min-width: 0;
+  --preview-height: auto;
+}
+.overview-network .preview-stage {
+  min-height: 460px;
+}
+.overview-network.overview-network-tall {
+  grid-row: span 2;
+}
+@media (max-width: 1100px) {
+  .overview-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .overview-network.overview-network-tall {
+    grid-row: auto;
+  }
+}

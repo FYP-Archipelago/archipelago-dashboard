@@ -1,0 +1,112 @@
+.run-timeline {
+  position: relative;
+  min-width: 0;
+}
+.run-timeline svg {
+  display: block;
+  overflow: visible;
+}
+.run-timeline text {
+  fill: var(--muted);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+.run-timeline-grid line {
+  stroke: rgba(255, 255, 255, 0.05);
+}
+.run-timeline-grid .run-timeline-ceiling {
+  stroke: rgba(255, 255, 255, 0.1);
+  stroke-dasharray: 2 4;
+}
+.run-timeline-notches line {
+  stroke: rgba(237, 237, 237, 0.28);
+  stroke-dasharray: 3 3;
+}
+.run-timeline .run-timeline-notches text {
+  fill: var(--ink-2);
+  font-weight: 500;
+}
+.run-timeline-curve {
+  fill: none;
+  stroke: var(--ink);
+  stroke-width: 1.75;
+  stroke-linejoin: round;
+}
+.run-timeline-notch-dot {
+  fill: var(--surface);
+  stroke: var(--ink);
+  stroke-width: 1.5;
+}
+.run-timeline .run-timeline-label {
+  fill: var(--ink-2);
+  font-size: 12px;
+}
+.run-timeline-lane {
+  transition: opacity 0.2s;
+}
+.run-timeline-best {
+  fill: var(--ink);
+  stroke: var(--surface);
+  stroke-width: 2;
+  transition: opacity 0.2s;
+}
+.run-timeline-hover line {
+  stroke: rgba(237, 237, 237, 0.4);
+}
+.run-timeline-hover circle {
+  fill: var(--ink);
+}
+.run-timeline-tip .hover-tip-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--ink);
+}
+
+.run-timeline-keys {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 20px;
+  margin-top: 6px;
+}
+.run-timeline-key {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--ink-2);
+  font-size: 12px;
+}
+.run-timeline-key svg {
+  flex: none;
+  stroke: var(--ink-2);
+  stroke-width: 1.5;
+  fill: none;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .run-timeline-curve {
+    stroke-dasharray: 1;
+    animation: run-timeline-draw 1.4s var(--ease) both;
+  }
+  .run-timeline-area,
+  .run-timeline-notches,
+  .run-timeline-notch-dot {
+    animation: run-timeline-fade 0.6s ease 0.9s backwards;
+  }
+  .run-timeline-lane {
+    animation: run-timeline-fade 0.5s ease backwards;
+  }
+}
+@keyframes run-timeline-draw {
+  from {
+    stroke-dashoffset: 1;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+@keyframes run-timeline-fade {
+  from {
+    opacity: 0;
+  }
+}
