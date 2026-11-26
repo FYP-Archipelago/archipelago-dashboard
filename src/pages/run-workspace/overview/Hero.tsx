@@ -92,7 +92,7 @@ function foundText(data: OverviewData): ReactNode {
   ));
 }
 
-// When half the improvement was in, and how long the last 1% took.
+// When half the improvement was in, and how much of the search came after 99% of it.
 function progressText(data: OverviewData): ReactNode {
   const { improvement, axis } = data;
   if (!improvement) return null;
@@ -106,7 +106,8 @@ function progressText(data: OverviewData): ReactNode {
       Half the gain in the first <b>{percent(1 - half.after)}</b> of {unit}
       {last !== null && (
         <>
-          {' · '}last 1% took <b>{percent(last.after)}</b>
+          {' · '}
+          <b>{percent(last.after)}</b> came after 99%
         </>
       )}
     </>

@@ -217,7 +217,7 @@ function Convergence({ result, showStagnationMarkers, onToggleStagnationMarkers 
           shades={converged.map((point) => ({
             x: point.x,
             label: point.label,
-            note: `Last ${point.remainingShare * 100}% of improvement took ${percentAfter(point.after)} of ${unit}`,
+            note: `${percentAfter(point.after)} of ${unit} came after ${point.words}`,
           }))}
           rings={metric === 'bestSoFar' ? converged.filter((point) => !hidden.has(point.island)).map(({ x, value }) => ({ x, y: value })) : undefined}
           replayKey={`${metric}-${axis}-${log}`}

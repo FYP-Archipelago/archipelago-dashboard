@@ -12,8 +12,8 @@ export function describeDiversity(rows: GenerationSummary[]): string | null {
   return metric ? humanise(metric) : null;
 }
 
-// A level counts as convergence only if what improvement was left came at most this fast against the run's average
-// pace: at 0.1, the last 1% must have taken at least 10% of the run.
+// A level counts as convergence only if the improvement left came at most this fast against the run's average pace.
+// At 0.1, the 99% point counts only if at least 10% of the run came after it.
 const PLATEAU_PACE = 0.1;
 
 // The ending is judged by the strictest level reached, the one nearest the end: if it counts, the run levelled off

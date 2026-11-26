@@ -174,16 +174,15 @@ export function runNotes(data: OverviewData, limit = 2): string[] {
     const idle = shares.filter((s) => s.share < 0.01).map((s) => `Island ${s.island}`);
     if (idle.length && idle.length < shares.length) notes.push({ weight: 45, text: `${listed(idle)} added almost nothing to the improvement.` });
     if (shares[0] && shares[0].share >= 0.5)
-      notes.push({ weight: 40, text: `Island ${shares[0].island} carried the run, earning ${percent(shares[0].share)} of the credit.` });
+      notes.push({ weight: 40, text: `Island ${shares[0].island} earned ${percent(shares[0].share)} of the credit for the improvement.` });
   }
 
-  // A long tail: the last 1% of the improvement took a large share of the search.
+  // A long tail: a large share of the search came after the run had made 99% of its improvement.
   const last = levelPoint(data, 0.99);
   if (last !== null && curve.length > 1) {
     const after = last.after;
     const unit = axis === 'evaluations' ? 'evaluations' : 'generations';
-    if (after >= 0.3)
-      notes.push({ weight: 35, text: `The last 1% of the gain took ${percent(after)} of the ${unit}; stopping at 99% would have saved them.` });
+    if (after >= 0.3) notes.push({ weight: 35, text: `${percent(after)} of the ${unit} came after the run had made 99% of its gain.` });
   }
 
   return notes
