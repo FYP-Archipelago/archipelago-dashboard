@@ -1,13 +1,12 @@
 import { Fragment, useEffect, useMemo, useState, type ReactNode } from 'react';
 
 import { compactNumber, duration, fitness, numberFormat } from '@/format.ts';
-import { shareAfter } from '@/pages/run-workspace/convergence/convergence.ts';
 import { budgetPerIsland, reasonPhrase } from '@/pages/run-workspace/stops.ts';
 import { reducedMotion } from '@/style.ts';
 import type { TerminationReason } from '@/types.ts';
 
 import IslandMap from './IslandMap.tsx';
-import { capitalise, changeText, crossing, listed, percent, plural, runNotes, type OverviewData } from './overview.ts';
+import { capitalise, changeText, levelPoint, listed, percent, plural, runNotes, type OverviewData } from './overview.ts';
 
 import './hero.css';
 
@@ -95,19 +94,19 @@ function foundText(data: OverviewData): ReactNode {
 
 // When half the improvement was in, and how long the last 1% took.
 function progressText(data: OverviewData): ReactNode {
-  const { improvement, curve, histories, axis } = data;
+  const { improvement, axis } = data;
   if (!improvement) return null;
   if (improvement.start === improvement.final) return 'No improvement on the best at the start';
-  const half = crossing(curve, 0.5);
-  const last = crossing(curve, 0.99);
+  const half = levelPoint(data, 0.5);
+  const last = levelPoint(data, 0.99);
   if (half === null) return null;
   const unit = axis === 'evaluations' ? 'evaluations' : 'generations';
   return (
     <>
-      Half the gain in the first <b>{percent(1 - shareAfter(histories, axis, half))}</b> of {unit}
+      Half the gain in the first <b>{percent(1 - half.after)}</b> of {unit}
       {last !== null && (
         <>
-          {' · '}last 1% took <b>{percent(shareAfter(histories, axis, last))}</b>
+          {' · '}last 1% took <b>{percent(last.after)}</b>
         </>
       )}
     </>

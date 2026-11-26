@@ -207,6 +207,18 @@ export const makeResult = (change: Partial<RunResult> = {}): RunResult => ({
     { island_id: 2, fitness: 70, individual_id: 'i02-g000004', generation: 4, evaluations: 50, node: 20 },
   ],
   run_best_island: 1,
+  // From 100 to 60 in orders of magnitude; island 1 reaching 60 at generation 2 crosses every level at once.
+  convergence: {
+    scale: 'log',
+    start_fitness: 100,
+    final_fitness: 60,
+    levels: [
+      { share: 0.5, generation: { island_id: 1, x: 2, fitness: 60, after: 0.5 }, evaluations: { island_id: 1, x: 30, fitness: 60, after: 0.5 } },
+      { share: 0.9, generation: { island_id: 1, x: 2, fitness: 60, after: 0.5 }, evaluations: { island_id: 1, x: 30, fitness: 60, after: 0.5 } },
+      { share: 0.99, generation: { island_id: 1, x: 2, fitness: 60, after: 0.5 }, evaluations: { island_id: 1, x: 30, fitness: 60, after: 0.5 } },
+      { share: 0.999, generation: { island_id: 1, x: 2, fitness: 60, after: 0.5 }, evaluations: { island_id: 1, x: 30, fitness: 60, after: 0.5 } },
+    ],
+  },
   // The islands share an improvement of 40: island 0 earns 22, island 1 13, island 2 5. Migration lifts what the islands
   // reach on their own (20) to 40, credited 15 to route 0 -> 1, 5 to 1 -> 2 and nothing to 1 -> 0.
   explainability: {

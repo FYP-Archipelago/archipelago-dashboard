@@ -213,6 +213,17 @@ export type IslandBest = {
   node: number;
 };
 
+// Where the run first had made a share of its improvement along one axis, and the share of the search after that.
+export type ConvergencePoint = { island_id: number; x: number; fitness: number; after: number };
+
+// From the best starting value to the run's best, on a fixed scale; levels are empty when the best never moved.
+export type Convergence = {
+  scale: 'log' | 'linear';
+  start_fitness: number;
+  final_fitness: number;
+  levels: { share: number; generation: ConvergencePoint; evaluations: ConvergencePoint | null }[];
+};
+
 // archipelago's Result, trimmed to the parts the run page reads so far.
 export type RunResult = {
   run: {
@@ -255,6 +266,7 @@ export type RunResult = {
   // One per island with an evaluation, sorted by island; run_best_island names the one holding the run best.
   island_bests: IslandBest[];
   run_best_island: number | null;
+  convergence: Convergence | null;
 };
 
 // The runner's TerminationReason values, which archipelago passes through as they are.

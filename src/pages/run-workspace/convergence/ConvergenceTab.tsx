@@ -9,7 +9,7 @@ import { historyByIsland } from '@/pages/run-workspace/history.ts';
 import { EmptyState, IslandSwatch, NoResult, type ResultQuery } from '@/pages/run-workspace/shared.tsx';
 import type { IslandEnd, Run, RunResult } from '@/types.ts';
 
-import { convergenceVerdict, describeDiversity, runProgress, shareAfter } from './convergence.ts';
+import { convergenceVerdict, describeDiversity, pointAt } from './convergence.ts';
 
 import './convergence.css';
 
@@ -23,13 +23,14 @@ const METRICS: { key: Metric; label: string }[] = [
   { key: 'diversity', label: 'Diversity' },
 ];
 const CONVERGENCE_THRESHOLDS = [
-  { label: '99%', remainingShare: 0.01 },
-  { label: '99.9%', remainingShare: 0.001 },
+  { label: '99%', share: 0.99, remainingShare: 0.01 },
+  { label: '99.9%', share: 0.999, remainingShare: 0.001 },
 ];
 
 const lastOf = (values: (number | null)[]) => values.filter((value) => value !== null).at(-1) ?? null;
 
-const percentAfter = (share: number) => (share > 0 && share < 0.01 ? '<1%' : `${Math.round(share * 100)}%`);
+const afterFormat = new Intl.NumberFormat('en', { style: 'percent', maximumFractionDigits: 2 });
+const percentAfter = (share: number) => (share > 0 && share < 0.0001 ? '<0.01%' : afterFormat.format(share));
 
 const formatDiversity = (value: number | null) => (value === null ? '—' : value.toFixed(3));
 
@@ -85,16 +86,19 @@ function Convergence({ result, showStagnationMarkers, onToggleStagnationMarkers 
   const log = logChoice && canLog;
   const isFitness = metric !== 'diversity';
 
-  // The improvement is measured on the scale the best-so-far chart would use, whichever metric is showing.
-  const progressLog = logChoice && histories.every((history) => history.bestSoFar.every((value) => value === null || value > 0));
+  // The worker measures the improvement on one fixed scale, so the verdict does not follow the scale picker.
   const progress = useMemo(() => {
-    const points = CONVERGENCE_THRESHOLDS.flatMap(({ label, remainingShare }) => {
-      const point = runProgress(histories, axis, maximising, remainingShare, progressLog);
-      return point ? [{ ...point, label, remainingShare, after: shareAfter(histories, axis, point.x) }] : [];
+    const points = CONVERGENCE_THRESHOLDS.flatMap(({ label, share, remainingShare }) => {
+      const point = pointAt(result.convergence, share, axis);
+      return point ? [{ x: point.x, island: point.island_id, value: point.fitness, after: point.after, label, remainingShare }] : [];
     });
-    // When both thresholds land on the same point, the stricter one says it all.
-    return points.filter((point, i) => points[i + 1]?.x !== point.x);
-  }, [histories, axis, maximising, progressLog]);
+    // When both thresholds land on the same point, it is shown once with both labels and judged by the stricter one.
+    return points.flatMap((point, i) => {
+      if (points[i + 1]?.x === point.x) return [];
+      const labels = points.filter((other) => other.x === point.x).map((other) => other.label);
+      return [{ ...point, label: labels.join(' · '), words: labels.join(' and ') }];
+    });
+  }, [result.convergence, axis]);
   const { converged, spedUpAfter, stillImproving } = convergenceVerdict(progress);
   const unit = axis === 'generation' ? 'generations' : 'evaluations';
 
@@ -229,13 +233,16 @@ function Convergence({ result, showStagnationMarkers, onToggleStagnationMarkers 
             <span
               className="chart-key"
               title={
-                progressLog
-                  ? 'Improvement counted in orders of magnitude, as the log scale shows it'
-                  : 'Improvement counted on the linear scale, from the best starting value to the run best'
+                result.convergence?.scale === 'log'
+                  ? 'Improvement counted in orders of magnitude, from the best starting value to the run best'
+                  : 'Improvement counted in fitness, from the best starting value to the run best'
               }
             >
               <span className="chart-key-ring" aria-hidden="true" />
-              <span>Estimated convergence: where the run had made {converged.map((point) => point.label).join(' and ')} of its improvement</span>
+              <span>
+                Estimated convergence: where the run had made {converged.map((point) => point.words).join(' and ')} of its improvement
+                {result.convergence?.scale === 'log' ? ', counted in orders of magnitude' : ''}
+              </span>
             </span>
           )}
           {showStagnationMarkers && series.some((line) => line.endCross) && (
@@ -247,13 +254,13 @@ function Convergence({ result, showStagnationMarkers, onToggleStagnationMarkers 
           {spedUpAfter && (
             <span className="chart-key">
               <Icon name="trend" size={12} />
-              Improvement rate rose past {spedUpAfter.label}, too much to count as convergence there
+              Improvement rate rose past {spedUpAfter.words}, too much to count as convergence there
             </span>
           )}
           {stillImproving && (
             <span className="chart-key">
               <Icon name="trend" size={12} />
-              {converged.length ? `Not converged to ${stillImproving.label}` : 'No estimated convergence'}: the run was still improving at the end
+              {converged.length ? `Not converged to ${stillImproving.words}` : 'No estimated convergence'}: the run was still improving at the end
             </span>
           )}
         </div>

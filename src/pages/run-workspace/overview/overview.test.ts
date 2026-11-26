@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import type { IslandHistory } from '@/pages/run-workspace/history.ts';
 
-import { changeText, crossing, improvementOf, laneOf, progressCurve } from './overview.ts';
+import { changeText, laneOf, progressCurve } from './overview.ts';
 
 const island = (id: number, evaluations: number[], bestSoFar: number[]): IslandHistory => ({
   island: id,
@@ -17,9 +17,7 @@ const island = (id: number, evaluations: number[], bestSoFar: number[]): IslandH
 describe('progressCurve', () => {
   it('takes the best any island had reached by each x, as islands run side by side', () => {
     const histories = [island(0, [0, 10, 20], [100, 60, 60]), island(1, [0, 15, 30], [80, 80, 20])];
-    const improvement = improvementOf(histories, false)!;
-    expect(improvement).toMatchObject({ start: 80, final: 20 });
-    const linear = { ...improvement, log: false };
+    const linear = { start: 80, final: 20, log: false };
     // + 0 turns the -0 a falling scale gives at the start into 0.
     expect(progressCurve(histories, 'evaluations', linear).map(({ x, share }) => ({ x, share: share + 0 }))).toEqual([
       { x: 0, share: 0 },
@@ -29,19 +27,16 @@ describe('progressCurve', () => {
       { x: 20, share: 20 / 60 },
       { x: 30, share: 1 },
     ]);
-    expect(crossing(progressCurve(histories, 'evaluations', linear), 0.5)).toBe(30);
   });
 
   it('counts orders of magnitude on a log scale, and works when maximising', () => {
     const minimising = [island(0, [0, 1, 2], [1000, 10, 1])];
-    const log = improvementOf(minimising, false)!;
-    expect(log.log).toBe(true);
+    const log = { start: 1000, final: 1, log: true };
     // 1000 -> 10 is two of the three orders of magnitude, not 99% of the way.
     expect(progressCurve(minimising, 'evaluations', log)[1]!.share).toBeCloseTo(2 / 3);
 
     const maximising = [island(0, [0, 1, 2], [10, 15, 30])];
-    const up = improvementOf(maximising, true)!;
-    expect(up).toMatchObject({ start: 10, final: 30, log: false });
+    const up = { start: 10, final: 30, log: false };
     expect(progressCurve(maximising, 'evaluations', up).map((point) => point.share)).toEqual([0, 0.25, 1]);
   });
 });

@@ -9,7 +9,7 @@ import { REASONS, stopText } from '@/pages/run-workspace/stops.ts';
 import type { IslandBest, IslandEnd, TerminationReason } from '@/types.ts';
 
 import OverviewCard from './OverviewCard.tsx';
-import { crossing, laneOf, type Axis, type Improvement, type Lane, type OverviewData } from './overview.ts';
+import { laneOf, levelPoint, type Axis, type Improvement, type Lane, type OverviewData } from './overview.ts';
 
 import './run-timeline.css';
 
@@ -124,8 +124,10 @@ function Timeline({ data, improvement }: { data: OverviewData; improvement: Impr
 
   // Notches on the same x keep the strictest; labels too close together are joined.
   const notches = NOTCHES.flatMap((level) => {
-    const x = crossing(curve, level);
-    return x === null ? [] : [{ level, x, share: curve.find((point) => point.x === x)!.share }];
+    const x = levelPoint(data, level)?.x;
+    // The worker's x is one of the logged points the band is drawn through.
+    const point = curve.find((point) => point.x === x);
+    return point ? [{ level, x: point.x, share: point.share }] : [];
   }).filter((notch, i, all) => all[i + 1]?.x !== notch.x);
   const labels: { x: number; text: string }[] = [];
   for (const notch of notches) {
