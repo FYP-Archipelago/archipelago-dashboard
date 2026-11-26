@@ -189,6 +189,14 @@ export const makeResult = (change: Partial<RunResult> = {}): RunResult => ({
     { source: 1, destination: 2, migrants: 4 },
     { source: 2, destination: 0, migrants: 0 },
   ],
+  // The routes' migrants as they arrived, at generations 2 and 4, each in the round sent that generation.
+  migration_arrivals: [
+    { generation: 2, source: 0, destination: 1, migrants: 3, source_generation: 2 },
+    { generation: 2, source: 1, destination: 0, migrants: 2, source_generation: 2 },
+    { generation: 2, source: 1, destination: 2, migrants: 2, source_generation: 2 },
+    { generation: 4, source: 0, destination: 1, migrants: 3, source_generation: 4 },
+    { generation: 4, source: 1, destination: 2, migrants: 2, source_generation: 4 },
+  ],
   generation_history: [
     ...islandRows(0, [100, 80, 80, 60, 60], [120, 100, 90, 80, 70], [0.5, 0.4, 0.3, 0.2, 0.1]),
     ...islandRows(1, [100, 90, 60, 60, 60], [130, 110, 95, 85, 75], [0.6, 0.5, 0.4, 0.3, 0.2]),

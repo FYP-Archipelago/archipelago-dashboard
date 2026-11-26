@@ -201,6 +201,10 @@ export type GraphDelta = {
 
 export type MigrationRoute = { source: number; destination: number; migrants: number };
 
+// Migrants that arrived on an island in one migration, at the destination island's generation.
+// source_generation is when they were sent, which names the migration round.
+type MigrationArrival = { generation: number; source: number; destination: number; migrants: number; source_generation: number };
+
 // One streamed update of a live run. maximising is null while warming up; migration_routes counts every migrant so far.
 export type RunUpdate = { status: 'warming_up' | 'live'; maximising: boolean | null; migration_routes: MigrationRoute[]; graph: GraphDelta };
 
@@ -243,6 +247,8 @@ export type RunResult = {
   graph: Graph;
   separation: Separation;
   migration_routes: MigrationRoute[];
+  // Every migration that brought migrants, sorted by generation.
+  migration_arrivals: MigrationArrival[];
   clustering: {
     stages: string[];
     counts: { evaluations: number; rows_clustered: number; nodes: number; faded_nodes: number | null };

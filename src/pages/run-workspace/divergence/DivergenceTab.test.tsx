@@ -50,9 +50,10 @@ describe('DivergenceTab', () => {
     const run = makeRun('run-1');
     const result = makeResult();
     await renderWorkspace('divergence', {
-      run: { ...run, run_settings: { ...run.run_settings, 'migration.interval': 10 } },
+      run,
       result: {
         ...result,
+        migration_arrivals: [{ generation: 12, source: 0, destination: 1, migrants: 2, source_generation: 10 }],
         separation: {
           ...result.separation,
           window_pairs: { window: [0, 0, 0, 1, 1], a: [0, 0, 1, 0, 1], b: [1, 2, 2, 1, 2], mmd2: [0.4, 0.2, 0.45, 0.6, 0.15] },
@@ -86,7 +87,7 @@ describe('DivergenceTab', () => {
     const tooltip = document.querySelector<HTMLElement>('.hover-tip')!;
     const tip = within(tooltip);
     expect(tip.getByText('From generation 10', { selector: '.divergence-hover-window' })).toBeTruthy();
-    expect(tip.getByText('After migration at generation 10')).toBeTruthy();
+    expect(tooltip.querySelector('.divergence-hover-generation')!.textContent).toBe('After 1 migration · gen 10');
     const closer = within(tip.getByText('Drew closer').parentElement!);
     const apart = within(tip.getByText('Moved apart').parentElement!);
     expect(closer.getByRole('listitem', { name: 'Islands 1 ↔ 2' })).toBeTruthy();
@@ -95,7 +96,7 @@ describe('DivergenceTab', () => {
     expect([...tooltip.querySelectorAll('.hover-tip-row b')].map((row) => row.textContent)).toEqual(['0.6', '0.38', '0.15', '—']);
     fireEvent.pointerMove(hoverTarget, { clientX: 0, clientY: 40 });
     expect(tip.getByText('Generations 0 to 9', { selector: '.divergence-hover-window' })).toBeTruthy();
-    expect(tip.queryByText(/After migration/)).toBeNull();
+    expect(tooltip.querySelector('.divergence-hover-generation')).toBeNull();
 
     // The mean moved apart too, so its mark stays with no pairs picked.
     fireEvent.click(button('None'));

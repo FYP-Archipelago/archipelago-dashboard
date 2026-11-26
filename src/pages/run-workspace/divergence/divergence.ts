@@ -1,3 +1,4 @@
+import { maxOf, minOf } from '@/math.ts';
 import type { Separation } from '@/types.ts';
 
 // Pairs are unordered, so a key puts the lower island first.
@@ -39,25 +40,37 @@ export function describeTrend(means: (number | null)[], starts: number[]): strin
 // How far a pair's divergence must move across a migration, as a share of its whole range over the run, for the
 // migration to be marked on the chart. Lower marks more migrations.
 const NOTABLE_SHIFT = 0.25;
-type PairMigration = { x: number; mark: 'up' | 'down' };
 
-// The migrations (every `interval` generations) after which a pair's divergence jumped: its value in the last window
-// wholly before the migration against the first window starting at or after it. A window straddling a migration
-// mixes before and after, so it is skipped. `values` holds the pair's value per window, in the order of `starts`.
-export function notableMigrations(interval: number, lastGeneration: number, starts: number[], values: (number | null)[]): PairMigration[] {
-  const present = values.filter((value) => value !== null);
-  const range = present.length ? Math.max(...present) - Math.min(...present) : 0;
-  if (!(interval >= 1) || range <= 0) return [];
-  const guides: PairMigration[] = [];
-  let afterIndex = 0;
-  for (let generation = interval; generation <= lastGeneration; generation += interval) {
-    while (afterIndex < starts.length && starts[afterIndex]! < generation) afterIndex++;
-    if (afterIndex === starts.length) break;
-    const beforeIndex = afterIndex - (starts[afterIndex] === generation ? 1 : 2);
-    const before = values[beforeIndex] ?? null;
-    const after = values[afterIndex] ?? null;
-    if (before === null || after === null || Math.abs(after - before) < NOTABLE_SHIFT * range) continue;
-    guides.push({ x: generation, mark: after < before ? 'down' : 'up' });
+// Migrations are judged by the last window wholly before them against the first window starting at or after them.
+// Migrations between the same two windows cannot be told apart, so they form one group.
+// A window straddling a migration mixes before and after, so it is skipped, and a migration without both windows is left out.
+export type MigrationGroup = { generations: number[]; before: number; after: number };
+
+export function migrationGroups(generations: number[], starts: number[]): MigrationGroup[] {
+  const groups = new Map<string, MigrationGroup>();
+  for (const generation of [...new Set(generations)].sort((a, b) => a - b)) {
+    const after = starts.findIndex((start) => start >= generation);
+    const before = after - (starts[after] === generation ? 1 : 2);
+    if (after < 0 || before < 0) continue;
+    const group = groups.get(`${before}-${after}`) ?? { generations: [], before, after };
+    group.generations.push(generation);
+    groups.set(`${before}-${after}`, group);
   }
-  return guides;
+  return [...groups.values()];
+}
+
+type PairMigration = { x: number; generations: number[]; mark: 'up' | 'down' };
+
+// How many migrations the series can be judged across (measured), and the groups after which it jumped.
+// Each jump is placed at its group's first migration, and `values` holds the series' value per window.
+export function notableMigrations(groups: MigrationGroup[], values: (number | null)[]): { measured: number; notable: PairMigration[] } {
+  const present = values.filter((value) => value !== null);
+  const range = present.length ? maxOf(present) - minOf(present) : 0;
+  const measured = groups.filter((group) => values[group.before] != null && values[group.after] != null);
+  const notable = measured.flatMap((group) => {
+    const [before, after] = [values[group.before]!, values[group.after]!];
+    if (range <= 0 || Math.abs(after - before) < NOTABLE_SHIFT * range) return [];
+    return [{ x: group.generations[0]!, generations: group.generations, mark: after < before ? ('down' as const) : ('up' as const) }];
+  });
+  return { measured: measured.reduce((sum, group) => sum + group.generations.length, 0), notable };
 }

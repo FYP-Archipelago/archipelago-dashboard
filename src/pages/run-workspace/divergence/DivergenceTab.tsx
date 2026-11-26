@@ -7,7 +7,17 @@ import LineChart, { type Guide } from '@/pages/run-workspace/charts/LineChart.ts
 import { EmptyState, IslandSwatch, NoResult, type ResultQuery } from '@/pages/run-workspace/shared.tsx';
 import type { Run, RunResult } from '@/types.ts';
 
-import { describeTrend, meanOf, notableMigrations, pairKey, REAL_DIFFERENCE, wholeRunPairs, windowValues, type Pair } from './divergence.ts';
+import {
+  describeTrend,
+  meanOf,
+  migrationGroups,
+  notableMigrations,
+  pairKey,
+  REAL_DIFFERENCE,
+  wholeRunPairs,
+  windowValues,
+  type Pair,
+} from './divergence.ts';
 
 import './divergence.css';
 
@@ -22,36 +32,40 @@ const MIGRATION_DIRECTIONS = [
   { key: 'apart', label: 'Moved apart' },
 ] as const;
 type MigrationSeries = { key: number; label: string; shortLabel: string; color: string };
-type MigrationChange = Record<(typeof MIGRATION_DIRECTIONS)[number]['key'], MigrationSeries[]>;
+// What moved after a group of migration rounds that share one measurement, and the rounds' generations.
+type MigrationChange = Record<(typeof MIGRATION_DIRECTIONS)[number]['key'], MigrationSeries[]> & { generations: number[] };
 
-function MigrationHover({ migrations }: { migrations: [number, MigrationChange][] }) {
+// What moved after the migration rounds just before a window, with how many migrations those rounds sent and when.
+function MigrationHover({ change, count }: { change: MigrationChange; count: number }) {
+  const [first, last] = [change.generations[0]!, change.generations.at(-1)!];
   return (
     <div className="divergence-hover-migrations">
-      {migrations.map(([generation, change]) => (
-        <div key={generation} className="divergence-hover-event">
-          <div className="divergence-hover-generation">After migration at generation {generation}</div>
-          {MIGRATION_DIRECTIONS.map(({ key, label }) => {
-            const affected = change[key];
-            if (!affected.length) return null;
-            return (
-              <div key={key} className="divergence-hover-direction">
-                <div className="divergence-hover-direction-label">
-                  <i className="divergence-migration-arrow" data-direction={key} aria-hidden="true" />
-                  {label}
-                </div>
-                <ul className="divergence-hover-tags-list" role="list">
-                  {affected.map((series) => (
-                    <li key={series.key} aria-label={series.label}>
-                      <i className="swatch" style={{ background: series.color }} aria-hidden="true" />
-                      {series.shortLabel}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            );
-          })}
+      <div className="divergence-hover-event">
+        <div className="divergence-hover-generation">
+          {count === 1 ? 'After 1 migration' : `After ${count.toLocaleString('en')} migrations`}
+          <span className="muted"> · {first === last ? `gen ${first}` : `gen ${first}–${last}`}</span>
         </div>
-      ))}
+        {MIGRATION_DIRECTIONS.map(({ key, label }) => {
+          const affected = change[key];
+          if (!affected.length) return null;
+          return (
+            <div key={key} className="divergence-hover-direction">
+              <div className="divergence-hover-direction-label">
+                <i className="divergence-migration-arrow" data-direction={key} aria-hidden="true" />
+                {label}
+              </div>
+              <ul className="divergence-hover-tags-list" role="list">
+                {affected.map((series) => (
+                  <li key={series.key} aria-label={series.label}>
+                    <i className="swatch" style={{ background: series.color }} aria-hidden="true" />
+                    {series.shortLabel}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -145,21 +159,29 @@ function Divergence({ run, result }: { run: Run; result: RunResult }) {
       xs: starts,
       ys: windows.map((window) => window.get(p.key) ?? null),
     }));
-  const settings = run.run_settings;
-  const migrationEnabled = settings['migration.enabled'];
+  const migrationEnabled = run.run_settings['migration.enabled'];
   const changesByGeneration = new Map<number, MigrationChange>();
-  const lastGeneration = result.generation_history.reduce((last, row) => Math.max(last, row.generation), starts.at(-1) ?? 0);
-  // The migrations after which the mean of all pairs jumped, marked on the chart with the pairs' and counted above it.
-  const meanMigrations = migrationEnabled ? notableMigrations(settings['migration.interval'], lastGeneration, starts, means) : [];
-  const migrationCount = Math.floor(lastGeneration / settings['migration.interval']);
-  const closerAfterMigration = meanMigrations.filter((migration) => migration.mark === 'down').length;
-  const apartAfterMigration = meanMigrations.length - closerAfterMigration;
+  // The migration rounds that happened, named by the generation the migrants were sent at.
+  const groups = useMemo(
+    () =>
+      migrationGroups(
+        result.migration_arrivals.map((arrival) => arrival.source_generation),
+        starts
+      ),
+    [result, starts]
+  );
+  // The rounds after which the mean of all pairs jumped, marked on the chart with the pairs' and counted above it.
+  const meanChanges = migrationEnabled ? notableMigrations(groups, means) : { measured: 0, notable: [] };
+  const meanMigrations = meanChanges.notable;
+  const rounds = (changes: { generations: number[] }[]) => changes.reduce((sum, change) => sum + change.generations.length, 0);
+  const closerAfterMigration = rounds(meanMigrations.filter((migration) => migration.mark === 'down'));
+  const apartAfterMigration = rounds(meanMigrations) - closerAfterMigration;
   // With the extra stat, the strip packs its columns to their content and shortens the notes so each stays on one line.
-  const meanStat = migrationEnabled && migrationCount > 0;
+  const meanStat = meanChanges.measured > 0;
   if (migrationEnabled && (pairSeries.length || meanMigrations.length)) {
     for (const series of [mean, ...pairSeries]) {
-      for (const { x, mark } of notableMigrations(settings['migration.interval'], lastGeneration, starts, series.ys)) {
-        const change = changesByGeneration.get(x) ?? { closer: [], apart: [] };
+      for (const { x, generations, mark } of notableMigrations(groups, series.ys).notable) {
+        const change = changesByGeneration.get(x) ?? { closer: [], apart: [], generations };
         change[mark === 'down' ? 'closer' : 'apart'].push(series);
         changesByGeneration.set(x, change);
       }
@@ -188,11 +210,21 @@ function Divergence({ run, result }: { run: Run; result: RunResult }) {
   // The window just after a marked migration says what the migration was followed by.
   const hoverTitle = (x: number) => {
     const index = starts.indexOf(x);
+    // The window is the first measured after the migrations that arrived since the previous window began.
     const migrations = migrationChanges.filter(([generation]) => generation > (starts[index - 1] ?? -Infinity) && generation <= x);
+    const merged: MigrationChange = { closer: [], apart: [], generations: [] };
+    for (const [, change] of migrations) {
+      for (const direction of ['closer', 'apart'] as const)
+        for (const series of change[direction]) if (!merged[direction].some((other) => other.key === series.key)) merged[direction].push(series);
+      merged.generations.push(...change.generations);
+    }
+    merged.generations.sort((a, b) => a - b);
+    const shownRounds = new Set(merged.generations);
+    const count = result.migration_arrivals.filter((arrival) => shownRounds.has(arrival.source_generation)).length;
     return (
       <>
         <span className="divergence-hover-window">{windowLabel(index)}</span>
-        {migrations.length > 0 && <MigrationHover migrations={migrations} />}
+        {count > 0 && <MigrationHover change={merged} count={count} />}
       </>
     );
   };
@@ -228,11 +260,16 @@ function Divergence({ run, result }: { run: Run; result: RunResult }) {
           </span>
         </div>
         {meanStat && (
-          <div title="Migrations after which the mean of all pairs moved by at least a quarter of its range over the run">
+          <div
+            title={
+              'Migration rounds after which the mean of all pairs moved by at least a quarter of its range over the run, comparing ' +
+              'the window before each round with the one after. Rounds between the same two windows are judged together.'
+            }
+          >
             <span className="muted">Mean after migration</span>
             <strong>
-              {meanMigrations.length}
-              <small>of {migrationCount} migrations</small>
+              {rounds(meanMigrations)}
+              <small>of {meanChanges.measured} migration rounds</small>
             </strong>
             <span className="stat-note">
               {meanMigrations.length ? `${closerAfterMigration} drew closer · ${apartAfterMigration} moved apart` : 'None moved it much'}
