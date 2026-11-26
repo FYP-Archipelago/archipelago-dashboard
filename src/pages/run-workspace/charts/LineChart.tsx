@@ -24,6 +24,8 @@ type Props = {
   replayKey: string;
   // Called with the x the crosshair snaps to, so other views can follow it.
   onHoverX?: (x: number) => void;
+  // An x to hold the crosshair and its points at while the pointer is off the chart, e.g. set from a slider.
+  pinnedX?: number | null;
   // Events along x, each a vertical line with one or both arrows at the top.
   guides?: Guide[];
   // Shaded from each x to the end of the axis, so overlapping shades stack darker. `label` goes in a pill above the
@@ -111,6 +113,7 @@ export default function LineChart({
   showEndCrosses = false,
   replayKey,
   onHoverX,
+  pinnedX = null,
   guides = [],
   shades = [],
   rings = [],
@@ -212,13 +215,14 @@ export default function LineChart({
     setPointerY(event.clientY - box.top + scales.plotTop);
   };
 
+  const crossX = hoverX ?? pinnedX;
   const hovered =
-    hoverX === null
+    crossX === null
       ? []
       : series
           .filter((s) => s.xs.length)
           .map((s) => {
-            const i = nearest(s.xs, hoverX);
+            const i = nearest(s.xs, crossX);
             return { series: s, x: s.xs[i]!, y: s.ys[i] ?? null };
           })
           .sort((a, b) => (a.y === null ? 1 : b.y === null ? -1 : better === 'lower' ? a.y - b.y : b.y - a.y));
@@ -363,9 +367,9 @@ export default function LineChart({
               )
           )}
           {marker && toY(marker.y) !== null && <circle className="chart-marker" cx={scales.sx(marker.x)} cy={scales.sy(toY(marker.y)!)} r={5} />}
-          {hoverX !== null && (
+          {crossX !== null && (
             <g className="chart-hover">
-              <line x1={scales.sx(hoverX)} x2={scales.sx(hoverX)} y1={scales.plotTop} y2={scales.plotBottom} />
+              <line x1={scales.sx(crossX)} x2={scales.sx(crossX)} y1={scales.plotTop} y2={scales.plotBottom} />
               {hovered.map(
                 (row) =>
                   row.y !== null && <circle key={row.series.key} cx={scales.sx(row.x)} cy={scales.sy(toY(row.y)!)} r={4} fill={row.series.color} />

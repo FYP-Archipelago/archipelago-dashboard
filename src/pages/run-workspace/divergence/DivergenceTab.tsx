@@ -70,16 +70,20 @@ function MigrationHover({ change, count }: { change: MigrationChange; count: num
   );
 }
 
+// Pairs on the chart are highlighted, and clicking a cell puts its pair on the chart or takes it off.
+// Over the whole run, a pair the swap test finds really different gets a mark in its corner.
 function Matrix({
   islands,
   values,
-  selected,
-  onSelect,
+  picked,
+  tests,
+  onToggle,
 }: {
   islands: number[];
   values: Map<string, number>;
-  selected: string;
-  onSelect: (key: string) => void;
+  picked: ReadonlySet<string>;
+  tests: Map<string, number> | null;
+  onToggle: (key: string) => void;
 }) {
   const most = Math.max(...values.values(), 1e-12);
   return (
@@ -105,14 +109,17 @@ function Matrix({
                 </span>
               );
             const shade = v / most;
+            const p = tests?.get(key);
+            const real = p !== undefined && p < REAL_DIFFERENCE;
             return (
               <button
                 key={b}
-                className={`heat-cell${key === selected ? ' heat-cell-selected' : ''}`}
+                className={`heat-cell${picked.has(key) ? ' heat-cell-selected' : ''}${real ? ' heat-cell-real' : ''}`}
                 style={{ background: heatColor(shade), color: heatInk(shade) }}
-                aria-pressed={key === selected}
+                aria-pressed={picked.has(key)}
                 aria-label={`Islands ${pairName(a, b)}: ${value(v)}`}
-                onClick={() => onSelect(key)}
+                title={p === undefined ? undefined : `${real ? 'Real difference' : 'Could be chance'} · swap test p = ${pValueFormat.format(p)}`}
+                onClick={() => onToggle(key)}
               >
                 {value(v)}
               </button>
@@ -133,14 +140,11 @@ function Divergence({ run, result }: { run: Run; result: RunResult }) {
   const byValue = [...pairs].sort((x, y) => y.value - x.value);
   const most = byValue[0]!;
   const least = byValue.at(-1)!;
-  const pairShortcuts = most.key === least.key ? [most] : [most, least];
 
-  const [selected, setSelected] = useState(most.key);
   const [view, setView] = useState<'whole' | 'window'>('whole');
   const [windowIndex, setWindowIndex] = useState(starts.length - 1);
   const [picked, setPicked] = useState<ReadonlySet<string>>(() => new Set([most.key, least.key]));
 
-  const pair = pairs.find((p) => p.key === selected) ?? most;
   const means = useMemo(() => windows.map(meanOf), [windows]);
   const firstMean = means.find((m) => m !== null) ?? null;
   const lastMean = [...means].reverse().find((m) => m !== null) ?? null;
@@ -192,11 +196,6 @@ function Divergence({ run, result }: { run: Run; result: RunResult }) {
     x,
     mark: closer.length && apart.length ? 'both' : closer.length ? 'down' : 'up',
   }));
-  // Selecting a pair in the matrix also puts it on the chart.
-  const select = (key: string) => {
-    setSelected(key);
-    setPicked((prev) => new Set(prev).add(key));
-  };
   const togglePicked = (key: string) =>
     setPicked((prev) => {
       const next = new Set(prev);
@@ -205,6 +204,9 @@ function Divergence({ run, result }: { run: Run; result: RunResult }) {
       return next;
     });
 
+  const shownValues = view === 'whole' ? new Map(pairs.map((p) => [p.key, p.value])) : windows[windowIndex]!;
+  const shortWindowLabel = (index: number) =>
+    index < starts.length - 1 ? `Gen ${starts[index]}–${starts[index + 1]! - 1}` : `Gen ${starts[index]}+`;
   const windowLabel = (index: number) =>
     index < starts.length - 1 ? `Generations ${starts[index]} to ${starts[index + 1]! - 1}` : `From generation ${starts[index]}`;
   // The window just after a marked migration says what the migration was followed by.
@@ -291,7 +293,9 @@ function Divergence({ run, result }: { run: Run; result: RunResult }) {
         <section className="card chart-column">
           <div className="card-header card-heading">
             <h3>Over the run</h3>
-            <span className="muted">Per window of generations</span>
+            <span className="muted">
+              {starts.length > 1 ? `Per window of ${starts[1]! - starts[0]!} generations, each on its own scale` : 'Per window of generations'}
+            </span>
           </div>
           <div className="pair-picker" role="group" aria-label="Pairs on the chart">
             {pairs.map((p) => (
@@ -324,6 +328,7 @@ function Divergence({ run, result }: { run: Run; result: RunResult }) {
             marker={null}
             replayKey="divergence"
             onHoverX={(x) => setWindowIndex(starts.indexOf(x))}
+            pinnedX={view === 'window' ? starts[windowIndex] : null}
             guides={guides}
           />
           <div className="chart-legend">
@@ -345,10 +350,6 @@ function Divergence({ run, result }: { run: Run; result: RunResult }) {
               </span>
             )}
           </div>
-          <p className="hint">
-            Each window{starts.length > 1 && ` (${starts[1]! - starts[0]!} generations)`} is measured against how spread out the population was at
-            that time, so this shows the trend. The numbers are not on the whole-run scale.
-          </p>
         </section>
         <section className="card">
           <div className="card-header">
@@ -366,47 +367,37 @@ function Divergence({ run, result }: { run: Run; result: RunResult }) {
           </div>
           <Matrix
             islands={islands}
-            values={view === 'whole' ? new Map(pairs.map((p) => [p.key, p.value])) : windows[windowIndex]!}
-            selected={pair.key}
-            onSelect={select}
+            values={shownValues}
+            picked={picked}
+            tests={view === 'whole' ? new Map(pairs.map((p) => [p.key, p.p])) : null}
+            onToggle={togglePicked}
           />
-          <div className="heat-scale">
+          <div className={`heat-scale${view === 'window' ? ' heat-scale-compact' : ''}`}>
             <span>Alike</span>
             <i style={{ background: heatGradient() }} />
             <span>Different</span>
-            <span className="heat-scale-note">{view === 'whole' ? 'Whole run' : `${windowLabel(windowIndex)} · point at the chart to move`}</span>
+            {view === 'whole' ? (
+              <>
+                <span className="heat-real-key" title="The swap test finds the gap unlikely to be chance (p below 0.05)">
+                  <span className="heat-real-mark" aria-hidden="true" />
+                  Real difference
+                </span>
+                <span className="heat-scale-note">Whole run</span>
+              </>
+            ) : (
+              <label className="window-slider">
+                <input
+                  type="range"
+                  min={0}
+                  max={starts.length - 1}
+                  value={windowIndex}
+                  aria-label="Window"
+                  onChange={(event) => setWindowIndex(Number(event.target.value))}
+                />
+                <span>{shortWindowLabel(windowIndex)}</span>
+              </label>
+            )}
           </div>
-          <dl className="key-value-list pair-facts">
-            <div className="pair-selection">
-              <dt>Selected pair</dt>
-              <dd>
-                <div className="pair-shortcuts" role="group" aria-label="Pair shortcuts">
-                  {pairShortcuts.map((shortcut) => (
-                    <button
-                      key={shortcut.key}
-                      className="pair-chip"
-                      aria-pressed={pair.key === shortcut.key}
-                      title={shortcut.key === most.key ? 'Most different' : 'Most alike'}
-                      onClick={() => select(shortcut.key)}
-                    >
-                      Islands {pairName(shortcut.a, shortcut.b)}
-                    </button>
-                  ))}
-                </div>
-                {pair.key !== most.key && pair.key !== least.key && <span>Islands {pairName(pair.a, pair.b)}</span>}
-              </dd>
-            </div>
-            <div>
-              <dt>Whole run</dt>
-              <dd>{value(pair.value)}</dd>
-            </div>
-            <div title="How often shuffling whole generations between the two islands gave a gap at least this big">
-              <dt>Swap test</dt>
-              <dd>
-                {verdict(pair)} <span className="muted">· p = {pValueFormat.format(pair.p)}</span>
-              </dd>
-            </div>
-          </dl>
         </section>
       </div>
     </>
