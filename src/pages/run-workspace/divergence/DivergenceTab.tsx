@@ -19,6 +19,7 @@ import {
   type Pair,
 } from './divergence.ts';
 
+import WithinBetween from './WithinBetween.tsx';
 import './divergence.css';
 
 const significant = new Intl.NumberFormat('en', { maximumSignificantDigits: 2 });
@@ -205,6 +206,18 @@ function Divergence({ run, result }: { run: Run; result: RunResult }) {
     });
 
   const shownValues = view === 'whole' ? new Map(pairs.map((p) => [p.key, p.value])) : windows[windowIndex]!;
+  // Each island's own mean diversity over the shown period (the whole run, or the window's generations).
+  const diversity = new Map<number, number>();
+  for (const island of islands) {
+    const own = result.generation_history.filter(
+      (row) =>
+        row.island_id === island &&
+        row.diversity !== null &&
+        (view === 'whole' ||
+          (row.generation >= starts[windowIndex]! && (windowIndex === starts.length - 1 || row.generation < starts[windowIndex + 1]!)))
+    );
+    if (own.length) diversity.set(island, own.reduce((sum, row) => sum + row.diversity!, 0) / own.length);
+  }
   const shortWindowLabel = (index: number) =>
     index < starts.length - 1 ? `Gen ${starts[index]}–${starts[index + 1]! - 1}` : `Gen ${starts[index]}+`;
   const windowLabel = (index: number) =>
@@ -353,7 +366,7 @@ function Divergence({ run, result }: { run: Run; result: RunResult }) {
         </section>
         <section className="card">
           <div className="card-header">
-            <h3>Between islands</h3>
+            <h3>Island by island</h3>
             <Segmented
               className="card-header-end"
               label="Period"
@@ -398,6 +411,7 @@ function Divergence({ run, result }: { run: Run; result: RunResult }) {
               </label>
             )}
           </div>
+          <WithinBetween islands={islands} values={shownValues} diversity={diversity} />
         </section>
       </div>
     </>
