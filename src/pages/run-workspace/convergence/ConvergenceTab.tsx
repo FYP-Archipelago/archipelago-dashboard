@@ -9,7 +9,7 @@ import { historyByIsland } from '@/pages/run-workspace/history.ts';
 import { EmptyState, IslandSwatch, NoResult, type ResultQuery } from '@/pages/run-workspace/shared.tsx';
 import type { IslandEnd, Run, RunResult } from '@/types.ts';
 
-import { convergenceVerdict, describeDiversity, runBest, runProgress, shareAfter, summarise } from './convergence.ts';
+import { convergenceVerdict, describeDiversity, runProgress, shareAfter } from './convergence.ts';
 
 import './convergence.css';
 
@@ -26,6 +26,8 @@ const CONVERGENCE_THRESHOLDS = [
   { label: '99%', remainingShare: 0.01 },
   { label: '99.9%', remainingShare: 0.001 },
 ];
+
+const lastOf = (values: (number | null)[]) => values.filter((value) => value !== null).at(-1) ?? null;
 
 const percentAfter = (share: number) => (share > 0 && share < 0.01 ? '<1%' : `${Math.round(share * 100)}%`);
 
@@ -62,8 +64,8 @@ type StagnationControl = {
 function Convergence({ result, showStagnationMarkers, onToggleStagnationMarkers }: { result: RunResult } & StagnationControl) {
   const maximising = result.run.maximising;
   const histories = useMemo(() => historyByIsland(result.generation_history), [result]);
-  const summaries = useMemo(() => histories.map((history) => summarise(history, maximising)), [histories, maximising]);
-  const best = runBest(summaries, maximising);
+  const bests = useMemo(() => new Map(result.island_bests.map((best) => [best.island_id, best])), [result]);
+  const best = result.run_best_island === null ? null : (bests.get(result.run_best_island) ?? null);
   const diversityName = describeDiversity(result.generation_history);
   const stagnationLimit = result.run.stagnation_generations ?? 0;
   const stagnatedIslands = useMemo(
@@ -121,11 +123,9 @@ function Convergence({ result, showStagnationMarkers, onToggleStagnationMarkers 
 
   if (!histories.length) return <EmptyState icon="alert" title="No generation statistics" />;
 
-  const marker =
-    metric === 'bestSoFar' && best && !hidden.has(best.island) && best.finalBest !== null
-      ? { x: (axis === 'generation' ? best.reachedGeneration : best.reachedEvaluations) ?? 0, y: best.finalBest }
-      : null;
-  const tiedForBest = best ? summaries.filter((s) => s.finalBest === best.finalBest).length : 0;
+  const bestX = best && (axis === 'generation' ? best.generation : best.evaluations);
+  const marker = metric === 'bestSoFar' && best && bestX != null && !hidden.has(best.island_id) ? { x: bestX, y: best.fitness } : null;
+  const tiedForBest = best ? result.island_bests.filter((other) => other.fitness === best.fitness).length : 0;
   const metricLabel = METRICS.find((m) => m.key === metric)!.label;
 
   return (
@@ -273,52 +273,51 @@ function Convergence({ result, showStagnationMarkers, onToggleStagnationMarkers 
             </tr>
           </thead>
           <tbody>
-            {summaries.map((s) => (
-              <tr
-                key={s.island}
-                className={highlight === s.island ? 'island-row-highlighted' : undefined}
-                onPointerEnter={() => !hidden.has(s.island) && setHighlight(s.island)}
-                onPointerLeave={() => setHighlight(null)}
-              >
-                <td>
-                  <span className="island-cell">
-                    <IslandSwatch island={s.island} />
-                    Island {s.island}
-                    {best?.island === s.island && (
-                      <span
-                        className="best-badge"
-                        title={tiedForBest > 1 ? `${tiedForBest} islands ended on the run's best value; this one reached it first.` : undefined}
-                      >
-                        Run best
-                      </span>
+            {histories.map(({ island, mean, diversity }) => {
+              const own = bests.get(island);
+              return (
+                <tr
+                  key={island}
+                  className={highlight === island ? 'island-row-highlighted' : undefined}
+                  onPointerEnter={() => !hidden.has(island) && setHighlight(island)}
+                  onPointerLeave={() => setHighlight(null)}
+                >
+                  <td>
+                    <span className="island-cell">
+                      <IslandSwatch island={island} />
+                      Island {island}
+                      {best?.island_id === island && (
+                        <span
+                          className="best-badge"
+                          title={tiedForBest > 1 ? `${tiedForBest} islands ended on the run's best value; this one reached it first.` : undefined}
+                        >
+                          Run best
+                        </span>
+                      )}
+                    </span>
+                  </td>
+                  <td className="align-right">{fitness(own?.fitness ?? null)}</td>
+                  <td className="align-right">
+                    {own ? (
+                      <>
+                        gen {own.generation}
+                        {own.evaluations !== null && <span className="muted"> · {compactNumber.format(own.evaluations)} evals</span>}
+                      </>
+                    ) : (
+                      '—'
                     )}
-                  </span>
-                </td>
-                <td className="align-right">{fitness(s.finalBest)}</td>
-                <td className="align-right">
-                  {s.reachedGeneration === null ? (
-                    '—'
-                  ) : (
-                    <>
-                      gen {s.reachedGeneration}
-                      {s.reachedEvaluations !== null && <span className="muted"> · {compactNumber.format(s.reachedEvaluations)} evals</span>}
-                    </>
-                  )}
-                </td>
-                <td className="align-right">
-                  <WithoutImprovement end={result.island_ends.find((end) => end.island_id === s.island)} limit={stagnationLimit} />
-                </td>
-                <td className="align-right">{fitness(s.finalMean)}</td>
-                <td className="align-right">{formatDiversity(s.finalDiversity)}</td>
-                <td className="diversity-trend-column">
-                  <Sparkline
-                    values={histories.find((h) => h.island === s.island)!.diversity}
-                    color={islandColor(s.island)}
-                    label={`Island ${s.island} diversity over time`}
-                  />
-                </td>
-              </tr>
-            ))}
+                  </td>
+                  <td className="align-right">
+                    <WithoutImprovement end={result.island_ends.find((end) => end.island_id === island)} limit={stagnationLimit} />
+                  </td>
+                  <td className="align-right">{fitness(lastOf(mean))}</td>
+                  <td className="align-right">{formatDiversity(lastOf(diversity))}</td>
+                  <td className="diversity-trend-column">
+                    <Sparkline values={diversity} color={islandColor(island)} label={`Island ${island} diversity over time`} />
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>

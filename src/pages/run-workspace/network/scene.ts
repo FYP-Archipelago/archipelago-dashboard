@@ -36,6 +36,8 @@ export type Scene = {
   size: Float32Array;
   // 0 when only one island visited the cluster, 1 when all of them did.
   shared: Float32Array;
+  // 1 for a cluster DenStream faded out, which stays only because it holds an island's best.
+  faded: Float32Array;
   // When the cluster appears in the replay, from 0 to 1. Each island's first cluster is there from the start.
   reveal: Float32Array;
   edges: { a: Int32Array; b: Int32Array; weight: Float32Array; reveal: Float32Array };
@@ -131,6 +133,7 @@ export function buildScene(graph: Graph, islands: number[], maximising: boolean)
     firstEval: nodes.first_eval,
     size: Float32Array.from(nodes.visits, (v) => 1 + Math.log2(1 + v) * 0.85),
     shared,
+    faded: Float32Array.from(nodes.faded, Number),
     reveal,
     edges: {
       a: Int32Array.from(edgeList, (e) => e[0]),

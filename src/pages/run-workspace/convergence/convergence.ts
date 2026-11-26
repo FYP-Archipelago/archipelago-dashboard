@@ -2,46 +2,6 @@ import { humanise } from '@/format.ts';
 import type { IslandHistory } from '@/pages/run-workspace/history.ts';
 import type { GenerationSummary } from '@/types.ts';
 
-type IslandSummary = {
-  island: number;
-  finalBest: number | null;
-  // The generation (and evaluation count) whose best-so-far was the island's final best: when it last improved.
-  reachedGeneration: number | null;
-  reachedEvaluations: number | null;
-  finalMean: number | null;
-  finalDiversity: number | null;
-};
-
-const lastOf = (values: (number | null)[]) => values.filter((value) => value !== null).at(-1) ?? null;
-
-export function summarise(history: IslandHistory, maximising: boolean): IslandSummary {
-  const better = (a: number, b: number) => (maximising ? a > b : a < b);
-  let bestAt = -1;
-  history.bestSoFar.forEach((value, i) => {
-    if (value !== null && (bestAt < 0 || better(value, history.bestSoFar[bestAt]!))) bestAt = i;
-  });
-  const reached = bestAt < 0 ? null : history.generation[bestAt]!;
-  return {
-    island: history.island,
-    finalBest: bestAt < 0 ? null : history.bestSoFar[bestAt]!,
-    reachedGeneration: reached,
-    reachedEvaluations: bestAt < 0 ? null : (history.evaluations[bestAt] ?? null),
-    finalMean: lastOf(history.mean),
-    finalDiversity: lastOf(history.diversity),
-  };
-}
-
-// The island holding the run's best value. When several islands end on the same value, the one that got there first,
-// by evaluations when they were logged, otherwise by generation.
-export function runBest(summaries: IslandSummary[], maximising: boolean): IslandSummary | null {
-  const finished = summaries.filter((s) => s.finalBest !== null);
-  if (!finished.length) return null;
-  const values = finished.map((s) => s.finalBest!);
-  const best = maximising ? Math.max(...values) : Math.min(...values);
-  const reachedAt = (s: IslandSummary) => s.reachedEvaluations ?? s.reachedGeneration ?? Infinity;
-  return finished.filter((s) => s.finalBest === best).sort((a, b) => reachedAt(a) - reachedAt(b))[0]!;
-}
-
 // The runner names its diversity measure in snake case, e.g. mean_pairwise_hamming_normalised.
 export function describeDiversity(rows: GenerationSummary[]): string | null {
   const metric = rows.find((row) => row.diversity_metric)?.diversity_metric;

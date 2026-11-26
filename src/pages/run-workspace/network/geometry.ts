@@ -32,6 +32,7 @@ export const GRAPH_ATTRIBUTES: [string, number][] = [
   ['aReveal', 1],
   ['aWeight', 1],
   ['aBorn', 1],
+  ['aFaded', 1],
 ];
 export const ARC_ATTRIBUTES: [string, number][] = [
   ['aAFrom', 3],
@@ -77,6 +78,7 @@ export function graphVertices(scene: Scene, { from, to, born }: Glide, ring: Rin
         reveal,
         weight,
         bornAt,
+        scene.faded[i]!,
       ],
       at
     );

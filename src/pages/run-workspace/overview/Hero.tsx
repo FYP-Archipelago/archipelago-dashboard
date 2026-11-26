@@ -13,7 +13,7 @@ import './hero.css';
 
 // Counts from the starting best to the final one, in orders of magnitude on a log scale.
 function useCountUp({ improvement, best }: OverviewData) {
-  const final = best?.finalBest ?? null;
+  const final = best?.fitness ?? null;
   const from = improvement?.start ?? final;
   const log = improvement?.log ?? false;
   const [value, setValue] = useState(reducedMotion() ? final : from);
@@ -46,10 +46,10 @@ function BestNumber({ data }: { data: OverviewData }) {
       <div className="hero-number-row">
         <span className="hero-number-value">
           <strong>{fitness(shown)}</strong>
-          <strong aria-hidden="true">{fitness(best?.finalBest ?? null)}</strong>
+          <strong aria-hidden="true">{fitness(best?.fitness ?? null)}</strong>
         </span>
         {improvement && best && (
-          <span className={`hero-delta-chip${shown === best.finalBest ? ' hero-delta-chip-settled' : ''}`}>
+          <span className={`hero-delta-chip${shown === best.fitness ? ' hero-delta-chip-settled' : ''}`}>
             {changeText(improvement.start, improvement.final)}
           </span>
         )}
@@ -63,16 +63,16 @@ const at = (data: OverviewData, x: number) => (data.axis === 'evaluations' ? `${
 
 // Who found the run's best and when, then who else got there or came closest.
 function foundText(data: OverviewData): ReactNode {
-  const { best, summaries, bestX, run, result } = data;
+  const { best, bests, bestX, run, result } = data;
   if (!best) return null;
   const maximising = result.run.maximising;
-  const ties = summaries.filter((s) => s.finalBest === best.finalBest).length;
-  const others = summaries.filter((s) => s.finalBest !== null && s.island !== best.island);
+  const ties = bests.filter((other) => other.fitness === best.fitness).length;
+  const others = bests.filter((other) => other.island_id !== best.island_id);
   const runnerUp = others.reduce<(typeof others)[number] | null>(
-    (top, s) => (!top || (maximising ? s.finalBest! > top.finalBest! : s.finalBest! < top.finalBest!) ? s : top),
+    (top, other) => (!top || (maximising ? other.fitness > top.fitness : other.fitness < top.fitness) ? other : top),
     null
   );
-  const parts: ReactNode[] = [<b key="island">Island {best.island}</b>];
+  const parts: ReactNode[] = [<b key="island">Island {best.island_id}</b>];
   if (bestX !== null)
     parts.push(
       data.axis === 'evaluations' ? (
@@ -83,8 +83,8 @@ function foundText(data: OverviewData): ReactNode {
         `at ${at(data, bestX)}`
       )
     );
-  if (ties > 1) parts.push(ties === summaries.length ? `all ${ties} islands tied` : `${plural(ties - 1, 'other island')} tied`);
-  else if (runnerUp) parts.push(`next best Island ${runnerUp.island} at ${fitness(runnerUp.finalBest)}`);
+  if (ties > 1) parts.push(ties === bests.length ? `all ${ties} islands tied` : `${plural(ties - 1, 'other island')} tied`);
+  else if (runnerUp) parts.push(`next best Island ${runnerUp.island_id} at ${fitness(runnerUp.fitness)}`);
   return parts.map((part, i) => (
     <span key={i}>
       {i > 0 && ' · '}

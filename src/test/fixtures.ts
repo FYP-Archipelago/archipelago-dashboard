@@ -158,6 +158,7 @@ export const makeResult = (change: Partial<RunResult> = {}): RunResult => ({
       islands_sharing: [1, 1, 2, 2, 1],
       island_best: [true, false, true, false, true],
       overall_best: [false, false, true, false, false],
+      faded: [false, false, false, false, false],
       migration_endpoint: [true, true, true, true, true],
       genome_hash: ['a10', 'a11', 'a12', 'a13', 'a20'],
       weight: null,
@@ -199,6 +200,13 @@ export const makeResult = (change: Partial<RunResult> = {}): RunResult => ({
     { island_id: 1, termination_reason: 'stagnation', generations_completed: 5, evaluations_total: 50, generations_since_improvement: 2 },
     { island_id: 2, termination_reason: 'max_evaluations', generations_completed: 5, evaluations_total: 50, generations_since_improvement: 0 },
   ],
+  // The worker's picks for the history above: island 1 holds the run best, as it reached 60 first.
+  island_bests: [
+    { island_id: 0, fitness: 60, individual_id: 'i00-g000003', generation: 3, evaluations: 40, node: 10 },
+    { island_id: 1, fitness: 60, individual_id: 'i01-g000002', generation: 2, evaluations: 30, node: 12 },
+    { island_id: 2, fitness: 70, individual_id: 'i02-g000004', generation: 4, evaluations: 50, node: 20 },
+  ],
+  run_best_island: 1,
   // The islands share an improvement of 40: island 0 earns 22, island 1 13, island 2 5. Migration lifts what the islands
   // reach on their own (20) to 40, credited 15 to route 0 -> 1, 5 to 1 -> 2 and nothing to 1 -> 0.
   explainability: {

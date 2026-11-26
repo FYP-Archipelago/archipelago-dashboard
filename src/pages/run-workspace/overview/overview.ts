@@ -1,7 +1,7 @@
 import { fitness } from '@/format.ts';
-import { runBest, shareAfter, summarise } from '@/pages/run-workspace/convergence/convergence.ts';
+import { shareAfter } from '@/pages/run-workspace/convergence/convergence.ts';
 import { historyByIsland, type IslandHistory } from '@/pages/run-workspace/history.ts';
-import type { Run, RunResult, ShapleyAttribution, ShapleyGame } from '@/types.ts';
+import type { IslandBest, Run, RunResult, ShapleyAttribution, ShapleyGame } from '@/types.ts';
 
 export type Axis = 'evaluations' | 'generation';
 
@@ -109,8 +109,8 @@ export type OverviewData = {
   result: RunResult;
   histories: IslandHistory[];
   islandCount: number;
-  summaries: ReturnType<typeof summarise>[];
-  best: ReturnType<typeof runBest>;
+  bests: IslandBest[];
+  best: IslandBest | null;
   // Where the run's best was first reached, along `axis`.
   bestX: number | null;
   improvement: Improvement | null;
@@ -122,8 +122,7 @@ export type OverviewData = {
 export function overviewData(run: Run, result: RunResult): OverviewData {
   const maximising = result.run.maximising;
   const histories = historyByIsland(result.generation_history);
-  const summaries = histories.map((history) => summarise(history, maximising));
-  const best = runBest(summaries, maximising);
+  const best = result.island_bests.find((island) => island.island_id === result.run_best_island) ?? null;
   const improvement = improvementOf(histories, maximising);
   const axis: Axis = histories.every((history) => history.evaluations.every((value) => value !== null)) ? 'evaluations' : 'generation';
   return {
@@ -131,9 +130,9 @@ export function overviewData(run: Run, result: RunResult): OverviewData {
     result,
     histories,
     islandCount: histories.length || result.run.islands.length,
-    summaries,
+    bests: result.island_bests,
     best,
-    bestX: best ? (axis === 'evaluations' ? best.reachedEvaluations : best.reachedGeneration) : null,
+    bestX: best ? (axis === 'evaluations' ? best.evaluations : best.generation) : null,
     improvement,
     axis,
     curve: improvement ? progressCurve(histories, axis, improvement) : [],
@@ -142,7 +141,7 @@ export function overviewData(run: Run, result: RunResult): OverviewData {
 }
 
 export function runNotes(data: OverviewData, limit = 2): string[] {
-  const { curve, histories, islandCount, axis, shapley, summaries, run, result } = data;
+  const { curve, histories, islandCount, axis, shapley, bests, run, result } = data;
   const notes: { weight: number; text: string }[] = [];
 
   // Still improving: the last gain came in the run's last tenth.
@@ -175,8 +174,8 @@ export function runNotes(data: OverviewData, limit = 2): string[] {
   }
 
   // Every island ended on the same best value, and clusters were shared by most islands on average.
-  const finals = summaries.map((s) => s.finalBest);
-  if (islandCount > 1 && finals.every((value) => value !== null && value === finals[0]) && result.graph.overlap >= 0.6 * islandCount)
+  const finals = bests.map((island) => island.fitness);
+  if (islandCount > 1 && finals.length === islandCount && finals.every((value) => value === finals[0]) && result.graph.overlap >= 0.6 * islandCount)
     notes.push({ weight: 50, text: `All ${islandCount} islands reached the same best fitness.` });
 
   if (shapley) {

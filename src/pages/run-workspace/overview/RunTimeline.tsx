@@ -4,10 +4,9 @@ import { islandColor } from '@/colors.ts';
 import { compactNumber, fitness, numberFormat } from '@/format.ts';
 import { maxOf } from '@/math.ts';
 import { niceTicks, useSize } from '@/pages/run-workspace/charts/LineChart.tsx';
-import type { IslandHistory } from '@/pages/run-workspace/history.ts';
 import { IslandSwatch } from '@/pages/run-workspace/shared.tsx';
 import { REASONS, stopText } from '@/pages/run-workspace/stops.ts';
-import type { IslandEnd, TerminationReason } from '@/types.ts';
+import type { IslandBest, IslandEnd, TerminationReason } from '@/types.ts';
 
 import OverviewCard from './OverviewCard.tsx';
 import { crossing, laneOf, type Axis, type Improvement, type Lane, type OverviewData } from './overview.ts';
@@ -67,15 +66,14 @@ const KEY_TEXT: Record<string, string> = {
 
 type Hover = { kind: 'lane'; island: number } | { kind: 'band'; index: number };
 
-function LaneTip({ lane, history, end, axis, style }: { lane: Lane; history: IslandHistory; end?: IslandEnd; axis: Axis; style: CSSProperties }) {
-  const finalBest = history.bestSoFar.filter((value) => value !== null).at(-1) ?? null;
+function LaneTip({ lane, best, end, axis, style }: { lane: Lane; best?: IslandBest; end?: IslandEnd; axis: Axis; style: CSSProperties }) {
   return (
     <div className="hover-tip run-timeline-tip" style={style}>
       <div className="hover-tip-title">
         <IslandSwatch island={lane.island} /> Island {lane.island}
       </div>
       <div className="hover-tip-row">
-        Final best<b>{fitness(finalBest)}</b>
+        Final best<b>{fitness(best?.fitness ?? null)}</b>
       </div>
       <div className="hover-tip-row">
         Improvements<b>{numberFormat.format(lane.steps.length)}</b>
@@ -102,7 +100,7 @@ function LaneTip({ lane, history, end, axis, style }: { lane: Lane; history: Isl
 function Timeline({ data, improvement }: { data: OverviewData; improvement: Improvement }) {
   const { histories, axis, curve } = data;
   const ends = data.result.island_ends;
-  const best = data.best && data.bestX !== null ? { island: data.best.island, x: data.bestX } : null;
+  const best = data.best && data.bestX !== null ? { island: data.best.island_id, x: data.bestX } : null;
   const [ref, size] = useSize();
   const [hover, setHover] = useState<Hover | null>(null);
   const lanes = useMemo(() => histories.flatMap((history) => laneOf(history, axis, improvement) ?? []), [histories, axis, improvement]);
@@ -293,7 +291,7 @@ function Timeline({ data, improvement }: { data: OverviewData; improvement: Impr
         {hoveredLane >= 0 && (
           <LaneTip
             lane={lanes[hoveredLane]!}
-            history={histories.find((history) => history.island === lanes[hoveredLane]!.island)!}
+            best={data.bests.find((best) => best.island_id === lanes[hoveredLane]!.island)}
             end={endOf(lanes[hoveredLane]!.island)}
             axis={axis}
             style={{

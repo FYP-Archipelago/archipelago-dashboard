@@ -141,6 +141,7 @@ export type GraphNodes = {
   islands_sharing: number[];
   island_best: boolean[];
   overall_best: boolean[];
+  faded: boolean[];
   migration_endpoint: boolean[];
   genome_hash: string[];
   // DenStream's decaying weight; null without DenStream.
@@ -182,6 +183,7 @@ export type GraphDelta = {
     | 'out_degree'
     | 'islands_sharing'
     | 'migration_endpoint'
+    | 'faded'
   >;
   percentiles: Columns<'fitness_percentile'>;
   weights: Columns<'weight'> | null;
@@ -199,6 +201,17 @@ export type GraphDelta = {
 
 // One streamed update of a live run.
 export type RunUpdate = { status: 'warming_up' | 'live'; graph: GraphDelta };
+
+// An island's best evaluation as the worker picked it: the first to reach the island's best fitness.
+// evaluations is the island's evaluations_total at the end of that generation, and node the cluster holding it.
+export type IslandBest = {
+  island_id: number;
+  fitness: number;
+  individual_id: string;
+  generation: number;
+  evaluations: number | null;
+  node: number;
+};
 
 // archipelago's Result, trimmed to the parts the run page reads so far.
 export type RunResult = {
@@ -239,6 +252,9 @@ export type RunResult = {
   warnings: string[];
   // One per island that logged island_end, sorted by island; an island that crashed has none.
   island_ends: IslandEnd[];
+  // One per island with an evaluation, sorted by island; run_best_island names the one holding the run best.
+  island_bests: IslandBest[];
+  run_best_island: number | null;
 };
 
 // The runner's TerminationReason values, which archipelago passes through as they are.

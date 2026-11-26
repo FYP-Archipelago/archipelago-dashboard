@@ -10,7 +10,7 @@ vec2 place(vec2 base, vec2 off){ return mix(base, base * 0.30 + off, uSep); }`;
 // them and fade in when new in a live update.
 export const GRAPH_VERTEX = `
 in vec2 aFromXY; in float aFromH; in vec2 aToXY; in float aToH; in vec2 aOff;
-in float aSlot; in float aSize; in float aShared; in float aReveal; in float aWeight; in float aBorn;
+in float aSlot; in float aSize; in float aShared; in float aReveal; in float aWeight; in float aBorn; in float aFaded;
 uniform mat4 uVP; uniform float uMove; uniform float uHeightScale; uniform float uPointScale; uniform float uNodeSize;
 uniform vec3 uColour[${MAX_ISLANDS}]; uniform float uAlpha[${MAX_ISLANDS}];
 uniform float uBase; uniform float uFogNear; uniform float uFogFar; uniform float uShared;
@@ -28,7 +28,8 @@ void main(){
   float hot = smoothstep(0.24, 0.55, aShared);
   float mute = mix(1.0, mix(0.10, 1.0, hot), uShared);
   float shown = clamp((uReveal * 1.02 - aReveal) / 0.02, 0.0, 1.0) * step(uMinWeight, aWeight) * clamp((uNow - aBorn) / 0.8, 0.0, 1.0);
-  vAlpha = uBase * uAlpha[k] * mute * (0.30 + 0.70 * fog) * shown;
+  // A cluster DenStream faded out, kept for the best it holds, and its search paths show at a third of their strength.
+  vAlpha = uBase * uAlpha[k] * mute * (0.30 + 0.70 * fog) * shown * mix(1.0, 0.35, aFaded);
   vRing = hot * uShared;
   // Grown, a cluster's point widens only by its core's growth (the core is 0.31 of the point's radius); shrunk, all of it shrinks.
   float grown = 0.31 * uNodeSize + 0.69 * min(uNodeSize, 1.0);

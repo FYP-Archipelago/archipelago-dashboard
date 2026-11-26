@@ -144,7 +144,7 @@ export default function IslandMap({ data }: { data: OverviewData }) {
   };
 
   const seed = data.run.run_id;
-  const bestIsland = data.best?.island ?? null;
+  const bestIsland = data.best?.island_id ?? null;
   const { islands, routes, hasCredit } = useMemo(() => mapData(data), [data]);
   const counts = useMemo(() => dotCounts(islands.map((island) => island.share ?? island.clusterShare)), [islands]);
 
