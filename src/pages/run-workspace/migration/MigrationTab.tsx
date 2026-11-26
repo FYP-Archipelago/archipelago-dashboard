@@ -1,7 +1,6 @@
 import { useMemo, useRef, useState, type PointerEvent } from 'react';
 
 import { heatColor, heatInk, islandColor } from '@/colors.ts';
-import Icon from '@/components/Icon.tsx';
 import Link from '@/components/Link.tsx';
 import { fitness, numberFormat, TOPOLOGIES } from '@/format.ts';
 import { EmptyState, IslandSwatch, NoResult, routeKey, type ResultQuery } from '@/pages/run-workspace/shared.tsx';
@@ -15,12 +14,32 @@ import './migration.css';
 type Route = RunResult['migration_routes'][number];
 
 type OnHover = (key: string | null, event?: PointerEvent) => void;
+type OnIsland = (island: number | null, event?: PointerEvent) => void;
 // Shares under 10% keep a decimal, so a small but real share does not round away to 0%.
 const percent = (share: number) => `${share > 0 && share < 0.1 ? (share * 100).toFixed(1) : Math.round(share * 100)}%`;
 
 // Islands sit on a circle, with one curved arrow per route, as wide as its share of the migrants.
 // The two directions between a pair bend to opposite sides, so both stay visible.
-function FlowDiagram({ islands, routes, hovered, onHover }: { islands: number[]; routes: Route[]; hovered: string | null; onHover: OnHover }) {
+// Hovering an island brings out its routes until the pointer reaches another island or route, or leaves the diagram.
+function FlowDiagram({
+  islands,
+  routes,
+  hovered,
+  focusIsland,
+  onHover,
+  onIsland,
+  onLeave,
+}: {
+  islands: number[];
+  routes: Route[];
+  hovered: string | null;
+  focusIsland: number | null;
+  onHover: OnHover;
+  onIsland: OnIsland;
+  onLeave: () => void;
+}) {
+  const touches = (route: Route, island: number) => route.source === island || route.destination === island;
+  const linked = new Set(focusIsland === null ? [] : routes.filter((route) => touches(route, focusIsland)).flatMap((r) => [r.source, r.destination]));
   const size = 400;
   const centre = size / 2;
   const radius = size * 0.34;
@@ -33,7 +52,7 @@ function FlowDiagram({ islands, routes, hovered, onHover }: { islands: number[];
   );
   const most = Math.max(1, ...routes.map((route) => route.migrants));
   return (
-    <svg className="flow-diagram" viewBox={`0 0 ${size} ${size}`} role="img" aria-label="Migrants between islands">
+    <svg className="flow-diagram" viewBox={`0 0 ${size} ${size}`} role="img" aria-label="Migrants between islands" onPointerLeave={onLeave}>
       {routes.map((route) => {
         const [x1, y1] = position.get(route.source)!;
         const [x2, y2] = position.get(route.destination)!;
@@ -52,10 +71,11 @@ function FlowDiagram({ islands, routes, hovered, onHover }: { islands: number[];
         const curve = `M${start[0]},${start[1]} Q${control[0]},${control[1]} ${end[0]},${end[1]}`;
         const key = routeKey(route.source, route.destination);
         const colour = islandColor(route.source);
+        const dimmed = hovered ? hovered !== key : focusIsland !== null && !touches(route, focusIsland);
         return (
           <g
             key={key}
-            className={`flow-route${hovered && hovered !== key ? ' flow-route-dimmed' : ''}`}
+            className={`flow-route${dimmed ? ' flow-route-dimmed' : ''}`}
             onPointerMove={(event) => onHover(key, event)}
             onPointerLeave={() => onHover(null)}
           >
@@ -71,7 +91,12 @@ function FlowDiagram({ islands, routes, hovered, onHover }: { islands: number[];
       {islands.map((island) => {
         const [x, y] = position.get(island)!;
         return (
-          <g key={island} className="flow-island">
+          <g
+            key={island}
+            className={`flow-island${focusIsland !== null && !linked.has(island) && island !== focusIsland ? ' flow-island-dimmed' : ''}`}
+            onPointerMove={(event) => onIsland(island, event)}
+            onPointerLeave={() => onIsland(null)}
+          >
             <circle cx={x} cy={y} r={node} fill={islandColor(island)} />
             <text x={x} y={y} textAnchor="middle" dominantBaseline="central">
               {island}
@@ -84,7 +109,22 @@ function FlowDiagram({ islands, routes, hovered, onHover }: { islands: number[];
 }
 
 // Migrants by source (rows) and destination (columns), with each island's totals in the margins.
-function RouteMatrix({ islands, routes, hovered, onHover }: { islands: number[]; routes: Route[]; hovered: string | null; onHover: OnHover }) {
+// A hovered route is highlighted alone, and otherwise every route of the island brought out on the map is.
+function RouteMatrix({
+  islands,
+  routes,
+  hovered,
+  focusIsland,
+  onHover,
+}: {
+  islands: number[];
+  routes: Route[];
+  hovered: string | null;
+  focusIsland: number | null;
+  onHover: OnHover;
+}) {
+  const lit = (source: number, destination: number) =>
+    hovered ? hovered === routeKey(source, destination) : focusIsland !== null && (source === focusIsland || destination === focusIsland);
   const between = new Map(routes.map((route) => [routeKey(route.source, route.destination), route.migrants]));
   const sent = (island: number) => routes.filter((route) => route.source === island).reduce((sum, route) => sum + route.migrants, 0);
   const received = (island: number) => routes.filter((route) => route.destination === island).reduce((sum, route) => sum + route.migrants, 0);
@@ -116,7 +156,7 @@ function RouteMatrix({ islands, routes, hovered, onHover }: { islands: number[];
             return (
               <span
                 key={key}
-                className={`heat-cell${hovered === key ? ' heat-cell-selected' : ''}`}
+                className={`heat-cell${lit(source, destination) ? ' heat-cell-selected' : ''}`}
                 style={{ background: heatColor(shade), color: heatInk(shade) }}
                 aria-label={`Island ${source} → island ${destination}: ${migrants} migrants`}
                 onPointerEnter={() => onHover(key)}
@@ -140,12 +180,24 @@ function RouteMatrix({ islands, routes, hovered, onHover }: { islands: number[];
   );
 }
 
+const OUTCOMES = [
+  { key: 'all', label: 'All arrivals' },
+  { key: 'arrival-better', label: 'Better' },
+  { key: 'arrival-same', label: 'Same' },
+  { key: 'arrival-worse', label: 'Worse' },
+] as const;
+
 function Arrivals({ runId, graph, maximising }: { runId: string; graph: RunResult['graph']; maximising: boolean }) {
   const arrivals = useMemo(() => arrivalsOf(graph), [graph]);
   const [showAll, setShowAll] = useState(false);
+  const [outcome, setOutcome] = useState<(typeof OUTCOMES)[number]['key']>('all');
   if (!arrivals.length) return null;
-  const better = arrivals.filter((arrival) => comparison(arrival, maximising)?.tone === 'arrival-better').length;
-  const shown = showAll ? arrivals : arrivals.slice(0, 10);
+  const toneOf = (arrival: (typeof arrivals)[number]) => comparison(arrival, maximising)?.tone;
+  const count = (key: (typeof OUTCOMES)[number]['key']) =>
+    key === 'all' ? arrivals.length : arrivals.filter((arrival) => toneOf(arrival) === key).length;
+  const better = count('arrival-better');
+  const matching = outcome === 'all' ? arrivals : arrivals.filter((arrival) => toneOf(arrival) === outcome);
+  const shown = showAll ? matching : matching.slice(0, 10);
   // Each cluster opens in the Network tab, selected and centred.
   const cluster = (id: number, best: number | null) => (
     <>
@@ -157,11 +209,27 @@ function Arrivals({ runId, graph, maximising }: { runId: string; graph: RunResul
   );
   return (
     <>
-      <h2 className="section-title">Where migrants landed</h2>
-      <p className="section-subtitle">
-        Migrants moved along {numberFormat.format(arrivals.length)} links between search clusters. {numberFormat.format(better)} of them arrived in a
-        cluster whose best beat the one they left.
-      </p>
+      <div className="section-head">
+        <div>
+          <h2 className="section-title">Where migrants landed</h2>
+          <p className="section-subtitle">
+            Migrants moved along {numberFormat.format(arrivals.length)} links between search clusters. {numberFormat.format(better)} of them arrived
+            in a cluster whose best beat the one they left.
+          </p>
+        </div>
+        <select
+          className="input arrival-filter"
+          aria-label="Arrival cluster's best"
+          value={outcome}
+          onChange={(event) => setOutcome(event.target.value as typeof outcome)}
+        >
+          {OUTCOMES.map(({ key, label }) => (
+            <option key={key} value={key}>
+              {label} ({numberFormat.format(count(key))})
+            </option>
+          ))}
+        </select>
+      </div>
       <section className="card table-card">
         <table className="table">
           <thead>
@@ -174,6 +242,13 @@ function Arrivals({ runId, graph, maximising }: { runId: string; graph: RunResul
             </tr>
           </thead>
           <tbody>
+            {!shown.length && (
+              <tr>
+                <td colSpan={5} className="muted arrivals-empty">
+                  No arrivals like that
+                </td>
+              </tr>
+            )}
             {shown.map((arrival) => {
               const compared = comparison(arrival, maximising);
               return (
@@ -196,10 +271,10 @@ function Arrivals({ runId, graph, maximising }: { runId: string; graph: RunResul
           </tbody>
         </table>
       </section>
-      {arrivals.length > shown.length && (
+      {matching.length > shown.length && (
         <div className="table-foot">
           <button className="button" onClick={() => setShowAll(true)}>
-            Show all {numberFormat.format(arrivals.length)} links
+            Show all {numberFormat.format(matching.length)} links
           </button>
         </div>
       )}
@@ -207,16 +282,34 @@ function Arrivals({ runId, graph, maximising }: { runId: string; graph: RunResul
   );
 }
 
+type At = { x: number; y: number; width: number };
+
+// Beside the pointer, on its left near the right edge.
+const tipStyle = (at: At) => (at.x > at.width * 0.7 ? { right: at.width - at.x + 14, top: at.y + 14 } : { left: at.x + 14, top: at.y + 14 });
+
 function Migration({ run, result }: { run: Run; result: RunResult }) {
-  // The hovered route, and the pointer's place when it is hovered on the map; the matrix only highlights.
-  const [hover, setHover] = useState<{ key: string; at: { x: number; y: number; width: number } | null } | null>(null);
+  // The hovered route or island, and the pointer's place when it is hovered on the map; the matrix only highlights.
+  const [hover, setHover] = useState<{ key: string; at: At | null } | { island: number; at: At } | null>(null);
+  // The island whose routes stay brought out on the map, from hovering it until another island or route is picked.
+  const [focusIsland, setFocusIsland] = useState<number | null>(null);
   const grid = useRef<HTMLDivElement>(null);
-  const onHover: OnHover = (key, event) => {
-    const box = grid.current?.getBoundingClientRect();
-    setHover(key ? { key, at: event && box ? { x: event.clientX - box.left, y: event.clientY - box.top, width: box.width } : null } : null);
-  };
   const islands = result.run.islands;
   const routes = result.migration_routes.filter((route) => route.migrants > 0);
+  const pointer = (event?: PointerEvent): At | null => {
+    const box = grid.current?.getBoundingClientRect();
+    return event && box ? { x: event.clientX - box.left, y: event.clientY - box.top, width: box.width } : null;
+  };
+  const onHover: OnHover = (key, event) => {
+    const route = routes.find((r) => routeKey(r.source, r.destination) === key);
+    if (route && focusIsland !== null && route.source !== focusIsland && route.destination !== focusIsland) setFocusIsland(null);
+    setHover(key ? { key, at: pointer(event) } : null);
+  };
+  const onIsland: OnIsland = (island, event) => {
+    const at = pointer(event);
+    if (island !== null) setFocusIsland(island);
+    setHover(island !== null && at ? { island, at } : null);
+  };
+  const hoveredKey = hover && 'key' in hover ? hover.key : null;
   const total = routes.reduce((sum, route) => sum + route.migrants, 0);
   if (!total) return <EmptyState icon="shuffle" title="No migrants moved" />;
 
@@ -224,7 +317,12 @@ function Migration({ run, result }: { run: Run; result: RunResult }) {
   const shapley = result.explainability.shapley;
   const routesGame = shapley.status === 'ready' ? shapley.routes : null;
   const topology = result.run.migration_topology ?? run.run_settings['migration.topology'];
-  const focus = hover ? routes.find((route) => routeKey(route.source, route.destination) === hover.key) : null;
+  const focus = hoveredKey ? routes.find((route) => routeKey(route.source, route.destination) === hoveredKey) : null;
+  const islandTip = hover && 'island' in hover ? hover.island : null;
+  const flows = (island: number, side: 'source' | 'destination') => {
+    const own = routes.filter((route) => route[side] === island);
+    return { migrants: own.reduce((sum, route) => sum + route.migrants, 0), islands: own.length };
+  };
   const gain = routesGame ? routesGame.full_value - routesGame.empty_value : 0;
   const credit = (route: Route) =>
     routesGame?.players.find((player) => Array.isArray(player.player) && player.player[0] === route.source && player.player[1] === route.destination)
@@ -273,24 +371,53 @@ function Migration({ run, result }: { run: Run; result: RunResult }) {
             <h3>Flow between islands</h3>
             <span className="muted">Arrow width ∝ Number of migrants</span>
           </div>
-          <FlowDiagram islands={islands} routes={routes} hovered={hover?.key ?? null} onHover={onHover} />
+          <FlowDiagram
+            islands={islands}
+            routes={routes}
+            hovered={hoveredKey}
+            focusIsland={focusIsland}
+            onHover={onHover}
+            onIsland={onIsland}
+            onLeave={() => {
+              setFocusIsland(null);
+              setHover(null);
+            }}
+          />
         </section>
         <section className="card">
           <div className="card-header card-heading">
             <h3>Route matrix</h3>
             <span className="muted">Migrants by source and destination</span>
           </div>
-          <RouteMatrix islands={islands} routes={routes} hovered={hover?.key ?? null} onHover={onHover} />
+          <RouteMatrix islands={islands} routes={routes} hovered={hoveredKey} focusIsland={focusIsland} onHover={onHover} />
         </section>
+        {hover?.at && islandTip !== null && (
+          <div className="hover-tip" style={tipStyle(hover.at)}>
+            <div className="hover-tip-title route-name">
+              <IslandSwatch island={islandTip} />
+              Island {islandTip}
+            </div>
+            {(['destination', 'source'] as const).map((side) => {
+              const { migrants, islands: count } = flows(islandTip, side);
+              return (
+                <div key={side} className="hover-tip-row">
+                  {side === 'destination' ? 'Migrants in' : 'Migrants out'}
+                  <b>
+                    {numberFormat.format(migrants)}
+                    {count > 0 && (
+                      <span className="muted">
+                        {' '}
+                        · {side === 'destination' ? 'from' : 'to'} {count} {count === 1 ? 'island' : 'islands'}
+                      </span>
+                    )}
+                  </b>
+                </div>
+              );
+            })}
+          </div>
+        )}
         {hover?.at && focus && (
-          <div
-            className="hover-tip"
-            style={
-              hover.at.x > hover.at.width * 0.7
-                ? { right: hover.at.width - hover.at.x + 14, top: hover.at.y + 14 }
-                : { left: hover.at.x + 14, top: hover.at.y + 14 }
-            }
-          >
+          <div className="hover-tip" style={tipStyle(hover.at)}>
             <div className="hover-tip-title route-name">
               <IslandSwatch island={focus.source} />
               Island {focus.source} →
@@ -317,20 +444,6 @@ function Migration({ run, result }: { run: Run; result: RunResult }) {
           </div>
         )}
       </div>
-
-      {routesGame && (
-        <Link className="card route-link" href={`${runHref(run.run_id, 'attribution')}?view=routes`}>
-          <Icon name="shuffle" size={18} />
-          <span>
-            <strong>Which migrant routes mattered?</strong>
-            <span className="muted">Attribution credits each route with the part of the improvement its migrants made possible.</span>
-          </span>
-          <span className="route-link-go">
-            See Attribution
-            <Icon name="arrowR" size={14} />
-          </span>
-        </Link>
-      )}
 
       <Arrivals runId={run.run_id} graph={result.graph} maximising={result.run.maximising} />
     </>
