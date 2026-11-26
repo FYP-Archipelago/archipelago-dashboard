@@ -2,6 +2,7 @@ import { useMemo, useState, type CSSProperties, type PointerEvent } from 'react'
 
 import { islandColor } from '@/colors.ts';
 import { compactNumber, fitness, numberFormat } from '@/format.ts';
+import { maxOf } from '@/math.ts';
 import { niceTicks, useSize } from '@/pages/run-workspace/charts/LineChart.tsx';
 import type { IslandHistory } from '@/pages/run-workspace/history.ts';
 import { IslandSwatch } from '@/pages/run-workspace/shared.tsx';
@@ -116,7 +117,10 @@ function Timeline({ data, improvement }: { data: OverviewData; improvement: Impr
   const sy = (value: number) => TOP + (1 - Math.max(0, Math.min(1, value))) * BAND;
   const laneY = (index: number) => TOP + BAND + GAP + index * LANE + LANE / 2;
   const lanesBottom = TOP + BAND + GAP + lanes.length * LANE;
-  const biggest = Math.max(...lanes.flatMap((lane) => lane.steps.map((step) => step.size)), 1e-12);
+  const biggest = maxOf(
+    lanes.flatMap((lane) => lane.steps.map((step) => step.size)),
+    1e-12
+  );
   const tickHalf = (size: number) => 2 + 9 * Math.sqrt(size / biggest);
   const formatX = (x: number) => (axis === 'evaluations' ? `${numberFormat.format(x)} evaluations` : `Generation ${x}`);
 

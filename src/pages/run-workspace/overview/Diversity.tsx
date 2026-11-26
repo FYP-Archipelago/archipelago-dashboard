@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 
+import { maxOf } from '@/math.ts';
 import { niceTicks, useSize } from '@/pages/run-workspace/charts/LineChart.tsx';
 import { describeDiversity } from '@/pages/run-workspace/convergence/convergence.ts';
 import { meanOf, REAL_DIFFERENCE, wholeRunPairs, windowValues } from '@/pages/run-workspace/divergence/divergence.ts';
@@ -55,11 +56,11 @@ function Trends({ within, between, metric }: ReturnType<typeof useDiversity> & {
   ]
     .filter((line) => line.points.length > 1)
     .map((line) => {
-      const peak = Math.max(...line.points.map((point) => point.value)) || 1;
+      const peak = maxOf(line.points.map((point) => point.value)) || 1;
       return { ...line, relative: line.points.map((point) => ({ x: point.generation, y: point.value / peak })) };
     });
   if (!lines.length) return <p className="hint">This run logged no diversity.</p>;
-  const x1 = Math.max(...lines.flatMap((line) => line.relative.map((point) => point.x))) || 1;
+  const x1 = maxOf(lines.flatMap((line) => line.relative.map((point) => point.x))) || 1;
   const plotWidth = size.width - pad.left - pad.right;
   const sx = (x: number) => pad.left + (x / x1) * plotWidth;
   const sy = (y: number) => pad.top + (1 - y) * (height - pad.top - pad.bottom);

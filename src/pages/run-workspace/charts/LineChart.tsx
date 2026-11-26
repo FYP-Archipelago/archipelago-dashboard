@@ -1,5 +1,7 @@
 import { useLayoutEffect, useMemo, useRef, useState, type PointerEvent, type ReactNode } from 'react';
 
+import { maxOf, minOf } from '@/math.ts';
+
 import './chart.css';
 
 type Series = { key: number; label: string; color: string; xs: number[]; ys: (number | null)[]; endCross?: boolean };
@@ -129,15 +131,15 @@ export default function LineChart({
     const xs = series.flatMap((s) => s.xs);
     const ys = series.flatMap((s) => s.ys.map((value) => (value === null ? null : log ? Math.log10(value) : value))).filter((v) => v !== null);
     if (!xs.length || !ys.length || width === 0 || height === 0) return null;
-    const x0 = Math.min(...xs);
-    const x1 = Math.max(...xs);
+    const x0 = minOf(xs);
+    const x1 = maxOf(xs);
     const plotRight = width - MARGIN.right;
     const plotWidth = plotRight - MARGIN.left;
     const sx = (x: number) => MARGIN.left + ((x - x0) / (x1 - x0 || 1)) * plotWidth;
     const plotTop = MARGIN.top + shadeTop;
     const plotBottom = height - MARGIN.bottom - shadeBottom;
-    let y0 = Math.min(...ys);
-    let y1 = Math.max(...ys);
+    let y0 = minOf(ys);
+    let y1 = maxOf(ys);
     const pad = (y1 - y0) * 0.05 || Math.abs(y0) * 0.1 || 1;
     y0 -= pad;
     y1 += pad;
@@ -407,8 +409,8 @@ export default function LineChart({
 export function Sparkline({ values, color, label }: { values: (number | null)[]; color: string; label: string }) {
   const present = values.filter((v) => v !== null);
   if (present.length < 2) return null;
-  const lo = Math.min(...present);
-  const span = Math.max(...present) - lo || 1;
+  const lo = minOf(present);
+  const span = maxOf(present) - lo || 1;
   let d = '';
   let pen = false;
   values.forEach((value, i) => {

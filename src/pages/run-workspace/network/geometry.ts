@@ -1,3 +1,5 @@
+import { maxOf } from '@/math.ts';
+
 import type { ViewSettings } from './renderer.ts';
 import type { Scene } from './scene.ts';
 
@@ -106,7 +108,7 @@ export function arcVertices(
   const count = view.layers.migrations ? scene.migrations.a.length : 0;
   const vertices = count * ARC_SEGMENTS * QUAD.length;
   const data = new Float32Array(vertices * ARC_FLOATS);
-  const busiest = Math.max(1, ...scene.migrations.count);
+  const busiest = maxOf(Array.from(scene.migrations.count), 1);
   let at = 0;
   for (let m = 0; m < count; m++) {
     const [a, b] = [scene.migrations.a[m]!, scene.migrations.b[m]!];

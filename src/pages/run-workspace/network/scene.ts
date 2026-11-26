@@ -1,3 +1,4 @@
+import { maxOf } from '@/math.ts';
 import { routeKey } from '@/pages/run-workspace/shared.tsx';
 import type { Graph } from '@/types.ts';
 
@@ -146,6 +147,6 @@ export function buildScene(graph: Graph, islands: number[], maximising: boolean)
     routes: [...routes.values()].sort((a, b) => a.source - b.source || a.destination - b.destination),
     islandBest: islands.map((island) => nodes.id.findIndex((_, i) => nodes.island[i] === island && nodes.island_best[i])),
     runBest: nodes.overall_best.indexOf(true),
-    maxTraversals: Math.max(1, ...graph.edges.weight),
+    maxTraversals: maxOf(graph.edges.weight, 1),
   };
 }
