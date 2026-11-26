@@ -199,8 +199,10 @@ export type GraphDelta = {
   overlap: number;
 };
 
-// One streamed update of a live run.
-export type RunUpdate = { status: 'warming_up' | 'live'; graph: GraphDelta };
+export type MigrationRoute = { source: number; destination: number; migrants: number };
+
+// One streamed update of a live run. maximising is null while warming up; migration_routes counts every migrant so far.
+export type RunUpdate = { status: 'warming_up' | 'live'; maximising: boolean | null; migration_routes: MigrationRoute[]; graph: GraphDelta };
 
 // An island's best evaluation as the worker picked it: the first to reach the island's best fitness.
 // evaluations is the island's evaluations_total at the end of that generation, and node the cluster holding it.
@@ -240,7 +242,7 @@ export type RunResult = {
   layout: { method: 'pca' | 'mds' | 'none'; variance_kept_2d: number; variance_kept_3d: number };
   graph: Graph;
   separation: Separation;
-  migration_routes: { source: number; destination: number; migrants: number }[];
+  migration_routes: MigrationRoute[];
   clustering: {
     stages: string[];
     counts: { evaluations: number; rows_clustered: number; nodes: number; faded_nodes: number | null };
