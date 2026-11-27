@@ -78,3 +78,19 @@
   padding-top: 12px;
   text-align: right;
 }
+
+.arrivals-row {
+  transition: opacity 0.15s;
+}
+.arrivals-row.arrivals-dim {
+  opacity: 0.35;
+}
+.arrivals-islands-head {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.arrivals-islands-head b {
+  color: var(--ink);
+  font-weight: 600;
+}
