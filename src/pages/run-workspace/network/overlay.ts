@@ -197,6 +197,11 @@ export function drawOverlay(
         Math.abs(dx) > 1e-3 ? (halfWidth + textWidth) / Math.abs(dx) : Infinity,
         Math.abs(dy) > 1e-3 ? (halfHeight + textHeight) / Math.abs(dy) : Infinity
       );
+      // A dark outline keeps the name readable over migrations passing behind it.
+      ctx.lineWidth = 4;
+      ctx.lineJoin = 'round';
+      ctx.strokeStyle = 'rgba(0,0,0,0.85)';
+      ctx.strokeText(text, x + dx * out, y + dy * out);
       ctx.fillStyle = islandColor(island);
       ctx.fillText(text, x + dx * out, y + dy * out);
     }

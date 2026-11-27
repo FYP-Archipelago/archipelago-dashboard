@@ -2,7 +2,7 @@ import { islandColor } from '@/colors.ts';
 import { reducedMotion } from '@/style.ts';
 
 import { basis, between, type Camera, eyeOf, fitOnScreen, FOV, GROUPED, HOME, multiply, perspective, TOP_DOWN, viewMatrix } from './camera.ts';
-import { ARC_ATTRIBUTES, arcVertices, type Glide, GRAPH_ATTRIBUTES, graphVertices, islandRing, type Ring } from './geometry.ts';
+import { ARC_ATTRIBUTES, arcVertices, type Glide, GRAPH_ATTRIBUTES, graphVertices, islandRing, type Offsets } from './geometry.ts';
 import { drawOverlay, islandLabels } from './overlay.ts';
 import type { HeightMode, Scene } from './scene.ts';
 import { ARC_FRAGMENT, ARC_VERTEX, FULLSCREEN_VERTEX, GRAPH_VERTEX, LINE_FRAGMENT, MAX_ISLANDS, POINT_FRAGMENT, TONE_FRAGMENT } from './shaders.ts';
@@ -129,11 +129,31 @@ export function createRenderer(canvas: HTMLCanvasElement, overlay: HTMLCanvasEle
   // How many CSS pixels each cluster's core has grown past its unscaled size, so markers and picking reach past it.
   let screenGrow = new Float32Array(0);
 
-  // Cached because place() asks for it once per cluster.
-  let ring: Ring = [];
+  // How much wider the grouped ring spreads: up to 1.8 times as the run's links go from 100 to 400, and more past five islands.
+  const spread = () => {
+    const links = scene?.migrations.a.length ?? 0;
+    const crowding = Math.min(1, Math.max(0, Math.log2(links / 100) / 2));
+    return (1 + 0.8 * crowding) * Math.sqrt(Math.max(1, (scene?.islands.length ?? 1) / 5));
+  };
+  // Grouped, the islands sit on a ring of radius 1.2, each patch at 42% of its size growing by half the spread.
+  const ringRadius = () => 1.2 * spread();
+  const patchShrink = () => 0.42 * (1 + (spread() - 1) / 2);
+  // Arcs keep the height they would have on the unspread ring, so the space between the islands stays open.
+  const archScale = () => 0.6 / spread();
+  // Each island's middle in the layout, by island slot.
+  let centroids: (readonly [number, number])[] = [];
+  // Cached because place() asks for it once per cluster; a new scene clears it.
+  let ring: Offsets | null = null;
   const offsets = () => {
     const n = Math.max(1, scene?.islands.length ?? 1);
-    if (ring.length !== n) ring = islandRing(n);
+    if (!ring || ring.length !== n) {
+      const shrink = patchShrink();
+      // Each patch's middle lands on its place on the ring.
+      ring = islandRing(n, ringRadius()).map(([x, z], k) => {
+        const [cx, cy] = centroids[k] ?? [0, 0];
+        return [x - cx * shrink, z - cy * shrink] as const;
+      });
+    }
     return ring;
   };
   const visibleSlot = (slot: number) => !settings?.hiddenIslands.includes(scene!.islands[slot]!);
@@ -141,7 +161,8 @@ export function createRenderer(canvas: HTMLCanvasElement, overlay: HTMLCanvasEle
   // Where a cluster of island slot `slot` at layout (x, y) and height h sits in the world, as the shaders compute it.
   function place(slot: number, x: number, y: number, h: number, separation = shown.separation, heightScale = shown.heightScale): Vec3 {
     const [ox, oy] = offsets()[slot]!;
-    return [x + (x * 0.3 + ox - x) * separation, h * heightScale, y + (y * 0.3 + oy - y) * separation];
+    const shrink = patchShrink();
+    return [x + (x * shrink + ox - x) * separation, h * heightScale, y + (y * shrink + oy - y) * separation];
   }
 
   // A cluster's layout x, y or height right now, part way through any glide.
@@ -203,6 +224,12 @@ export function createRenderer(canvas: HTMLCanvasElement, overlay: HTMLCanvasEle
     screenY = new Float32Array(next.count);
     onScreen = new Uint8Array(next.count);
     screenGrow = new Float32Array(next.count);
+    centroids = next.islands.map((_, k) => {
+      const members = Array.from({ length: next.count }, (_, i) => i).filter((i) => next.slot[i] === k);
+      const mean = (key: 'x' | 'y') => members.reduce((sum, i) => sum + glides.to[key][i]!, 0) / Math.max(1, members.length);
+      return [mean('x'), mean('y')] as const;
+    });
+    ring = null;
     buildGraphGeometry();
   }
 
@@ -217,17 +244,18 @@ export function createRenderer(canvas: HTMLCanvasElement, overlay: HTMLCanvasEle
       place(current.slot[i]!, glides.to.x[i]!, glides.to.y[i]!, glides.to.h[i]!, group ? 1 : 0, heightScale)
     );
     if (group) {
-      // Room for each island's name beyond its patch.
-      points.push(...offsets().map(([ox, oy]): Vec3 => [ox * 1.45, 0, oy * 1.45]));
       // The top of each migration's arch, so no arch is cut off.
       if (settings?.layers.migrations)
         current.migrations.a.forEach((a, m) => {
           const [p, q] = [points[a]!, points[current.migrations.b[m]!]!];
           // Lifted as ARC_VERTEX lifts it.
           const length = Math.max(Math.hypot(p[0] - q[0], p[1] - q[1], p[2] - q[2]), 0.05);
-          const arch = (0.16 + 0.5 * length) * (0.5 + 0.5 * heightScale);
+          const arch = (0.16 + 0.5 * length) * (0.5 + 0.5 * heightScale) * archScale();
           points.push([(p[0] + q[0]) / 2, (p[1] + q[1]) / 2 + arch, (p[2] + q[2]) / 2]);
         });
+      // Room for each island's name beyond its patch.
+      const radius = ringRadius() * 1.45;
+      points.push(...islandRing(current.islands.length, radius).map(([x, z]): Vec3 => [x, 0, z]));
     }
     // Centre in the space between the toolbar, the bottom bar and the height scale.
     return fitOnScreen(points, canvas.clientWidth, canvas.clientHeight, { top: 60, bottom: 66, side: 56 }, angle) ?? angle;
@@ -563,6 +591,7 @@ export function createRenderer(canvas: HTMLCanvasElement, overlay: HTMLCanvasEle
       gl!.uniformMatrix4fv(u.uVP!, false, viewProjection!);
       gl!.uniform1f(u.uMove!, move);
       gl!.uniform1f(u.uSep!, shown.separation);
+      gl!.uniform1f(u.uShrink!, patchShrink());
       gl!.uniform1f(u.uHeightScale!, shown.heightScale);
       gl!.uniform1f(u.uPointScale!, pointScale);
       gl!.uniform1f(u.uNodeSize!, view.nodeSize);
@@ -615,7 +644,14 @@ export function createRenderer(canvas: HTMLCanvasElement, overlay: HTMLCanvasEle
       gl!.uniformMatrix4fv(u.uVP!, false, viewProjection!);
       gl!.uniform1f(u.uMove!, move);
       gl!.uniform1f(u.uSep!, shown.separation);
+      gl!.uniform1f(u.uShrink!, patchShrink());
       gl!.uniform1f(u.uHeightScale!, shown.heightScale);
+      gl!.uniform1f(u.uArch!, archScale());
+      gl!.uniform1f(u.uPx!, 2 / height);
+      gl!.uniform1f(u.uHot!, hover);
+      gl!.uniform1f(u.uPinned!, view.selected);
+      // While a cluster is lit, every other link steps back.
+      gl!.uniform1f(u.uRest!, hover >= 0 || view.selected >= 0 ? 0.35 : 1);
       // Cyan until the islands group, when each migration takes its islands' colours.
       gl!.uniform3fv(u.uMigration!, [0, 0.898, 1]);
       gl!.uniform3fv(u.uColour!, colours);
