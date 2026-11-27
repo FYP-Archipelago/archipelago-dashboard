@@ -1,5 +1,7 @@
 import { useLayoutEffect, useMemo, useRef, useState, type PointerEvent, type ReactNode } from 'react';
 
+import { maxOf, minOf } from '@/math.ts';
+
 import './chart.css';
 
 type Series = { key: number; label: string; color: string; xs: number[]; ys: (number | null)[]; endCross?: boolean };
@@ -11,6 +13,7 @@ type Props = {
   height?: number;
   log: boolean;
   xTitle: string;
+  yTitle?: string;
   hoverTitle: (x: number) => ReactNode;
   formatY: (y: number | null) => string;
   // The tooltip lists the series best value first.
@@ -22,6 +25,8 @@ type Props = {
   replayKey: string;
   // Called with the x the crosshair snaps to, so other views can follow it.
   onHoverX?: (x: number) => void;
+  // An x to hold the crosshair and its points at while the pointer is off the chart, e.g. set from a slider.
+  pinnedX?: number | null;
   // Events along x, each a vertical line with one or both arrows at the top.
   guides?: Guide[];
   // Shaded from each x to the end of the axis, so overlapping shades stack darker. `label` goes in a pill above the
@@ -101,6 +106,7 @@ export default function LineChart({
   height: fixedHeight,
   log,
   xTitle,
+  yTitle,
   hoverTitle,
   formatY,
   better,
@@ -109,6 +115,7 @@ export default function LineChart({
   showEndCrosses = false,
   replayKey,
   onHoverX,
+  pinnedX = null,
   guides = [],
   shades = [],
   rings = [],
@@ -129,15 +136,15 @@ export default function LineChart({
     const xs = series.flatMap((s) => s.xs);
     const ys = series.flatMap((s) => s.ys.map((value) => (value === null ? null : log ? Math.log10(value) : value))).filter((v) => v !== null);
     if (!xs.length || !ys.length || width === 0 || height === 0) return null;
-    const x0 = Math.min(...xs);
-    const x1 = Math.max(...xs);
+    const x0 = minOf(xs);
+    const x1 = maxOf(xs);
     const plotRight = width - MARGIN.right;
     const plotWidth = plotRight - MARGIN.left;
     const sx = (x: number) => MARGIN.left + ((x - x0) / (x1 - x0 || 1)) * plotWidth;
     const plotTop = MARGIN.top + shadeTop;
     const plotBottom = height - MARGIN.bottom - shadeBottom;
-    let y0 = Math.min(...ys);
-    let y1 = Math.max(...ys);
+    let y0 = minOf(ys);
+    let y1 = maxOf(ys);
     const pad = (y1 - y0) * 0.05 || Math.abs(y0) * 0.1 || 1;
     y0 -= pad;
     y1 += pad;
@@ -210,13 +217,14 @@ export default function LineChart({
     setPointerY(event.clientY - box.top + scales.plotTop);
   };
 
+  const crossX = hoverX ?? pinnedX;
   const hovered =
-    hoverX === null
+    crossX === null
       ? []
       : series
           .filter((s) => s.xs.length)
           .map((s) => {
-            const i = nearest(s.xs, hoverX);
+            const i = nearest(s.xs, crossX);
             return { series: s, x: s.xs[i]!, y: s.ys[i] ?? null };
           })
           .sort((a, b) => (a.y === null ? 1 : b.y === null ? -1 : better === 'lower' ? a.y - b.y : b.y - a.y));
@@ -243,6 +251,11 @@ export default function LineChart({
             <text x={width - MARGIN.right} y={height - 2} textAnchor="end">
               {xTitle}
             </text>
+            {yTitle && (
+              <text transform={`translate(12,${(scales.plotTop + scales.plotBottom) / 2}) rotate(-90)`} textAnchor="middle">
+                {yTitle}
+              </text>
+            )}
           </g>
           <g className="chart-guides">
             {guides
@@ -361,9 +374,9 @@ export default function LineChart({
               )
           )}
           {marker && toY(marker.y) !== null && <circle className="chart-marker" cx={scales.sx(marker.x)} cy={scales.sy(toY(marker.y)!)} r={5} />}
-          {hoverX !== null && (
+          {crossX !== null && (
             <g className="chart-hover">
-              <line x1={scales.sx(hoverX)} x2={scales.sx(hoverX)} y1={scales.plotTop} y2={scales.plotBottom} />
+              <line x1={scales.sx(crossX)} x2={scales.sx(crossX)} y1={scales.plotTop} y2={scales.plotBottom} />
               {hovered.map(
                 (row) =>
                   row.y !== null && <circle key={row.series.key} cx={scales.sx(row.x)} cy={scales.sy(toY(row.y)!)} r={4} fill={row.series.color} />
@@ -407,8 +420,8 @@ export default function LineChart({
 export function Sparkline({ values, color, label }: { values: (number | null)[]; color: string; label: string }) {
   const present = values.filter((v) => v !== null);
   if (present.length < 2) return null;
-  const lo = Math.min(...present);
-  const span = Math.max(...present) - lo || 1;
+  const lo = minOf(present);
+  const span = maxOf(present) - lo || 1;
   let d = '';
   let pen = false;
   values.forEach((value, i) => {

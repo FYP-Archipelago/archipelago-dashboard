@@ -1,16 +1,16 @@
 // The most islands the colour and visibility uniforms hold.
 export const MAX_ISLANDS = 32;
 
-// Grouping by island shrinks each island to 30% and moves it out to its place on a ring of radius 0.86.
+// Grouping by island shrinks each island by uShrink and moves it out to its offset.
 const PLACE = `
-uniform float uSep;
-vec2 place(vec2 base, vec2 off){ return mix(base, base * 0.30 + off, uSep); }`;
+uniform float uSep; uniform float uShrink;
+vec2 place(vec2 base, vec2 off){ return mix(base, base * uShrink + off, uSep); }`;
 
 // Clusters and search paths. Vertices glide from old to new places as uMove goes 0 to 1, appear as the replay reaches
 // them and fade in when new in a live update.
 export const GRAPH_VERTEX = `
 in vec2 aFromXY; in float aFromH; in vec2 aToXY; in float aToH; in vec2 aOff;
-in float aSlot; in float aSize; in float aShared; in float aReveal; in float aWeight; in float aBorn;
+in float aSlot; in float aSize; in float aShared; in float aReveal; in float aWeight; in float aBorn; in float aFaded;
 uniform mat4 uVP; uniform float uMove; uniform float uHeightScale; uniform float uPointScale; uniform float uNodeSize;
 uniform vec3 uColour[${MAX_ISLANDS}]; uniform float uAlpha[${MAX_ISLANDS}];
 uniform float uBase; uniform float uFogNear; uniform float uFogFar; uniform float uShared;
@@ -28,7 +28,8 @@ void main(){
   float hot = smoothstep(0.24, 0.55, aShared);
   float mute = mix(1.0, mix(0.10, 1.0, hot), uShared);
   float shown = clamp((uReveal * 1.02 - aReveal) / 0.02, 0.0, 1.0) * step(uMinWeight, aWeight) * clamp((uNow - aBorn) / 0.8, 0.0, 1.0);
-  vAlpha = uBase * uAlpha[k] * mute * (0.30 + 0.70 * fog) * shown;
+  // A cluster DenStream faded out, kept for the best it holds, and its search paths show at a third of their strength.
+  vAlpha = uBase * uAlpha[k] * mute * (0.30 + 0.70 * fog) * shown * mix(1.0, 0.35, aFaded);
   vRing = hot * uShared;
   // Grown, a cluster's point widens only by its core's growth (the core is 0.31 of the point's radius); shrunk, all of it shrinks.
   float grown = 0.31 * uNodeSize + 0.69 * min(uNodeSize, 1.0);
@@ -72,71 +73,123 @@ in vec3 vColour; in float vAlpha;
 ${EMIT}
 void main(){ emit(vColour, vAlpha, 0.0); }`;
 
-// Migrations as screen-space ribbons along a curve. Grouped, the curve arches up, fades from source to destination
-// colour, tapers towards the destination and leans right of its travel, so the two directions are separate arches.
+// Migrations as screen-space ribbons along a cubic curve from cluster to cluster.
+// Grouped, each is an even, smooth-edged line in an arc leaning right of its travel, fading from source to destination colour.
 export const ARC_VERTEX = `
-// WebGL guarantees only 16 attributes, so: aStep (t, ribbon side, source slot, destination slot), aShow (reveal,
-// visible, born), aFlow (traffic 0 to 1, phase).
+// WebGL guarantees only 16 attributes, so values are packed together.
+// aStep is (t, ribbon side, source slot, destination slot), aShow (reveal, visible, born) and aFlow (traffic 0 to 1, phase).
+// aEnds is the source and destination cluster, and aFan the link's place among its island pair's links (busiest 0 to rarest 1) and that pair's link count.
 in vec3 aAFrom; in vec3 aATo; in vec2 aAOff;
 in vec3 aBFrom; in vec3 aBTo; in vec2 aBOff;
-in vec4 aStep; in vec3 aShow; in vec2 aFlow;
+in vec4 aStep; in vec3 aShow; in vec2 aFlow; in vec2 aEnds; in vec2 aFan;
 uniform mat4 uVP; uniform float uMove; uniform float uHeightScale; uniform vec3 uMigration;
 uniform vec3 uColour[${MAX_ISLANDS}]; uniform float uFocus[${MAX_ISLANDS}];
 uniform float uBase; uniform float uAspect; uniform float uHalfWidth; uniform float uLift;
+uniform float uArch;
+// Grouped, links of the hovered and selected clusters (-1 for none) light up with an arrowhead, and the rest step back to uRest.
+// uPx is one device pixel in clip space.
+uniform float uHot; uniform float uPinned; uniform float uRest; uniform float uPx;
 uniform float uReveal; uniform float uNow;
-out vec3 vColour; out float vAlpha; out float vT; out float vLen; out vec2 vFlow;
+out vec3 vColour; out float vAlpha; out float vT; out float vLen; out vec2 vFlow; out float vHot;
+// vSide (from the line's middle) and vTip (before the arrowhead's tip) are screen pixels, sent times w and divided back by vW.
+// Interpolated as is, perspective correction would bend them on long, deep segments and break the line up.
+out float vSide; out float vTip; out float vLine; out float vW;
 ${PLACE}
-vec3 curve(float t, vec3 p0, vec3 p1, vec3 control){
+vec3 curve(float t, vec3 p0, vec3 c0, vec3 c1, vec3 p1){
   float u = 1.0 - t;
-  return u * u * p0 + 2.0 * u * t * control + t * t * p1;
+  return u * u * u * p0 + 3.0 * u * u * t * c0 + 3.0 * u * t * t * c1 + t * t * t * p1;
 }
+bool touches(float node){ return node >= 0.0 && (abs(aEnds.x - node) < 0.5 || abs(aEnds.y - node) < 0.5); }
 void main(){
   float aT = aStep.x;
+  int s = int(aStep.z + 0.5), e = int(aStep.w + 0.5);
   vec3 a = mix(aAFrom, aATo, uMove), b = mix(aBFrom, aBTo, uMove);
   vec2 qa = place(a.xy, aAOff), qb = place(b.xy, aBOff);
   vec3 p0 = vec3(qa.x, a.z * uHeightScale, qa.y);
   vec3 p1 = vec3(qb.x, b.z * uHeightScale, qb.y);
+
   vec3 mid = (p0 + p1) * 0.5;
   vec2 ground = p1.xz - p0.xz;
   vec2 dir = length(ground) > 0.02 ? normalize(vec2(-ground.y, ground.x)) : normalize(mid.xz + vec2(1e-4));
   if (dot(dir, mid.xz) < 0.0) dir = -dir;
+  vec2 right = length(ground) > 0.02 ? normalize(vec2(ground.y, -ground.x)) : vec2(0.0);
   float len = max(distance(p0, p1), 0.05);
+  // Ungrouped, a curve bowed to one side.
+  // Grouped, an island pair's links are nested arcs in one plane, busiest lowest, opening wider the more links the pair has.
+  // Each is a quadratic written as a cubic, whose control points sit 2/3 of the way to the quadratic's.
+  vec3 bow = mid + vec3(dir.x, 0.0, dir.y) * 0.26 * len;
   // A quadratic curve peaks at half its control point's offset, hence the 2.0.
-  float arch = uLift * (0.16 + 0.50 * len) * (0.5 + 0.5 * uHeightScale);
-  float side = 0.26 * len * (1.0 - uLift);
-  vec2 lane = length(ground) > 0.02 ? normalize(vec2(ground.y, -ground.x)) * 0.18 * len * uLift : vec2(0.0);
-  vec3 control = vec3(mid.x + dir.x * side + lane.x, mid.y + 2.0 * arch, mid.z + dir.y * side + lane.y);
+  float arch = (0.16 + 0.50 * len) * (0.5 + 0.5 * uHeightScale) * uArch;
+  vec3 lean = vec3(0.0, cos(0.75), 0.0) + vec3(right.x, 0.0, right.y) * sin(0.75);
+  float reach = mix(0.4, 1.0 + 0.8 * clamp((aFan.y - 1.0) / 30.0, 0.0, 1.0), aFan.x);
+  vec3 top = mid + lean * 2.0 * arch * reach;
+  vec3 control = mix(bow, top, uLift);
+  vec3 c0 = mix(p0, control, 2.0 / 3.0), c1 = mix(p1, control, 2.0 / 3.0);
 
-  vec4 c0 = uVP * vec4(curve(aT, p0, p1, control), 1.0);
-  vec4 c1 = uVP * vec4(curve(min(aT + 0.04, 1.0), p0, p1, control), 1.0);
-  vec2 d = c1.xy / c1.w - c0.xy / c0.w;
+  float hot = (touches(uHot) || touches(uPinned) ? 1.0 : 0.0) * uLift;
+  vec4 k0 = uVP * vec4(curve(aT, p0, c0, c1, p1), 1.0);
+  // The direction here comes from a step ahead, or a step back at the destination, where a step ahead is the point itself.
+  float back = aT > 0.96 ? -1.0 : 1.0;
+  vec4 k1 = uVP * vec4(curve(aT + 0.04 * back, p0, c0, c1, p1), 1.0);
+  vec2 d = (k1.xy / k1.w - k0.xy / k0.w) * back;
   d = length(d) < 1e-6 ? vec2(1.0, 0.0) : normalize(d * vec2(uAspect, 1.0));
   vec2 normal = vec2(-d.y, d.x) / vec2(uAspect, 1.0);
-  float taper = mix(1.0, mix(1.7, 0.3, aT), uLift);
-  gl_Position = vec4(c0.xy + normal * aStep.y * uHalfWidth * taper * c0.w, c0.z, c0.w);
+  float halfWidth = uHalfWidth * mix(1.0, mix(1.7, 0.3, aT), uLift);
+  vSide = 0.0; vTip = 0.0; vLine = 0.0; vW = k0.w;
+  // Clean lines once the islands are mostly apart.
+  if (uLift > 0.5) {
+    // In pixels: the line's half width, and the ribbon's, wide enough for a lit link's arrowhead and a pixel of soft edge.
+    float base = uHalfWidth / uPx;
+    vLine = base * (hot > 0.5 ? 1.3 : 0.8);
+    float ribbon = (hot > 0.5 ? base * 4.0 : vLine) + 1.0;
+    halfWidth = ribbon * uPx;
+    vSide = aStep.y * ribbon * k0.w;
+    // The arrowhead's tip sits just past the middle, so heads never pile up on a cluster.
+    vec4 tip = uVP * vec4(curve(0.55, p0, c0, c1, p1), 1.0);
+    float toTip = tip.w > 0.0 ? length((k0.xy / k0.w - tip.xy / tip.w) * vec2(uAspect, 1.0)) / uPx : 1e5;
+    vTip = (aT <= 0.55 ? toTip : -toTip) * k0.w;
+  }
+  gl_Position = vec4(k0.xy + normal * aStep.y * halfWidth * k0.w, k0.z, k0.w);
 
-  int s = int(aStep.z + 0.5), e = int(aStep.w + 0.5);
   vColour = mix(uMigration, mix(uColour[s], uColour[e], aT), uLift);
   vT = aT;
   // Roughly the curve's length; a raised arch is longer than the straight line under it.
   vLen = len * (1.0 + 0.6 * uLift);
   vFlow = aFlow;
+  vHot = hot;
   float shown = clamp((uReveal * 1.02 - aShow.x) / 0.02, 0.0, 1.0) * clamp((uNow - aShow.z) / 0.8, 0.0, 1.0);
   // Busier links show stronger, so the main routes stand out and one-off migrations recede.
   float traffic = 0.6 + 0.4 * aFlow.x;
-  vAlpha = uBase * traffic * aShow.y * max(uFocus[s], uFocus[e]) * (0.7 + 0.3 * sin(3.14159 * aT)) * shown;
+  // Unlit links show at 0.4.
+  float strength = mix(mix(1.0, 0.4, uLift) * mix(1.0, uRest, uLift), 1.0 / max(uBase, 0.05), hot);
+  vAlpha = uBase * traffic * aShow.y * strength * max(uFocus[s], uFocus[e]) * (0.7 + 0.3 * sin(3.14159 * aT)) * shown;
 }`;
 
 // At uFlow 1, comets run source to destination over a faint line, spaced by distance, denser on busier links and out
 // of step between links. At 0 the line is drawn whole.
 export const ARC_FRAGMENT = `
 precision highp float;
-in vec3 vColour; in float vAlpha; in float vT; in float vLen; in vec2 vFlow;
-uniform float uFlow; uniform float uNow;
+in vec3 vColour; in float vAlpha; in float vT; in float vLen; in vec2 vFlow; in float vHot;
+in float vSide; in float vTip; in float vLine; in float vW;
+uniform float uFlow; uniform float uNow; uniform float uLift; uniform float uHalfWidth; uniform float uPx;
 ${EMIT}
 void main(){
   float a = min(vAlpha, 1.0);
-  vec3 colour = vColour;
+  vec3 colour = mix(vColour, vec3(1.0), 0.35 * vHot);
+  if (uLift > 0.5) {
+    float halfWidth = vLine;
+    if (vHot > 0.5) {
+      // A lit link carries a solid arrowhead midway, pointing the way it goes, sized in pixels.
+      float base = uHalfWidth / uPx;
+      float head = vTip / vW;
+      float headLength = base * 11.0;
+      if (head >= 0.0 && head < headLength) {
+        halfWidth = max(vLine, base * 4.0 * head / headLength);
+        a = max(a, 0.9);
+      }
+    }
+    a *= clamp(halfWidth - abs(vSide / vW) + 0.5, 0.0, 1.0);
+  }
   if (uFlow > 0.0) {
     float spacing = mix(0.28, 0.11, vFlow.x);
     float f = fract((vT * vLen - uNow * 0.22) / spacing + vFlow.y);

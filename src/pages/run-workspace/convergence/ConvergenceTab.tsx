@@ -4,30 +4,33 @@ import { islandColor } from '@/colors.ts';
 import Icon from '@/components/Icon.tsx';
 import Segmented from '@/components/Segmented.tsx';
 import { compactNumber, fitness, numberFormat } from '@/format.ts';
-import LineChart, { Sparkline } from '@/pages/run-workspace/charts/LineChart.tsx';
+import LineChart from '@/pages/run-workspace/charts/LineChart.tsx';
 import { historyByIsland } from '@/pages/run-workspace/history.ts';
 import { EmptyState, IslandSwatch, NoResult, type ResultQuery } from '@/pages/run-workspace/shared.tsx';
 import type { IslandEnd, Run, RunResult } from '@/types.ts';
 
-import { convergenceVerdict, describeDiversity, runBest, runProgress, shareAfter, summarise } from './convergence.ts';
+import { convergenceVerdict, describeDiversity, pointAt } from './convergence.ts';
 
 import './convergence.css';
 
 type Metric = 'bestSoFar' | 'best' | 'mean' | 'diversity';
 type Axis = 'evaluations' | 'generation';
 
-const METRICS: { key: Metric; label: string }[] = [
-  { key: 'bestSoFar', label: 'Best so far' },
-  { key: 'best', label: 'Generation best' },
-  { key: 'mean', label: 'Mean fitness' },
-  { key: 'diversity', label: 'Diversity' },
+const METRICS: { key: Metric; label: string; axis: string }[] = [
+  { key: 'bestSoFar', label: 'Best so far', axis: 'Best fitness so far' },
+  { key: 'best', label: 'Generation best', axis: "Generation's best fitness" },
+  { key: 'mean', label: 'Mean fitness', axis: 'Mean fitness' },
+  { key: 'diversity', label: 'Diversity', axis: 'Diversity' },
 ];
 const CONVERGENCE_THRESHOLDS = [
-  { label: '99%', remainingShare: 0.01 },
-  { label: '99.9%', remainingShare: 0.001 },
+  { label: '99%', share: 0.99, remainingShare: 0.01 },
+  { label: '99.9%', share: 0.999, remainingShare: 0.001 },
 ];
 
-const percentAfter = (share: number) => (share > 0 && share < 0.01 ? '<1%' : `${Math.round(share * 100)}%`);
+const lastOf = (values: (number | null)[]) => values.filter((value) => value !== null).at(-1) ?? null;
+
+const afterFormat = new Intl.NumberFormat('en', { style: 'percent', maximumFractionDigits: 2 });
+const percentAfter = (share: number) => (share > 0 && share < 0.0001 ? '<0.01%' : afterFormat.format(share));
 
 const formatDiversity = (value: number | null) => (value === null ? '—' : value.toFixed(3));
 
@@ -41,7 +44,7 @@ function WithoutImprovement({ end, limit }: { end: IslandEnd | undefined; limit:
         '—'
       ) : (
         <>
-          {since} gens
+          {since} generations
           {end.generations_completed > 0 && <span className="muted"> ({Math.round((since / end.generations_completed) * 100)}%)</span>}
         </>
       )}
@@ -62,8 +65,8 @@ type StagnationControl = {
 function Convergence({ result, showStagnationMarkers, onToggleStagnationMarkers }: { result: RunResult } & StagnationControl) {
   const maximising = result.run.maximising;
   const histories = useMemo(() => historyByIsland(result.generation_history), [result]);
-  const summaries = useMemo(() => histories.map((history) => summarise(history, maximising)), [histories, maximising]);
-  const best = runBest(summaries, maximising);
+  const bests = useMemo(() => new Map(result.island_bests.map((best) => [best.island_id, best])), [result]);
+  const best = result.run_best_island === null ? null : (bests.get(result.run_best_island) ?? null);
   const diversityName = describeDiversity(result.generation_history);
   const stagnationLimit = result.run.stagnation_generations ?? 0;
   const stagnatedIslands = useMemo(
@@ -83,16 +86,19 @@ function Convergence({ result, showStagnationMarkers, onToggleStagnationMarkers 
   const log = logChoice && canLog;
   const isFitness = metric !== 'diversity';
 
-  // The improvement is measured on the scale the best-so-far chart would use, whichever metric is showing.
-  const progressLog = logChoice && histories.every((history) => history.bestSoFar.every((value) => value === null || value > 0));
+  // The worker measures the improvement on one fixed scale, so the verdict does not follow the scale picker.
   const progress = useMemo(() => {
-    const points = CONVERGENCE_THRESHOLDS.flatMap(({ label, remainingShare }) => {
-      const point = runProgress(histories, axis, maximising, remainingShare, progressLog);
-      return point ? [{ ...point, label, remainingShare, after: shareAfter(histories, axis, point.x) }] : [];
+    const points = CONVERGENCE_THRESHOLDS.flatMap(({ label, share, remainingShare }) => {
+      const point = pointAt(result.convergence, share, axis);
+      return point ? [{ x: point.x, island: point.island_id, value: point.fitness, after: point.after, label, remainingShare }] : [];
     });
-    // When both thresholds land on the same point, the stricter one says it all.
-    return points.filter((point, i) => points[i + 1]?.x !== point.x);
-  }, [histories, axis, maximising, progressLog]);
+    // When both thresholds land on the same point, it is shown once with both labels and judged by the stricter one.
+    return points.flatMap((point, i) => {
+      if (points[i + 1]?.x === point.x) return [];
+      const labels = points.filter((other) => other.x === point.x).map((other) => other.label);
+      return [{ ...point, label: labels.join(' · '), words: labels.join(' and ') }];
+    });
+  }, [result.convergence, axis]);
   const { converged, spedUpAfter, stillImproving } = convergenceVerdict(progress);
   const unit = axis === 'generation' ? 'generations' : 'evaluations';
 
@@ -121,12 +127,10 @@ function Convergence({ result, showStagnationMarkers, onToggleStagnationMarkers 
 
   if (!histories.length) return <EmptyState icon="alert" title="No generation statistics" />;
 
-  const marker =
-    metric === 'bestSoFar' && best && !hidden.has(best.island) && best.finalBest !== null
-      ? { x: (axis === 'generation' ? best.reachedGeneration : best.reachedEvaluations) ?? 0, y: best.finalBest }
-      : null;
-  const tiedForBest = best ? summaries.filter((s) => s.finalBest === best.finalBest).length : 0;
-  const metricLabel = METRICS.find((m) => m.key === metric)!.label;
+  const bestX = best && (axis === 'generation' ? best.generation : best.evaluations);
+  const marker = metric === 'bestSoFar' && best && bestX != null && !hidden.has(best.island_id) ? { x: bestX, y: best.fitness } : null;
+  const tiedForBest = best ? result.island_bests.filter((other) => other.fitness === best.fitness).length : 0;
+  const { label: metricLabel, axis: yTitle } = METRICS.find((m) => m.key === metric)!;
 
   return (
     <>
@@ -204,6 +208,7 @@ function Convergence({ result, showStagnationMarkers, onToggleStagnationMarkers 
           height={360}
           log={log}
           xTitle={axis === 'generation' ? 'Generation' : 'Evaluations (per island)'}
+          yTitle={yTitle}
           hoverTitle={(x) => (axis === 'generation' ? `Generation ${x}` : `${numberFormat.format(x)} evaluations`)}
           formatY={isFitness ? fitness : formatDiversity}
           better={isFitness && !maximising ? 'lower' : 'higher'}
@@ -213,7 +218,7 @@ function Convergence({ result, showStagnationMarkers, onToggleStagnationMarkers 
           shades={converged.map((point) => ({
             x: point.x,
             label: point.label,
-            note: `Last ${point.remainingShare * 100}% of improvement took ${percentAfter(point.after)} of ${unit}`,
+            note: `${percentAfter(point.after)} of ${unit} came after ${point.words}`,
           }))}
           rings={metric === 'bestSoFar' ? converged.filter((point) => !hidden.has(point.island)).map(({ x, value }) => ({ x, y: value })) : undefined}
           replayKey={`${metric}-${axis}-${log}`}
@@ -229,13 +234,16 @@ function Convergence({ result, showStagnationMarkers, onToggleStagnationMarkers 
             <span
               className="chart-key"
               title={
-                progressLog
-                  ? 'Improvement counted in orders of magnitude, as the log scale shows it'
-                  : 'Improvement counted on the linear scale, from the best starting value to the run best'
+                result.convergence?.scale === 'log'
+                  ? 'Improvement counted in orders of magnitude, from the best starting value to the run best'
+                  : 'Improvement counted in fitness, from the best starting value to the run best'
               }
             >
               <span className="chart-key-ring" aria-hidden="true" />
-              <span>Estimated convergence: where the run had made {converged.map((point) => point.label).join(' and ')} of its improvement</span>
+              <span>
+                Estimated convergence: where the run had made {converged.map((point) => point.words).join(' and ')} of its improvement
+                {result.convergence?.scale === 'log' ? ', counted in orders of magnitude' : ''}
+              </span>
             </span>
           )}
           {showStagnationMarkers && series.some((line) => line.endCross) && (
@@ -247,13 +255,13 @@ function Convergence({ result, showStagnationMarkers, onToggleStagnationMarkers 
           {spedUpAfter && (
             <span className="chart-key">
               <Icon name="trend" size={12} />
-              Improvement rate rose past {spedUpAfter.label}, too much to count as convergence there
+              Improvement rate rose past {spedUpAfter.words}, too much to count as convergence there
             </span>
           )}
           {stillImproving && (
             <span className="chart-key">
               <Icon name="trend" size={12} />
-              {converged.length ? `Not converged to ${stillImproving.label}` : 'No estimated convergence'}: the run was still improving at the end
+              {converged.length ? `Not converged to ${stillImproving.words}` : 'No estimated convergence'}: the run was still improving at the end
             </span>
           )}
         </div>
@@ -269,56 +277,51 @@ function Convergence({ result, showStagnationMarkers, onToggleStagnationMarkers 
               <th className="align-right">Without improvement</th>
               <th className="align-right">Final mean</th>
               <th className="align-right">Final diversity</th>
-              <th className="diversity-trend-column">Diversity over time</th>
             </tr>
           </thead>
           <tbody>
-            {summaries.map((s) => (
-              <tr
-                key={s.island}
-                className={highlight === s.island ? 'island-row-highlighted' : undefined}
-                onPointerEnter={() => !hidden.has(s.island) && setHighlight(s.island)}
-                onPointerLeave={() => setHighlight(null)}
-              >
-                <td>
-                  <span className="island-cell">
-                    <IslandSwatch island={s.island} />
-                    Island {s.island}
-                    {best?.island === s.island && (
-                      <span
-                        className="best-badge"
-                        title={tiedForBest > 1 ? `${tiedForBest} islands ended on the run's best value; this one reached it first.` : undefined}
-                      >
-                        Run best
-                      </span>
+            {histories.map(({ island, mean, diversity }) => {
+              const own = bests.get(island);
+              return (
+                <tr
+                  key={island}
+                  className={highlight === island ? 'island-row-highlighted' : undefined}
+                  onPointerEnter={() => !hidden.has(island) && setHighlight(island)}
+                  onPointerLeave={() => setHighlight(null)}
+                >
+                  <td>
+                    <span className="island-cell">
+                      <IslandSwatch island={island} />
+                      Island {island}
+                      {best?.island_id === island && (
+                        <span
+                          className="best-badge"
+                          title={tiedForBest > 1 ? `${tiedForBest} islands ended on the run's best value; this one reached it first.` : undefined}
+                        >
+                          Run best
+                        </span>
+                      )}
+                    </span>
+                  </td>
+                  <td className="align-right">{fitness(own?.fitness ?? null)}</td>
+                  <td className="align-right">
+                    {own ? (
+                      <>
+                        Generation {own.generation}
+                        {own.evaluations !== null && <span className="muted"> · {compactNumber.format(own.evaluations)} evals</span>}
+                      </>
+                    ) : (
+                      '—'
                     )}
-                  </span>
-                </td>
-                <td className="align-right">{fitness(s.finalBest)}</td>
-                <td className="align-right">
-                  {s.reachedGeneration === null ? (
-                    '—'
-                  ) : (
-                    <>
-                      gen {s.reachedGeneration}
-                      {s.reachedEvaluations !== null && <span className="muted"> · {compactNumber.format(s.reachedEvaluations)} evals</span>}
-                    </>
-                  )}
-                </td>
-                <td className="align-right">
-                  <WithoutImprovement end={result.island_ends.find((end) => end.island_id === s.island)} limit={stagnationLimit} />
-                </td>
-                <td className="align-right">{fitness(s.finalMean)}</td>
-                <td className="align-right">{formatDiversity(s.finalDiversity)}</td>
-                <td className="diversity-trend-column">
-                  <Sparkline
-                    values={histories.find((h) => h.island === s.island)!.diversity}
-                    color={islandColor(s.island)}
-                    label={`Island ${s.island} diversity over time`}
-                  />
-                </td>
-              </tr>
-            ))}
+                  </td>
+                  <td className="align-right">
+                    <WithoutImprovement end={result.island_ends.find((end) => end.island_id === island)} limit={stagnationLimit} />
+                  </td>
+                  <td className="align-right">{fitness(lastOf(mean))}</td>
+                  <td className="align-right">{formatDiversity(lastOf(diversity))}</td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>

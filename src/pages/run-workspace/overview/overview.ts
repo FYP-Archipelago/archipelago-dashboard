@@ -1,21 +1,12 @@
 import { fitness } from '@/format.ts';
-import { runBest, shareAfter, summarise } from '@/pages/run-workspace/convergence/convergence.ts';
+import { pointAt } from '@/pages/run-workspace/convergence/convergence.ts';
 import { historyByIsland, type IslandHistory } from '@/pages/run-workspace/history.ts';
-import type { Run, RunResult, ShapleyAttribution, ShapleyGame } from '@/types.ts';
+import type { ConvergencePoint, IslandBest, Run, RunResult, ShapleyAttribution, ShapleyGame } from '@/types.ts';
 
 export type Axis = 'evaluations' | 'generation';
 
-// From the best starting value to the run's best. On a log scale it counts orders of magnitude, like the Convergence tab.
+// From the best starting value to the run's best, as the worker measured it. On a log scale it counts orders of magnitude.
 export type Improvement = { start: number; final: number; log: boolean };
-
-export function improvementOf(histories: IslandHistory[], maximising: boolean): Improvement | null {
-  const better = (a: number, b: number) => (maximising ? a > b : a < b);
-  const pick = (values: number[]) => values.reduce((a, b) => (better(a, b) ? a : b));
-  const starts = histories.map((history) => history.bestSoFar.find((value) => value !== null)).filter((value) => value != null);
-  const all = histories.flatMap((history) => history.bestSoFar).filter((value) => value !== null);
-  if (!starts.length) return null;
-  return { start: pick(starts), final: pick(all), log: !maximising && all.every((value) => value > 0) };
-}
 
 // How much of the improvement a value stands for: 0 at the start, 1 at the run's best.
 function doneShare(improvement: Improvement, value: number): number {
@@ -42,9 +33,6 @@ export function progressCurve(histories: IslandHistory[], axis: Axis, improvemen
   }
   return curve;
 }
-
-// Where the run first had made `share` of its improvement.
-export const crossing = (curve: { x: number; share: number }[], share: number) => curve.find((point) => point.share >= share - 1e-9)?.x ?? null;
 
 // One island's span, each step that improved its best (sized against the whole run's improvement), and its last step.
 export type Lane = { island: number; start: number; end: number; steps: { x: number; size: number }[]; lastImproved: number | null };
@@ -109,8 +97,8 @@ export type OverviewData = {
   result: RunResult;
   histories: IslandHistory[];
   islandCount: number;
-  summaries: ReturnType<typeof summarise>[];
-  best: ReturnType<typeof runBest>;
+  bests: IslandBest[];
+  best: IslandBest | null;
   // Where the run's best was first reached, along `axis`.
   bestX: number | null;
   improvement: Improvement | null;
@@ -120,20 +108,19 @@ export type OverviewData = {
 };
 
 export function overviewData(run: Run, result: RunResult): OverviewData {
-  const maximising = result.run.maximising;
   const histories = historyByIsland(result.generation_history);
-  const summaries = histories.map((history) => summarise(history, maximising));
-  const best = runBest(summaries, maximising);
-  const improvement = improvementOf(histories, maximising);
+  const best = result.island_bests.find((island) => island.island_id === result.run_best_island) ?? null;
+  const convergence = result.convergence;
+  const improvement = convergence && { start: convergence.start_fitness, final: convergence.final_fitness, log: convergence.scale === 'log' };
   const axis: Axis = histories.every((history) => history.evaluations.every((value) => value !== null)) ? 'evaluations' : 'generation';
   return {
     run,
     result,
     histories,
     islandCount: histories.length || result.run.islands.length,
-    summaries,
+    bests: result.island_bests,
     best,
-    bestX: best ? (axis === 'evaluations' ? best.reachedEvaluations : best.reachedGeneration) : null,
+    bestX: best ? (axis === 'evaluations' ? best.evaluations : best.generation) : null,
     improvement,
     axis,
     curve: improvement ? progressCurve(histories, axis, improvement) : [],
@@ -141,8 +128,11 @@ export function overviewData(run: Run, result: RunResult): OverviewData {
   };
 }
 
+// The worker's crossing point for a share of the improvement, along the overview's axis.
+export const levelPoint = (data: OverviewData, share: number): ConvergencePoint | null => pointAt(data.result.convergence, share, data.axis);
+
 export function runNotes(data: OverviewData, limit = 2): string[] {
-  const { curve, histories, islandCount, axis, shapley, summaries, run, result } = data;
+  const { curve, histories, islandCount, axis, shapley, bests, run, result } = data;
   const notes: { weight: number; text: string }[] = [];
 
   // Still improving: the last gain came in the run's last tenth.
@@ -175,8 +165,8 @@ export function runNotes(data: OverviewData, limit = 2): string[] {
   }
 
   // Every island ended on the same best value, and clusters were shared by most islands on average.
-  const finals = summaries.map((s) => s.finalBest);
-  if (islandCount > 1 && finals.every((value) => value !== null && value === finals[0]) && result.graph.overlap >= 0.6 * islandCount)
+  const finals = bests.map((island) => island.fitness);
+  if (islandCount > 1 && finals.length === islandCount && finals.every((value) => value === finals[0]) && result.graph.overlap >= 0.6 * islandCount)
     notes.push({ weight: 50, text: `All ${islandCount} islands reached the same best fitness.` });
 
   if (shapley) {
@@ -184,16 +174,15 @@ export function runNotes(data: OverviewData, limit = 2): string[] {
     const idle = shares.filter((s) => s.share < 0.01).map((s) => `Island ${s.island}`);
     if (idle.length && idle.length < shares.length) notes.push({ weight: 45, text: `${listed(idle)} added almost nothing to the improvement.` });
     if (shares[0] && shares[0].share >= 0.5)
-      notes.push({ weight: 40, text: `Island ${shares[0].island} carried the run, earning ${percent(shares[0].share)} of the credit.` });
+      notes.push({ weight: 40, text: `Island ${shares[0].island} earned ${percent(shares[0].share)} of the credit for the improvement.` });
   }
 
-  // A long tail: the last 1% of the improvement took a large share of the search.
-  const last = crossing(curve, 0.99);
+  // A long tail: a large share of the search came after the run had made 99% of its improvement.
+  const last = levelPoint(data, 0.99);
   if (last !== null && curve.length > 1) {
-    const after = shareAfter(histories, axis, last);
+    const after = last.after;
     const unit = axis === 'evaluations' ? 'evaluations' : 'generations';
-    if (after >= 0.3)
-      notes.push({ weight: 35, text: `The last 1% of the gain took ${percent(after)} of the ${unit}; stopping at 99% would have saved them.` });
+    if (after >= 0.3) notes.push({ weight: 35, text: `${percent(after)} of the ${unit} came after the run had made 99% of its gain.` });
   }
 
   return notes

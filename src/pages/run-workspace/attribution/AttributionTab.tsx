@@ -94,7 +94,8 @@ function Shared({ shapley, game, view, maximising }: { shapley: ShapleyAttributi
 }
 
 // Ranked credit per player, as bars from a zero line, so negative credit reads as pulling the other way.
-function Credit({ game, view }: { game: ShapleyGame; view: View }) {
+// wide lays the bars out in two columns, for a sampled game that has no coalitions to show beside it.
+function Credit({ game, view, wide = false }: { game: ShapleyGame; view: View; wide?: boolean }) {
   const shared = game.full_value - game.empty_value;
   const players = game.players
     .map((player) => ({ ...player, errorMargin: Math.max(0, player.standard_error ?? 0) }))
@@ -106,25 +107,20 @@ function Credit({ game, view }: { game: ShapleyGame; view: View }) {
   // Whiskers under 0.5% of the track would read as stray ticks; the ± text still shows them.
   const showsWhisker = (errorMargin: number) => (2 * errorMargin) / span >= 0.005;
   const hasWhiskers = players.some(({ errorMargin }) => showsWhisker(errorMargin));
-  const [first, second] = players;
   return (
     <section className="card">
       <div className="card-header card-heading">
         <h3>{view === 'islands' ? 'Credit per island' : 'Credit per route'}</h3>
-        <span className="muted">Shapley value, as a share of the shared improvement</span>
+        <span className="muted">
+          {wide
+            ? `Shapley value, as a share of the shared improvement · sampled from ${numberFormat.format(game.sampled_orders ?? 0)} orders, so coalitions were not computed`
+            : 'Shapley value, as a share of the shared improvement'}
+        </span>
       </div>
-      {first && (
-        <p className="credit-headline">
-          <b>{playerName(first.player)}</b> holds the largest share, <b>{percent(first.value / shared || 0)}</b>
-          {second && (
-            <>
-              , followed by <b>{playerName(second.player)}</b> at {percent(second.value / shared || 0)}
-            </>
-          )}
-          .
-        </p>
-      )}
-      <div className="credit-bars">
+      <div
+        className={`credit-bars${wide ? ' credit-bars-wide' : ''}`}
+        style={wide ? { gridTemplateRows: `repeat(${Math.ceil(players.length / 2)}, auto)` } : undefined}
+      >
         {players.map(({ player, value, standard_error: error, errorMargin }) => (
           <div key={playerKey(player)} className="credit-row">
             <span className="credit-name">
@@ -166,36 +162,53 @@ function Credit({ game, view }: { game: ShapleyGame; view: View }) {
           Whiskers show a ±1 standard error.
         </p>
       )}
-      <p className="hint">
-        {view === 'islands'
-          ? 'An improvement counts for a coalition only if every island in its ancestry is a member.'
-          : 'An improvement counts for a coalition only if every route its ancestry crossed is a member.'}{' '}
-        Island and route values come from separate games, so they do not add.
-      </p>
     </section>
   );
 }
 
 const coalitionKey = (keys: Iterable<string>) => [...keys].sort().join('|');
 
+// What the coalition reaches on its own (reached) against its members' Shapley values added up
+function MemberCredit({ reached, credit, value }: { reached: number; credit: number | null; value: string }) {
+  const gap = credit === null ? 0 : reached - credit;
+  return (
+    <>
+      <div className="group-result">
+        <strong>{percent(reached)}</strong>
+        <span className="muted">{value}</span>
+        {credit !== null && (
+          <span className={`member-gap${gap > 1e-9 ? ' member-gap-up' : gap < -1e-9 ? ' member-gap-down' : ''}`}>
+            {Math.abs(gap) <= 1e-9 ? (
+              <>
+                matches members&apos; credit <b className="member-gap-credit">{percent(credit)}</b>
+              </>
+            ) : (
+              <>
+                <b>
+                  {gap > 0 ? '▲' : '▼'} {percent(Math.abs(gap))}
+                </b>{' '}
+                {gap > 0 ? 'beyond' : 'short of'} members&apos; credit <b className="member-gap-credit">{percent(credit)}</b>
+              </>
+            )}
+          </span>
+        )}
+      </div>
+      <div className="coalition-meter">
+        <i style={{ width: `${clampShare(reached)}%` }} />
+      </div>
+    </>
+  );
+}
+
+const clampShare = (share: number) => Math.max(0, Math.min(1, share || 0)) * 100;
+
 // The improvement a chosen subset of players reaches on its own. Each chip shows that player's marginal contribution to
 // the current coalition: what adding it (or removing it) changes. Route coalitions often move only when routes combine.
-function Coalitions({ game, view }: { game: ShapleyGame; view: View }) {
+function Coalitions({ game }: { game: ShapleyGame }) {
   const players = [...game.players].sort((a, b) => b.value - a.value);
   const [picked, setPicked] = useState<ReadonlySet<string>>(() => new Set(players.slice(0, 2).map((p) => playerKey(p.player))));
   const values = useMemo(() => new Map(game.coalitions.map((c) => [coalitionKey(c.players.map(playerKey)), c.value])), [game]);
   const shared = game.full_value - game.empty_value;
-  if (!game.coalitions.length)
-    return (
-      <section className="card">
-        <div className="card-header">
-          <h3>Coalitions</h3>
-        </div>
-        <p className="hint">
-          Sampled game ({numberFormat.format(game.sampled_orders ?? 0)} orders over {players.length} players), so coalition values were not computed.
-        </p>
-      </section>
-    );
   const valueOf = (keys: ReadonlySet<string>) => (values.get(coalitionKey(keys)) ?? game.empty_value) - game.empty_value;
   const reached = valueOf(picked);
   const shapleySum = players.filter((p) => picked.has(playerKey(p.player))).reduce((sum, p) => sum + p.value, 0);
@@ -232,29 +245,11 @@ function Coalitions({ game, view }: { game: ShapleyGame; view: View }) {
           );
         })}
       </div>
-      <div className="group-result">
-        <strong>{percent(reached / shared || 0)}</strong>
-        <span className="muted">
-          v(S) = {fitness(reached)} of {fitness(shared)}
-        </span>
-      </div>
-      <div className="coalition-meter">
-        <i style={{ width: `${Math.max(0, Math.min(1, reached / shared || 0)) * 100}%` }} />
-      </div>
-      <p className="hint">
-        {picked.size === 0
-          ? view === 'islands'
-            ? 'The empty coalition reaches no improvement.'
-            : `With no routes, only the ${fitness(game.empty_value)} reached without migration counts.`
-          : `Sum of the members' Shapley values: ${percent(shapleySum / shared || 0)}. ${
-              reached > shapleySum + 1e-9
-                ? 'The coalition reaches more, so its members complement each other.'
-                : reached < shapleySum - 1e-9
-                  ? 'The coalition reaches less, so part of their credit depends on players outside it.'
-                  : 'The coalition reaches exactly that.'
-            }`}{' '}
-        Each chip shows the change from adding or removing that player.
-      </p>
+      <MemberCredit
+        reached={reached / shared || 0}
+        credit={picked.size > 0 ? shapleySum / shared || 0 : null}
+        value={`v(S) = ${fitness(reached)} of ${fitness(shared)}`}
+      />
     </section>
   );
 }
@@ -365,6 +360,7 @@ function Attribution({ shapley, maximising, migrationEnabled }: { shapley: Shapl
   const calculationLabel = game.sampled_orders
     ? `Estimated from ${numberFormat.format(game.sampled_orders)} sampled orders`
     : `Exact, from all ${numberFormat.format(game.coalitions.length)} groups`;
+  const wide = !game.coalitions.length;
   const change = (next: View) => {
     setView(next);
     window.history.replaceState(null, '', `${window.location.pathname}${next === 'routes' ? '?view=routes' : ''}`);
@@ -388,10 +384,16 @@ function Attribution({ shapley, maximising, migrationEnabled }: { shapley: Shapl
       ) : (
         <>
           <Shared shapley={shapley} game={game} view={view} maximising={maximising} />
-          <div className="attribution-grid">
-            <Credit key={`credit-${view}`} game={game} view={view} />
-            <Coalitions key={`coalitions-${view}`} game={game} view={view} />
-          </div>
+          {wide ? (
+            <div className="attribution-wide">
+              <Credit key={`credit-${view}`} game={game} view={view} wide />
+            </div>
+          ) : (
+            <div className="attribution-grid">
+              <Credit key={`credit-${view}`} game={game} view={view} />
+              <Coalitions key={`coalitions-${view}`} game={game} />
+            </div>
+          )}
           <Orders key={`orders-${view}`} game={game} />
         </>
       )}

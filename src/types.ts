@@ -141,6 +141,7 @@ export type GraphNodes = {
   islands_sharing: number[];
   island_best: boolean[];
   overall_best: boolean[];
+  faded: boolean[];
   migration_endpoint: boolean[];
   genome_hash: string[];
   // DenStream's decaying weight; null without DenStream.
@@ -182,6 +183,7 @@ export type GraphDelta = {
     | 'out_degree'
     | 'islands_sharing'
     | 'migration_endpoint'
+    | 'faded'
   >;
   percentiles: Columns<'fitness_percentile'>;
   weights: Columns<'weight'> | null;
@@ -197,8 +199,36 @@ export type GraphDelta = {
   overlap: number;
 };
 
-// One streamed update of a live run.
-export type RunUpdate = { status: 'warming_up' | 'live'; graph: GraphDelta };
+export type MigrationRoute = { source: number; destination: number; migrants: number };
+
+// Migrants that arrived on an island in one migration, at the destination island's generation.
+// source_generation is when they were sent, which names the migration round.
+type MigrationArrival = { generation: number; source: number; destination: number; migrants: number; source_generation: number };
+
+// One streamed update of a live run. maximising is null while warming up; migration_routes counts every migrant so far.
+export type RunUpdate = { status: 'warming_up' | 'live'; maximising: boolean | null; migration_routes: MigrationRoute[]; graph: GraphDelta };
+
+// An island's best evaluation as the worker picked it: the first to reach the island's best fitness.
+// evaluations is the island's evaluations_total at the end of that generation, and node the cluster holding it.
+export type IslandBest = {
+  island_id: number;
+  fitness: number;
+  individual_id: string;
+  generation: number;
+  evaluations: number | null;
+  node: number;
+};
+
+// Where the run first had made a share of its improvement along one axis, and the share of the search after that.
+export type ConvergencePoint = { island_id: number; x: number; fitness: number; after: number };
+
+// From the best starting value to the run's best, on a fixed scale; levels are empty when the best never moved.
+export type Convergence = {
+  scale: 'log' | 'linear';
+  start_fitness: number;
+  final_fitness: number;
+  levels: { share: number; generation: ConvergencePoint; evaluations: ConvergencePoint | null }[];
+};
 
 // archipelago's Result, trimmed to the parts the run page reads so far.
 export type RunResult = {
@@ -216,7 +246,9 @@ export type RunResult = {
   layout: { method: 'pca' | 'mds' | 'none'; variance_kept_2d: number; variance_kept_3d: number };
   graph: Graph;
   separation: Separation;
-  migration_routes: { source: number; destination: number; migrants: number }[];
+  migration_routes: MigrationRoute[];
+  // Every migration that brought migrants, sorted by generation.
+  migration_arrivals: MigrationArrival[];
   clustering: {
     stages: string[];
     counts: { evaluations: number; rows_clustered: number; nodes: number; faded_nodes: number | null };
@@ -239,6 +271,10 @@ export type RunResult = {
   warnings: string[];
   // One per island that logged island_end, sorted by island; an island that crashed has none.
   island_ends: IslandEnd[];
+  // One per island with an evaluation, sorted by island; run_best_island names the one holding the run best.
+  island_bests: IslandBest[];
+  run_best_island: number | null;
+  convergence: Convergence | null;
 };
 
 // The runner's TerminationReason values, which archipelago passes through as they are.

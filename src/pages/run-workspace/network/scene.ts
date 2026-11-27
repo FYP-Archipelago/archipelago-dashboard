@@ -1,5 +1,6 @@
+import { maxOf } from '@/math.ts';
 import { routeKey } from '@/pages/run-workspace/shared.tsx';
-import type { Graph } from '@/types.ts';
+import type { Graph, MigrationRoute } from '@/types.ts';
 
 export const HEIGHTS = {
   fitness: { label: 'Best fitness', detail: 'Better clusters sit lower', top: 'Worse', bottom: 'Better' },
@@ -11,8 +12,6 @@ export const HEIGHTS = {
 } as const;
 
 export type HeightMode = keyof typeof HEIGHTS;
-
-type Route = { source: number; destination: number; migrants: number };
 
 // One graph prepared for drawing: cluster i is position i in every array.
 export type Scene = {
@@ -35,23 +34,19 @@ export type Scene = {
   size: Float32Array;
   // 0 when only one island visited the cluster, 1 when all of them did.
   shared: Float32Array;
+  // 1 for a cluster DenStream faded out, which stays only because it holds an island's best.
+  faded: Float32Array;
   // When the cluster appears in the replay, from 0 to 1. Each island's first cluster is there from the start.
   reveal: Float32Array;
   edges: { a: Int32Array; b: Int32Array; weight: Float32Array; reveal: Float32Array };
   migrations: { a: Int32Array; b: Int32Array; count: Float32Array; route: string[] };
-  routes: Route[];
+  // Every route that carried migrants, with all its migrants, including ones the graph could not place on a cluster.
+  routes: MigrationRoute[];
   // Per island, in `islands` order; -1 when the island has none.
   islandBest: number[];
   runBest: number;
   maxTraversals: number;
 };
-
-// A live graph does not say which way fitness points, but the run best sits at one end of the clusters' bests.
-export function inferMaximising(graph: Graph): boolean {
-  const values = graph.nodes.best_fitness.filter((value): value is number => value !== null);
-  const best = graph.nodes.best_fitness[graph.nodes.overall_best.indexOf(true)];
-  return best !== undefined && best !== null && values.length > 1 && best === Math.max(...values) && best !== Math.min(...values);
-}
 
 // Heights run from -0.9 (bottom) to 0.9 (top).
 const toHeight = (t: number) => t * 1.8 - 0.9;
@@ -65,7 +60,7 @@ function ranks(values: (number | null)[], maximising: boolean): Float32Array {
   return Float32Array.from(values, (v) => place.get(badness(v))!);
 }
 
-export function buildScene(graph: Graph, islands: number[], maximising: boolean): Scene {
+export function buildScene(graph: Graph, islands: number[], maximising: boolean, routes: MigrationRoute[]): Scene {
   const nodes = graph.nodes;
   const count = nodes.id.length;
   const index = new Map(nodes.id.map((id, i) => [id, i]));
@@ -106,13 +101,6 @@ export function buildScene(graph: Graph, islands: number[], maximising: boolean)
     const b = index.get(graph.migrations.target[k]!);
     return a === undefined || b === undefined ? [] : [[a, b, graph.migrations.count[k]!] as const];
   });
-  const routes = new Map<string, Route>();
-  for (const [a, b, migrants] of migrationList) {
-    const key = routeKey(nodes.island[a]!, nodes.island[b]!);
-    const route = routes.get(key) ?? { source: nodes.island[a]!, destination: nodes.island[b]!, migrants: 0 };
-    route.migrants += migrants;
-    routes.set(key, route);
-  }
 
   return {
     count,
@@ -130,6 +118,7 @@ export function buildScene(graph: Graph, islands: number[], maximising: boolean)
     firstEval: nodes.first_eval,
     size: Float32Array.from(nodes.visits, (v) => 1 + Math.log2(1 + v) * 0.85),
     shared,
+    faded: Float32Array.from(nodes.faded, Number),
     reveal,
     edges: {
       a: Int32Array.from(edgeList, (e) => e[0]),
@@ -143,9 +132,9 @@ export function buildScene(graph: Graph, islands: number[], maximising: boolean)
       count: Float32Array.from(migrationList, (m) => m[2]),
       route: migrationList.map(([a, b]) => routeKey(nodes.island[a]!, nodes.island[b]!)),
     },
-    routes: [...routes.values()].sort((a, b) => a.source - b.source || a.destination - b.destination),
+    routes: [...routes].sort((a, b) => a.source - b.source || a.destination - b.destination),
     islandBest: islands.map((island) => nodes.id.findIndex((_, i) => nodes.island[i] === island && nodes.island_best[i])),
     runBest: nodes.overall_best.indexOf(true),
-    maxTraversals: Math.max(1, ...graph.edges.weight),
+    maxTraversals: maxOf(graph.edges.weight, 1),
   };
 }

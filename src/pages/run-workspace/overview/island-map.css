@@ -51,12 +51,6 @@
   fill: none;
   stroke-width: 1.5;
 }
-.island-map-island .island-map-share {
-  fill: var(--ink);
-  font-size: 13px;
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-}
 .island-map-island .island-map-name {
   fill: var(--muted);
   font-size: 11.5px;

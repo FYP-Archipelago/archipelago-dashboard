@@ -23,6 +23,7 @@ const nodes = (ids: number[], island = 0): GraphNodes => ({
   islands_sharing: ids.map(() => 1),
   island_best: ids.map(() => false),
   overall_best: ids.map(() => false),
+  faded: ids.map(() => false),
   migration_endpoint: ids.map(() => false),
   genome_hash: ids.map(String),
   weight: null,

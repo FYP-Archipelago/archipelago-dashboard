@@ -24,7 +24,6 @@ describe('AttributionTab', () => {
       ['Island 1', '33%'],
       ['Island 2', '13%'],
     ]);
-    expect(document.querySelector('.credit-headline')!.textContent).toBe('Island 0 holds the largest share, 55%, followed by Island 1 at 33%.');
   });
 
   it('shares route credit out of only the improvement that needed migrants', async () => {
@@ -65,7 +64,7 @@ describe('AttributionTab', () => {
 
     // Islands 0 and 1 start picked: together 34 of 40, while their credits add up to 35 of 40.
     expect(groupText()).toContain('85%');
-    expect(screen.getByText(/The coalition reaches less/)).toBeTruthy();
+    expect(document.querySelector('.member-gap')!.textContent).toBe("▼ 2.5% short of members' credit 88%");
 
     fireEvent.click(button('Island 0'));
     fireEvent.click(button('Island 2'));
@@ -88,7 +87,7 @@ describe('AttributionTab', () => {
     expect(marks).toEqual({ '0 → 1': '−75%', '1 → 2': '−25%', '1 → 0': '±0' });
   });
 
-  it('shows sampled credit with whiskers for positive standard errors and explains why groups cannot be tried', async () => {
+  it('shows sampled credit across the whole width with whiskers for positive standard errors, saying why there are no coalitions', async () => {
     const result = makeResult();
     const shapley = shapleyOf(result);
     await renderWorkspace('attribution', {
@@ -109,12 +108,15 @@ describe('AttributionTab', () => {
     });
 
     expect(document.querySelector('.credit-row small')!.textContent).toBe('22 ± 1.5');
-    expect(screen.getByText(/Sampled game \(1,024 orders over 3 players\)/)).toBeTruthy();
+    expect(screen.getByText(/sampled from 1,024 orders, so coalitions were not computed/)).toBeTruthy();
+    expect(document.querySelector('.attribution-wide .credit-bars-wide')).toBeTruthy();
+    expect(screen.queryByText('Coalitions')).toBeNull();
     expect(document.querySelectorAll('.credit-error-bar')).toHaveLength(2);
     expect(screen.getByText(/ ± 0$/).closest('.credit-row')?.querySelector('.credit-error-bar')).toBeNull();
     expect(screen.getByText('Whiskers show a ±1 standard error.').querySelector('.credit-error-symbol')).toBeTruthy();
 
     fireEvent.click(button('Migration route attribution'));
+    expect(screen.getByText('Coalitions')).toBeTruthy();
     expect(document.querySelector('.credit-error-bar')).toBeNull();
     expect(screen.queryByText('Whiskers show a ±1 standard error.')).toBeNull();
   });

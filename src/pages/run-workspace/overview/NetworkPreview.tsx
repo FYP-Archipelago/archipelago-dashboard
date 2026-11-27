@@ -34,7 +34,7 @@ function useWheelGate() {
 // The Network tab's 3D view, heights set to best fitness.
 function Orbit({ data }: { data: OverviewData }) {
   const { result, run } = data;
-  const scene = useMemo(() => buildScene(result.graph, result.run.islands, result.run.maximising), [result]);
+  const scene = useMemo(() => buildScene(result.graph, result.run.islands, result.run.maximising, result.migration_routes), [result]);
   const canvas = useRef<HTMLCanvasElement>(null);
   const overlay = useRef<HTMLCanvasElement>(null);
   const renderer = useRef<Renderer | null>(null);

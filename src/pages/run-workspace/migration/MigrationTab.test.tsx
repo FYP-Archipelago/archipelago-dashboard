@@ -8,7 +8,9 @@ const run = makeRun('run-1');
 
 const arrivalRows = () =>
   (
-    within(screen.getByText('Where migrants landed').parentElement!.querySelector('table')!).getAllByRole('row').slice(1) as HTMLTableRowElement[]
+    within(screen.getByText('Where migrants landed').closest('.section-head')!.parentElement!.querySelector('table')!)
+      .getAllByRole('row')
+      .slice(1) as HTMLTableRowElement[]
   ).map((row) => [...row.cells].map((cell) => cell.textContent));
 
 describe('MigrationTab', () => {
@@ -20,11 +22,45 @@ describe('MigrationTab', () => {
     expect(screen.getByText('Routes used').parentElement!.textContent).toContain('3of 6 possible');
   });
 
-  it('points to Attribution for which routes mattered, when the run has attribution', async () => {
+  it("keeps an island's routes brought out after hovering it, until a route of another island is picked", async () => {
+    await renderWorkspace('migration');
+    // Routes in order: 0 → 1, 1 → 0, 1 → 2. Island 0 sends 0 → 1 and takes in 1 → 0.
+    const routes = [...document.querySelectorAll('.flow-route')];
+    const dimmed = () => routes.map((route) => route.classList.contains('flow-route-dimmed'));
+    const lit = () => [...document.querySelectorAll('.heat-cell-selected')].map((cell) => cell.getAttribute('aria-label'));
+    const island = document.querySelectorAll('.flow-island')[0]!;
+    // Out onto the diagram's empty space, as moving off an element inside it does.
+    const out = (element: Element) => fireEvent.pointerOut(element, { relatedTarget: document.querySelector('.flow-diagram') });
+    const islandRoutes = ['Island 0 → island 1: 6 migrants', 'Island 1 → island 0: 2 migrants'];
+
+    fireEvent.pointerMove(island);
+    const tip = within(document.querySelector<HTMLElement>('.hover-tip')!);
+    expect(tip.getByText('Migrants in').textContent).toBe('Migrants in2 · from 1 island');
+    expect(tip.getByText('Migrants out').textContent).toBe('Migrants out6 · to 1 island');
+    expect(dimmed()).toEqual([false, false, true]);
+    expect(lit()).toEqual(islandRoutes);
+
+    // Through the gap to one of its routes: still brought out, and only that route lights up in the matrix.
+    out(island);
+    expect(dimmed()).toEqual([false, false, true]);
+    fireEvent.pointerMove(routes[0]!);
+    expect(document.querySelector('.hover-tip')!.textContent).toContain('Island 0 →Island 1');
+    expect(lit()).toEqual([islandRoutes[0]]);
+    out(routes[0]!);
+    expect(dimmed()).toEqual([false, false, true]);
+    expect(lit()).toEqual(islandRoutes);
+
+    // A route that does not touch island 0 lets it go.
+    fireEvent.pointerMove(routes[2]!);
+    out(routes[2]!);
+    expect(dimmed()).toEqual([false, false, false]);
+    expect(lit()).toEqual([]);
+  });
+
+  it('shows how much of the improvement needed migrants, when the run has attribution', async () => {
     await renderWorkspace('migration');
 
     expect(screen.getByText('Improvement that needed migrants').parentElement!.textContent).toContain('50%');
-    expect(screen.getByText('See Attribution').closest('a')!.getAttribute('href')).toBe('/runs/run-1/attribution?view=routes');
   });
 
   it('lists where migrants landed, busiest first, judging each arrival by which way the run optimises', async () => {
@@ -37,6 +73,10 @@ describe('MigrationTab', () => {
       ['1 →0', '#12 · 60', '#10 · 80', '2', 'Worse by 20'],
     ]);
     expect(screen.getByText(/1 of them arrived in a cluster whose best beat/)).toBeTruthy();
+
+    // The filter keeps only the arrivals of one outcome.
+    fireEvent.change(screen.getByLabelText("Arrival cluster's best"), { target: { value: 'arrival-worse' } });
+    expect(arrivalRows()).toEqual([['1 →0', '#12 · 60', '#10 · 80', '2', 'Worse by 20']]);
   });
 
   it('reads a higher arrival best as better on a maximising run', async () => {

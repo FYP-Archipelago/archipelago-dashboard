@@ -31,34 +31,108 @@
 .heat-scale .heat-scale-note {
   margin-left: auto;
 }
-.pair-facts {
+.heat-scale.heat-scale-compact i {
+  width: 64px;
+}
+.heat-real-key {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: 8px;
+}
+.heat-real-mark,
+.heat-cell.heat-cell-real::after {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+.heat-real-mark {
+  display: inline-block;
+  background: var(--ink-2);
+}
+.heat-cell.heat-cell-real {
+  position: relative;
+}
+.heat-cell.heat-cell-real::after {
+  content: '';
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  opacity: 0.85;
+}
+.within-between {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
   margin-top: 16px;
   padding-top: 14px;
   border-top: 1px solid var(--border);
+  font-size: 12.5px;
 }
-.pair-selection {
-  align-items: center;
-  flex-wrap: wrap;
+.within-between-title {
+  margin-bottom: 2px;
+  color: var(--muted);
+  font-size: 12px;
 }
-.pair-selection dd,
-.pair-shortcuts {
+.within-plot {
+  display: block;
+  width: 100%;
+  overflow: visible;
+}
+.within-axes-lines line {
+  stroke: var(--border-strong);
+  stroke-width: 0.75;
+}
+.within-axes-lines text {
+  fill: var(--muted);
+  font-size: 8px;
+  font-variant-numeric: tabular-nums;
+}
+.within-dot {
+  transition: transform 0.35s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.within-dot circle {
+  stroke: var(--surface);
+  stroke-width: 1.5;
+}
+.within-dot text {
+  fill: #fff;
+  font-size: 12px;
+  font-weight: 600;
+}
+/* Holds a stack's hover; it is never drawn. */
+.within-hover {
+  fill: transparent;
+}
+.within-raised {
+  pointer-events: none;
+}
+/* Each fanned dot's line back to its true spot draws out from the spot as the dot glides away, and back in. */
+.within-true-spot line {
+  stroke-width: 1;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  opacity: 0.6;
+  transition: stroke-dashoffset 0.35s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.within-true-spot circle {
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+.within-true-spot.within-true-spot-shown line {
+  stroke-dashoffset: 0;
+}
+.within-true-spot.within-true-spot-shown circle {
+  opacity: 1;
+}
+.within-axes {
   display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  align-items: center;
-  gap: 5px;
+  justify-content: space-between;
+  color: var(--muted);
+  font-size: 10.5px;
 }
-.pair-facts .pair-selection dd {
-  margin-left: auto;
-}
-.pair-shortcuts .pair-chip[aria-pressed='true'] {
-  border-color: var(--muted);
-  background: var(--surface-3);
-  color: var(--ink);
-}
-.pair-shortcuts .pair-chip {
-  white-space: nowrap;
-}
+
 @media (max-width: 1200px) {
   .divergence-grid {
     grid-template-columns: minmax(0, 1fr);
@@ -68,6 +142,12 @@
 .chart-column {
   display: flex;
   flex-direction: column;
+}
+.divergence-grid .heat-cell {
+  aspect-ratio: 1.76;
+}
+.chart-column > .chart {
+  margin: 0 -10px 0 -14px;
 }
 .pair-picker {
   display: flex;
@@ -174,4 +254,23 @@
 .divergence-hover-tags-list .swatch {
   width: 5px;
   height: 5px;
+}
+
+.window-slider {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  margin-left: 8px;
+}
+.window-slider input {
+  flex: 1;
+  min-width: 0;
+}
+.window-slider span {
+  min-width: 76px;
+  text-align: right;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
 }

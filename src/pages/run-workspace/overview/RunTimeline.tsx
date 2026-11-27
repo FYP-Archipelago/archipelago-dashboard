@@ -2,14 +2,14 @@ import { useMemo, useState, type CSSProperties, type PointerEvent } from 'react'
 
 import { islandColor } from '@/colors.ts';
 import { compactNumber, fitness, numberFormat } from '@/format.ts';
+import { maxOf } from '@/math.ts';
 import { niceTicks, useSize } from '@/pages/run-workspace/charts/LineChart.tsx';
-import type { IslandHistory } from '@/pages/run-workspace/history.ts';
 import { IslandSwatch } from '@/pages/run-workspace/shared.tsx';
 import { REASONS, stopText } from '@/pages/run-workspace/stops.ts';
-import type { IslandEnd, TerminationReason } from '@/types.ts';
+import type { IslandBest, IslandEnd, TerminationReason } from '@/types.ts';
 
 import OverviewCard from './OverviewCard.tsx';
-import { crossing, laneOf, type Axis, type Improvement, type Lane, type OverviewData } from './overview.ts';
+import { laneOf, levelPoint, type Axis, type Improvement, type Lane, type OverviewData } from './overview.ts';
 
 import './run-timeline.css';
 
@@ -66,15 +66,14 @@ const KEY_TEXT: Record<string, string> = {
 
 type Hover = { kind: 'lane'; island: number } | { kind: 'band'; index: number };
 
-function LaneTip({ lane, history, end, axis, style }: { lane: Lane; history: IslandHistory; end?: IslandEnd; axis: Axis; style: CSSProperties }) {
-  const finalBest = history.bestSoFar.filter((value) => value !== null).at(-1) ?? null;
+function LaneTip({ lane, best, end, axis, style }: { lane: Lane; best?: IslandBest; end?: IslandEnd; axis: Axis; style: CSSProperties }) {
   return (
     <div className="hover-tip run-timeline-tip" style={style}>
       <div className="hover-tip-title">
         <IslandSwatch island={lane.island} /> Island {lane.island}
       </div>
       <div className="hover-tip-row">
-        Final best<b>{fitness(finalBest)}</b>
+        Final best<b>{fitness(best?.fitness ?? null)}</b>
       </div>
       <div className="hover-tip-row">
         Improvements<b>{numberFormat.format(lane.steps.length)}</b>
@@ -101,7 +100,7 @@ function LaneTip({ lane, history, end, axis, style }: { lane: Lane; history: Isl
 function Timeline({ data, improvement }: { data: OverviewData; improvement: Improvement }) {
   const { histories, axis, curve } = data;
   const ends = data.result.island_ends;
-  const best = data.best && data.bestX !== null ? { island: data.best.island, x: data.bestX } : null;
+  const best = data.best && data.bestX !== null ? { island: data.best.island_id, x: data.bestX } : null;
   const [ref, size] = useSize();
   const [hover, setHover] = useState<Hover | null>(null);
   const lanes = useMemo(() => histories.flatMap((history) => laneOf(history, axis, improvement) ?? []), [histories, axis, improvement]);
@@ -116,14 +115,19 @@ function Timeline({ data, improvement }: { data: OverviewData; improvement: Impr
   const sy = (value: number) => TOP + (1 - Math.max(0, Math.min(1, value))) * BAND;
   const laneY = (index: number) => TOP + BAND + GAP + index * LANE + LANE / 2;
   const lanesBottom = TOP + BAND + GAP + lanes.length * LANE;
-  const biggest = Math.max(...lanes.flatMap((lane) => lane.steps.map((step) => step.size)), 1e-12);
+  const biggest = maxOf(
+    lanes.flatMap((lane) => lane.steps.map((step) => step.size)),
+    1e-12
+  );
   const tickHalf = (size: number) => 2 + 9 * Math.sqrt(size / biggest);
   const formatX = (x: number) => (axis === 'evaluations' ? `${numberFormat.format(x)} evaluations` : `Generation ${x}`);
 
   // Notches on the same x keep the strictest; labels too close together are joined.
   const notches = NOTCHES.flatMap((level) => {
-    const x = crossing(curve, level);
-    return x === null ? [] : [{ level, x, share: curve.find((point) => point.x === x)!.share }];
+    const x = levelPoint(data, level)?.x;
+    // The worker's x is one of the logged points the band is drawn through.
+    const point = curve.find((point) => point.x === x);
+    return point ? [{ level, x: point.x, share: point.share }] : [];
   }).filter((notch, i, all) => all[i + 1]?.x !== notch.x);
   const labels: { x: number; text: string }[] = [];
   for (const notch of notches) {
@@ -289,7 +293,7 @@ function Timeline({ data, improvement }: { data: OverviewData; improvement: Impr
         {hoveredLane >= 0 && (
           <LaneTip
             lane={lanes[hoveredLane]!}
-            history={histories.find((history) => history.island === lanes[hoveredLane]!.island)!}
+            best={data.bests.find((best) => best.island_id === lanes[hoveredLane]!.island)}
             end={endOf(lanes[hoveredLane]!.island)}
             axis={axis}
             style={{

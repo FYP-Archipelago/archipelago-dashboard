@@ -79,6 +79,7 @@ const NODE_KEYS: (keyof NodeRow)[] = [
   'islands_sharing',
   'island_best',
   'overall_best',
+  'faded',
   'migration_endpoint',
   'genome_hash',
   'weight',

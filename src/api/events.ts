@@ -1,7 +1,7 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-import type { Graph, Run, RunResult, RunUpdate } from '@/types.ts';
+import type { Graph, MigrationRoute, Run, RunResult, RunUpdate } from '@/types.ts';
 
 import { backendUrl } from './client.ts';
 import { applyDelta, emptyLiveGraph, liveGraphColumns } from './graph.ts';
@@ -9,12 +9,19 @@ import { applyDelta, emptyLiveGraph, liveGraphColumns } from './graph.ts';
 // reconnecting: the browser is retrying on its own. lost: it gave up, so we retry at `retryAt`.
 type Connection = 'connecting' | 'open' | 'reconnecting' | 'lost' | 'closed';
 
-type Snapshot = { graph: Graph | null; connection: Connection; updatedAt: number | null; retryAt: number | null };
+type Snapshot = {
+  graph: Graph | null;
+  maximising: boolean | null;
+  routes: MigrationRoute[];
+  connection: Connection;
+  updatedAt: number | null;
+  retryAt: number | null;
+};
 
 export type LiveGraphState = Snapshot & { retry: () => void };
 
-const CLOSED: Snapshot = { graph: null, connection: 'closed', updatedAt: null, retryAt: null };
-const CONNECTING: Snapshot = { graph: null, connection: 'connecting', updatedAt: null, retryAt: null };
+const CLOSED: Snapshot = { graph: null, maximising: null, routes: [], connection: 'closed', updatedAt: null, retryAt: null };
+const CONNECTING: Snapshot = { ...CLOSED, connection: 'connecting' };
 
 // Runs whose stream is open. The stream reports every status change, so useRun stops polling these.
 const streaming = new Set<string>();
@@ -65,14 +72,15 @@ export function useLiveGraph(id: string, enabled: boolean): LiveGraphState {
         update({ connection: 'open', retryAt: null });
       };
       current.addEventListener('update', (event) => {
-        live = applyDelta(live, (JSON.parse((event as MessageEvent<string>).data) as RunUpdate).graph);
+        const message = JSON.parse((event as MessageEvent<string>).data) as RunUpdate;
+        live = applyDelta(live, message.graph);
         const graph = liveGraphColumns(live);
         // While a rebuild is behind the graph on screen, keep showing that one; a graph that shrank (DenStream drops
         // clusters) would never catch up, so after two seconds the rebuild shows regardless.
         if (catchingUp && graph.nodes.id.length < shownNodes && Date.now() - opened < 2000) return;
         catchingUp = false;
         shownNodes = graph.nodes.id.length;
-        update({ graph, connection: 'open', updatedAt: Date.now(), retryAt: null });
+        update({ graph, maximising: message.maximising, routes: message.migration_routes, connection: 'open', updatedAt: Date.now(), retryAt: null });
       });
       current.addEventListener('status', (event) => {
         const { status } = JSON.parse((event as MessageEvent<string>).data) as { status: string };
@@ -126,5 +134,6 @@ export function useLiveGraph(id: string, enabled: boolean): LiveGraphState {
   const retry = useCallback(() => retryNow.current(), []);
   if (!enabled) return { ...CLOSED, retry };
   if (state.id !== id) return { ...CONNECTING, retry };
-  return { graph: state.graph, connection: state.connection, updatedAt: state.updatedAt, retryAt: state.retryAt, retry };
+  const { graph, maximising, routes, connection, updatedAt, retryAt } = state;
+  return { graph, maximising, routes, connection, updatedAt, retryAt, retry };
 }

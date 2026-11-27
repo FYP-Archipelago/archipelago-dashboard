@@ -1,3 +1,5 @@
+import { maxOf } from '@/math.ts';
+
 import type { ViewSettings } from './renderer.ts';
 import type { Scene } from './scene.ts';
 
@@ -7,15 +9,14 @@ type Positions = { x: Float32Array; y: Float32Array; h: Float32Array };
 // renderer started), by cluster index.
 export type Glide = { from: Positions; to: Positions; born: Float32Array };
 
-// Each island's place on the ring it moves out to when grouped, by island slot.
-export type Ring = (readonly [number, number])[];
+// Each island's offset when grouped, by island slot: [x, z].
+export type Offsets = (readonly [number, number])[];
 
-export function islandRing(count: number): Ring {
-  return Array.from({ length: count }, (_, i) => {
+export const islandRing = (count: number, radius: number): Offsets =>
+  Array.from({ length: count }, (_, i) => {
     const angle = (i / count) * Math.PI * 2 - Math.PI / 2;
-    return [Math.cos(angle) * 0.86, Math.sin(angle) * 0.86] as const;
+    return [Math.cos(angle) * radius, Math.sin(angle) * radius] as const;
   });
-}
 
 // The vertex layouts the shaders read, as [attribute, floats] in buffer order.
 export const GRAPH_ATTRIBUTES: [string, number][] = [
@@ -30,6 +31,7 @@ export const GRAPH_ATTRIBUTES: [string, number][] = [
   ['aReveal', 1],
   ['aWeight', 1],
   ['aBorn', 1],
+  ['aFaded', 1],
 ];
 export const ARC_ATTRIBUTES: [string, number][] = [
   ['aAFrom', 3],
@@ -41,11 +43,13 @@ export const ARC_ATTRIBUTES: [string, number][] = [
   ['aStep', 4],
   ['aShow', 3],
   ['aFlow', 2],
+  ['aEnds', 2],
+  ['aFan', 2],
 ];
 const GRAPH_FLOATS = GRAPH_ATTRIBUTES.reduce((sum, [, size]) => sum + size, 0);
 const ARC_FLOATS = ARC_ATTRIBUTES.reduce((sum, [, size]) => sum + size, 0);
 // Each migration is a ribbon of this many segments, two triangles each.
-const ARC_SEGMENTS = 10;
+const ARC_SEGMENTS = 20;
 const QUAD = [
   [0, -1],
   [0, 1],
@@ -56,7 +60,7 @@ const QUAD = [
 ] as const;
 
 // One vertex per cluster for the points, and two per search path for the lines.
-export function graphVertices(scene: Scene, { from, to, born }: Glide, ring: Ring) {
+export function graphVertices(scene: Scene, { from, to, born }: Glide, ring: Offsets) {
   const write = (out: Float32Array, at: number, i: number, reveal: number, weight: number, bornAt: number) => {
     const [ox, oy] = ring[scene.slot[i]!]!;
     out.set(
@@ -75,6 +79,7 @@ export function graphVertices(scene: Scene, { from, to, born }: Glide, ring: Rin
         reveal,
         weight,
         bornAt,
+        scene.faded[i]!,
       ],
       at
     );
@@ -98,7 +103,7 @@ export function arcVertices(
   scene: Scene,
   view: Pick<ViewSettings, 'layers' | 'hiddenRoutes' | 'hiddenIslands'>,
   { from, to, born }: Glide,
-  ring: Ring
+  ring: Offsets
 ): { data: Float32Array; vertices: number } {
   const hiddenRoutes = new Set(view.hiddenRoutes);
   const hiddenIslands = new Set(view.hiddenIslands);
@@ -106,22 +111,34 @@ export function arcVertices(
   const count = view.layers.migrations ? scene.migrations.a.length : 0;
   const vertices = count * ARC_SEGMENTS * QUAD.length;
   const data = new Float32Array(vertices * ARC_FLOATS);
-  const busiest = Math.max(1, ...scene.migrations.count);
+  const busiest = maxOf(Array.from(scene.migrations.count), 1);
+  // Each link's place among the links of its island pair, busiest first, and how many links that pair has.
+  const pairs = new Map<string, number[]>();
+  for (let m = 0; m < count; m++) {
+    const key = `${scene.slot[scene.migrations.a[m]!]}>${scene.slot[scene.migrations.b[m]!]}`;
+    pairs.set(key, [...(pairs.get(key) ?? []), m]);
+  }
+  const fan = new Float32Array(count * 2);
+  for (const links of pairs.values())
+    links
+      .sort((p, q) => scene.migrations.count[q]! - scene.migrations.count[p]!)
+      .forEach((m, rank) => fan.set([links.length > 1 ? rank / (links.length - 1) : 0, links.length], m * 2));
   let at = 0;
   for (let m = 0; m < count; m++) {
     const [a, b] = [scene.migrations.a[m]!, scene.migrations.b[m]!];
     const [sa, sb] = [scene.slot[a]!, scene.slot[b]!];
     const visible = !hiddenRoutes.has(scene.migrations.route[m]!) && visibleSlot(sa) && visibleSlot(sb) ? 1 : 0;
-    const head = [from.x[a]!, from.y[a]!, from.h[a]!, to.x[a]!, to.y[a]!, to.h[a]!, ring[sa]![0], ring[sa]![1]];
-    const tail = [from.x[b]!, from.y[b]!, from.h[b]!, to.x[b]!, to.y[b]!, to.h[b]!, ring[sb]![0], ring[sb]![1]];
+    const head = [from.x[a]!, from.y[a]!, from.h[a]!, to.x[a]!, to.y[a]!, to.h[a]!, ...ring[sa]!];
+    const tail = [from.x[b]!, from.y[b]!, from.h[b]!, to.x[b]!, to.y[b]!, to.h[b]!, ...ring[sb]!];
     const reveal = Math.max(scene.reveal[a]!, scene.reveal[b]!);
     const bornAt = Math.max(born[a]!, born[b]!);
     const traffic = Math.sqrt(scene.migrations.count[m]! / busiest);
     // A fixed pseudo-random phase per link, so links never flow in step and a rebuild does not reshuffle them.
     const phase = (Math.sin(m * 12.9898) * 43758.5453) % 1;
+    const rest = [sa, sb, reveal, visible, bornAt, traffic, phase, a, b, fan[m * 2]!, fan[m * 2 + 1]!];
     for (let segment = 0; segment < ARC_SEGMENTS; segment++)
       for (const [step, side] of QUAD) {
-        data.set([...head, ...tail, (segment + step) / ARC_SEGMENTS, side, sa, sb, reveal, visible, bornAt, traffic, phase], at);
+        data.set([...head, ...tail, (segment + step) / ARC_SEGMENTS, side, ...rest], at);
         at += ARC_FLOATS;
       }
   }

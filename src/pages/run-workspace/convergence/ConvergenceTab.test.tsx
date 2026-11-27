@@ -72,7 +72,7 @@ describe('ConvergenceTab', () => {
     );
     await renderWorkspace('convergence', { result });
     expect(flagged()).toEqual(['Island 2']);
-    expect(document.querySelector('.stagnation-flag')!.parentElement!.textContent).toBe('2 gens (40%)Stagnated');
+    expect(document.querySelector('.stagnation-flag')!.parentElement!.textContent).toBe('2 generations (40%)Stagnated');
 
     cleanup();
     await renderWorkspace('convergence', { result: makeResult({ island_ends: [] }) });
@@ -126,12 +126,12 @@ describe('ConvergenceTab', () => {
     await renderWorkspace('convergence');
     expect(screen.getByText(/^Estimated convergence: /)).toBeTruthy();
 
-    // Island 1 now keeps improving until the last generation, which reaches the run's best.
+    // Island 1 now keeps improving until the last generation, where it reaches the run's best of 55.
+    // The worker puts the 99% and 99.9% points there, with nothing of the run after them.
     const result = makeResult();
-    const stillImproving = result.generation_history.map((row) =>
-      row.island_id === 1 ? { ...row, best_so_far_fitness: [100, 90, 80, 70, 55][row.generation]! } : row
-    );
-    await renderWorkspace('convergence', { result: { ...result, generation_history: stillImproving } });
+    const last = { island_id: 1, fitness: 55, after: 0 };
+    const levels = [0.99, 0.999].map((share) => ({ share, generation: { ...last, x: 4 }, evaluations: { ...last, x: 50 } }));
+    await renderWorkspace('convergence', { result: { ...result, convergence: { ...result.convergence!, final_fitness: 55, levels } } });
     expect(screen.getByText('No estimated convergence: the run was still improving at the end')).toBeTruthy();
   });
 

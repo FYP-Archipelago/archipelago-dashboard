@@ -13,7 +13,7 @@ import Inspector from './Inspector.tsx';
 import Legend from './Legend.tsx';
 import type { Menu } from './MenuButton.tsx';
 import { createRenderer, type Renderer, type TourState, type ViewSettings } from './renderer.ts';
-import { buildScene, HEIGHTS, inferMaximising } from './scene.ts';
+import { buildScene, HEIGHTS } from './scene.ts';
 import type { Settings } from './settings.ts';
 import Timeline, { RetryCountdown } from './Timeline.tsx';
 import Toolbar, { HeightScale } from './Toolbar.tsx';
@@ -34,8 +34,10 @@ function Network({
   cameraRef,
 }: { run: Run; graph: Graph; result: RunResult | null; live: LiveGraphState | null } & ViewProps) {
   const islands = useMemo(() => result?.run.islands ?? Array.from({ length: run.run_settings.num_islands }, (_, i) => i), [result, run]);
-  const maximising = result ? result.run.maximising : inferMaximising(graph);
-  const scene = useMemo(() => buildScene(graph, islands, maximising), [graph, islands, maximising]);
+  // A live graph is only shown once updates are live, and those always say which way fitness points.
+  const maximising = result?.run.maximising ?? live?.maximising ?? false;
+  const routes = result?.migration_routes ?? live?.routes;
+  const scene = useMemo(() => buildScene(graph, islands, maximising, routes ?? []), [graph, islands, maximising, routes]);
   const change = useCallback((patch: Partial<Settings>) => onSettingsChange((current) => ({ ...current, ...patch })), [onSettingsChange]);
   const [selectedId, setSelectedId] = useState<number | null>(() => {
     const asked = new URLSearchParams(window.location.search).get('cluster');

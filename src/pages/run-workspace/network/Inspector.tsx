@@ -58,6 +58,7 @@ function BestList({
               Run best
               <small>
                 Island {scene.islands[scene.slot[runBest]!]} · cluster #{scene.ids[runBest]}
+                {scene.faded[runBest] ? <span className="network-best-faded"> · Faded</span> : null}
               </small>
             </span>
             <b>{fitness(scene.bestFitness[runBest] ?? null)}</b>
@@ -77,7 +78,10 @@ function BestList({
               <IslandSwatch island={island} />
               <span className="network-best-text">
                 Island {island}
-                <small>{numberFormat.format(scene.clusters[k]!)} clusters</small>
+                <small>
+                  {numberFormat.format(scene.clusters[k]!)} clusters
+                  {scene.faded[node] ? <span className="network-best-faded"> · Faded</span> : null}
+                </small>
               </span>
               <b>{fitness(scene.bestFitness[node] ?? null)}</b>
             </button>
@@ -164,6 +168,7 @@ function ClusterDetails({
           </span>
         )}
         {sharing > 1 && <span className="tag">Shared by {sharing} islands</span>}
+        {nodes.faded[node] && <span className="tag">Faded</span>}
       </div>
       <dl className="key-value-list">
         <div>

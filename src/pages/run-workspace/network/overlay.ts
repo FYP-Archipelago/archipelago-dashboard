@@ -69,6 +69,7 @@ export type OverlayFrame = {
 };
 
 // Island best rings, the run best's diamond and tag, the selection and hover brackets, and island names when grouped.
+// A best whose cluster DenStream faded out gets a dashed ring, or a hollow dashed diamond.
 export function drawOverlay(
   ctx: CanvasRenderingContext2D,
   dpr: number,
@@ -92,7 +93,9 @@ export function drawOverlay(
       ctx.stroke();
       ctx.lineWidth = 1.75;
       ctx.strokeStyle = BEST;
+      if (scene.faded[node]) ctx.setLineDash([3, 3]);
       ctx.stroke();
+      ctx.setLineDash([]);
     });
   ctx.globalAlpha = 1;
 
@@ -113,8 +116,16 @@ export function drawOverlay(
     ctx.lineTo(x, y + half);
     ctx.lineTo(x - half, y);
     ctx.closePath();
-    ctx.fill();
-    ctx.shadowBlur = 0;
+    if (scene.faded[scene.runBest]) {
+      ctx.fillStyle = 'rgba(0,0,0,0.55)';
+      ctx.fill();
+      ctx.shadowBlur = 0;
+      ctx.strokeStyle = BEST;
+      ctx.setLineDash([3, 2.5]);
+    } else {
+      ctx.fill();
+      ctx.shadowBlur = 0;
+    }
     ctx.stroke();
     ctx.restore();
   }
@@ -186,6 +197,11 @@ export function drawOverlay(
         Math.abs(dx) > 1e-3 ? (halfWidth + textWidth) / Math.abs(dx) : Infinity,
         Math.abs(dy) > 1e-3 ? (halfHeight + textHeight) / Math.abs(dy) : Infinity
       );
+      // A dark outline keeps the name readable over migrations passing behind it.
+      ctx.lineWidth = 4;
+      ctx.lineJoin = 'round';
+      ctx.strokeStyle = 'rgba(0,0,0,0.85)';
+      ctx.strokeText(text, x + dx * out, y + dy * out);
       ctx.fillStyle = islandColor(island);
       ctx.fillText(text, x + dx * out, y + dy * out);
     }
@@ -194,8 +210,8 @@ export function drawOverlay(
   }
 }
 
-// The best the tour is at, beside its cluster: which best, its fitness, then its mean, evaluations and when its
-// island first reached it, each under a small label.
+// The best the tour is at, beside its cluster, with its fitness, mean, evaluations and when its island first reached it.
+// A cluster DenStream faded out gets a Faded pill after the title.
 function drawTourCard(
   ctx: CanvasRenderingContext2D,
   scene: Scene,
@@ -216,6 +232,7 @@ function drawTourCard(
     ['Evaluations', numberFormat.format(scene.visits[node]!)],
     ['Reached at', `eval ${numberFormat.format(scene.firstEval[node]!)}`],
   ] as const;
+  const faded = !!scene.faded[node];
   const font = (weight: number, size: number) => `${weight} ${size}px ${FONT}`;
   const measure = (text: string, weight: number, size: number) => ((ctx.font = font(weight, size)), ctx.measureText(text).width);
 
@@ -223,8 +240,11 @@ function drawTourCard(
   const columnGap = 18;
   const columns = stats.map(([label, text]) => Math.max(measure(label, 400, 11), measure(text, 500, 12.5)));
   const valueRow = measure(value, 600, 20) + 8 + measure('best fitness', 400, 11);
-  const titleRow = 14 + measure(title, 500, 12) + 16 + measure(step, 400, 11);
-  const w = Math.ceil(Math.max(titleRow, valueRow, columns.reduce((sum, c) => sum + c, 0) + columnGap * (columns.length - 1)) + pad * 2);
+  const titleWidth = measure(title, 500, 12);
+  const pillWidth = faded ? measure('Faded', 500, 10) + 12 : 0;
+  const titleRow = 14 + titleWidth + (faded ? 8 + pillWidth : 0) + 16 + measure(step, 400, 11);
+  const statsRow = columns.reduce((sum, c) => sum + c, 0) + columnGap * (columns.length - 1);
+  const w = Math.ceil(Math.max(titleRow, valueRow, statsRow) + pad * 2);
   const h = 112;
   // To the right of the cluster, or to its left where the right has no room; always inside the stage. A leader runs
   // from the cluster's brackets to the card, so it is clear which cluster the card is about.
@@ -266,6 +286,17 @@ function drawTourCard(
   ctx.font = font(500, 12);
   ctx.fillStyle = '#ededed';
   ctx.fillText(title, left + pad + 14, titleY);
+  if (faded) {
+    const pillLeft = left + pad + 14 + titleWidth + 8;
+    ctx.strokeStyle = 'rgba(251,191,36,0.7)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.roundRect(pillLeft, titleY - 12, pillWidth, 15, 7.5);
+    ctx.stroke();
+    ctx.font = font(500, 10);
+    ctx.fillStyle = '#fbbf24';
+    ctx.fillText('Faded', pillLeft + 6, titleY - 1);
+  }
   ctx.font = font(400, 11);
   ctx.fillStyle = '#8f8f8f';
   ctx.textAlign = 'right';
