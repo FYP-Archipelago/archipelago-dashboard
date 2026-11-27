@@ -34,14 +34,16 @@ function stacksOf(points: Point[]): Stack[] {
   });
 }
 
-// Stacked, each dot shows a 6 px sliver of the one before.
-// Fanned, they sit a full dot apart on a ring around the stack's centre, starting at the top.
 function placed(stack: Stack, fanned: boolean) {
   const n = stack.points.length;
   if (!fanned) return stack.points.map((point, i) => ({ point, x: stack.x + (i - (n - 1) / 2) * 6, y: stack.y }));
   const radius = Math.max(2 * DOT, (2 * DOT + 3) / (2 * Math.sin(Math.PI / n)));
-  return stack.points.map((point, i) => {
-    const angle = -Math.PI / 2 + (2 * Math.PI * i) / n;
+  const around = stack.points.map((point) => ({ point, angle: Math.atan2(point.y - stack.y, point.x - stack.x) })).sort((a, b) => a.angle - b.angle);
+  const slot = (i: number) => (2 * Math.PI * i) / n;
+  const [sin, cos] = around.reduce(([s, c], { angle }, i) => [s + Math.sin(angle - slot(i)), c + Math.cos(angle - slot(i))], [0, 0]);
+  const turn = Math.hypot(sin, cos) < 1e-6 ? -Math.PI / 2 : Math.atan2(sin, cos);
+  return around.map(({ point }, i) => {
+    const angle = turn + slot(i);
     return { point, x: stack.x + radius * Math.cos(angle), y: stack.y + radius * Math.sin(angle) };
   });
 }

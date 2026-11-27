@@ -36,15 +36,14 @@ type MigrationSeries = { key: number; label: string; shortLabel: string; color: 
 // What moved after a group of migration rounds that share one measurement, and the rounds' generations.
 type MigrationChange = Record<(typeof MIGRATION_DIRECTIONS)[number]['key'], MigrationSeries[]> & { generations: number[] };
 
-// What moved after the migration rounds just before a window, with how many migrations those rounds sent and when.
-function MigrationHover({ change, count }: { change: MigrationChange; count: number }) {
-  const [first, last] = [change.generations[0]!, change.generations.at(-1)!];
+// What moved after the migration rounds just before a window, with how many migrations those rounds sent.
+function MigrationHover({ change, count, gap }: { change: MigrationChange; count: number; gap: [number, number] }) {
   return (
     <div className="divergence-hover-migrations">
       <div className="divergence-hover-event">
         <div className="divergence-hover-generation">
           {count === 1 ? 'After 1 migration' : `After ${count.toLocaleString('en')} migrations`}
-          <span className="muted"> · {first === last ? `gen ${first}` : `gen ${first}–${last}`}</span>
+          <span className="muted"> · {gap[0] === gap[1] ? `gen ${gap[0]}` : `gen ${gap[0]}–${gap[1]}`}</span>
         </div>
         {MIGRATION_DIRECTIONS.map(({ key, label }) => {
           const affected = change[key];
@@ -226,20 +225,20 @@ function Divergence({ run, result }: { run: Run; result: RunResult }) {
   const hoverTitle = (x: number) => {
     const index = starts.indexOf(x);
     // The window is the first measured after the migrations that arrived since the previous window began.
-    const migrations = migrationChanges.filter(([generation]) => generation > (starts[index - 1] ?? -Infinity) && generation <= x);
+    const previous = starts[index - 1];
+    const migrations = migrationChanges.filter(([generation]) => generation > (previous ?? -Infinity) && generation <= x);
     const merged: MigrationChange = { closer: [], apart: [], generations: [] };
     for (const [, change] of migrations) {
       for (const direction of ['closer', 'apart'] as const)
         for (const series of change[direction]) if (!merged[direction].some((other) => other.key === series.key)) merged[direction].push(series);
       merged.generations.push(...change.generations);
     }
-    merged.generations.sort((a, b) => a - b);
     const shownRounds = new Set(merged.generations);
     const count = result.migration_arrivals.filter((arrival) => shownRounds.has(arrival.source_generation)).length;
     return (
       <>
         <span className="divergence-hover-window">{windowLabel(index)}</span>
-        {count > 0 && <MigrationHover change={merged} count={count} />}
+        {count > 0 && previous !== undefined && <MigrationHover change={merged} count={count} gap={[previous + 1, x]} />}
       </>
     );
   };

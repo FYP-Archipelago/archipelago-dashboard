@@ -94,7 +94,7 @@ describe('DivergenceTab', () => {
     const tooltip = document.querySelector<HTMLElement>('.hover-tip')!;
     const tip = within(tooltip);
     expect(tip.getByText('From generation 10', { selector: '.divergence-hover-window' })).toBeTruthy();
-    expect(tooltip.querySelector('.divergence-hover-generation')!.textContent).toBe('After 1 migration · gen 10');
+    expect(tooltip.querySelector('.divergence-hover-generation')!.textContent).toBe('After 1 migration · gen 1–10');
     const closer = within(tip.getByText('Drew closer').parentElement!);
     const apart = within(tip.getByText('Moved apart').parentElement!);
     expect(closer.getByRole('listitem', { name: 'Islands 1 ↔ 2' })).toBeTruthy();
