@@ -88,20 +88,19 @@
   margin-top: 16px;
 }
 
-.credit-headline {
-  margin: 0 0 14px;
-  color: var(--ink-2);
-  font-size: 15px;
-  line-height: 1.5;
-}
-.credit-headline b {
-  color: var(--ink);
-  font-weight: 600;
-}
 .credit-bars {
   display: flex;
   flex-direction: column;
   gap: 10px;
+}
+.credit-bars.credit-bars-wide {
+  display: grid;
+  grid-auto-flow: column;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px 40px;
+}
+.attribution-wide {
+  margin-top: 16px;
 }
 .credit-row {
   display: grid;
@@ -260,19 +259,37 @@
   letter-spacing: -0.02em;
 }
 .attribution-grid .coalition-meter {
+  position: relative;
   height: 8px;
   margin-top: 10px;
   border-radius: 4px;
   background: var(--surface-3);
-  overflow: hidden;
 }
 .attribution-grid .coalition-meter i {
   display: block;
   height: 100%;
+  border-radius: 4px;
   background: var(--ink);
   transition: width 0.4s var(--ease);
 }
-
+.member-gap {
+  margin-left: auto;
+  color: var(--muted);
+  font-size: 12.5px;
+}
+.member-gap b {
+  font-weight: 600;
+}
+.member-gap.member-gap-up > b:first-child {
+  color: #4ade80;
+}
+.member-gap.member-gap-down > b:first-child {
+  color: #fbbf24;
+}
+.member-gap .member-gap-credit {
+  color: var(--ink);
+  font-weight: 500;
+}
 .attribution-orders {
   margin-top: 16px;
 }

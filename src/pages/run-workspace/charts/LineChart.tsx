@@ -13,6 +13,7 @@ type Props = {
   height?: number;
   log: boolean;
   xTitle: string;
+  yTitle?: string;
   hoverTitle: (x: number) => ReactNode;
   formatY: (y: number | null) => string;
   // The tooltip lists the series best value first.
@@ -105,6 +106,7 @@ export default function LineChart({
   height: fixedHeight,
   log,
   xTitle,
+  yTitle,
   hoverTitle,
   formatY,
   better,
@@ -249,6 +251,11 @@ export default function LineChart({
             <text x={width - MARGIN.right} y={height - 2} textAnchor="end">
               {xTitle}
             </text>
+            {yTitle && (
+              <text transform={`translate(12,${(scales.plotTop + scales.plotBottom) / 2}) rotate(-90)`} textAnchor="middle">
+                {yTitle}
+              </text>
+            )}
           </g>
           <g className="chart-guides">
             {guides

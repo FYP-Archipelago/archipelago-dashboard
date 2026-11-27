@@ -4,7 +4,7 @@ import { islandColor } from '@/colors.ts';
 import Icon from '@/components/Icon.tsx';
 import Segmented from '@/components/Segmented.tsx';
 import { compactNumber, fitness, numberFormat } from '@/format.ts';
-import LineChart, { Sparkline } from '@/pages/run-workspace/charts/LineChart.tsx';
+import LineChart from '@/pages/run-workspace/charts/LineChart.tsx';
 import { historyByIsland } from '@/pages/run-workspace/history.ts';
 import { EmptyState, IslandSwatch, NoResult, type ResultQuery } from '@/pages/run-workspace/shared.tsx';
 import type { IslandEnd, Run, RunResult } from '@/types.ts';
@@ -16,11 +16,11 @@ import './convergence.css';
 type Metric = 'bestSoFar' | 'best' | 'mean' | 'diversity';
 type Axis = 'evaluations' | 'generation';
 
-const METRICS: { key: Metric; label: string }[] = [
-  { key: 'bestSoFar', label: 'Best so far' },
-  { key: 'best', label: 'Generation best' },
-  { key: 'mean', label: 'Mean fitness' },
-  { key: 'diversity', label: 'Diversity' },
+const METRICS: { key: Metric; label: string; axis: string }[] = [
+  { key: 'bestSoFar', label: 'Best so far', axis: 'Best fitness so far' },
+  { key: 'best', label: 'Generation best', axis: "Generation's best fitness" },
+  { key: 'mean', label: 'Mean fitness', axis: 'Mean fitness' },
+  { key: 'diversity', label: 'Diversity', axis: 'Diversity' },
 ];
 const CONVERGENCE_THRESHOLDS = [
   { label: '99%', share: 0.99, remainingShare: 0.01 },
@@ -44,7 +44,7 @@ function WithoutImprovement({ end, limit }: { end: IslandEnd | undefined; limit:
         '—'
       ) : (
         <>
-          {since} gens
+          {since} generations
           {end.generations_completed > 0 && <span className="muted"> ({Math.round((since / end.generations_completed) * 100)}%)</span>}
         </>
       )}
@@ -130,7 +130,7 @@ function Convergence({ result, showStagnationMarkers, onToggleStagnationMarkers 
   const bestX = best && (axis === 'generation' ? best.generation : best.evaluations);
   const marker = metric === 'bestSoFar' && best && bestX != null && !hidden.has(best.island_id) ? { x: bestX, y: best.fitness } : null;
   const tiedForBest = best ? result.island_bests.filter((other) => other.fitness === best.fitness).length : 0;
-  const metricLabel = METRICS.find((m) => m.key === metric)!.label;
+  const { label: metricLabel, axis: yTitle } = METRICS.find((m) => m.key === metric)!;
 
   return (
     <>
@@ -208,6 +208,7 @@ function Convergence({ result, showStagnationMarkers, onToggleStagnationMarkers 
           height={360}
           log={log}
           xTitle={axis === 'generation' ? 'Generation' : 'Evaluations (per island)'}
+          yTitle={yTitle}
           hoverTitle={(x) => (axis === 'generation' ? `Generation ${x}` : `${numberFormat.format(x)} evaluations`)}
           formatY={isFitness ? fitness : formatDiversity}
           better={isFitness && !maximising ? 'lower' : 'higher'}
@@ -276,7 +277,6 @@ function Convergence({ result, showStagnationMarkers, onToggleStagnationMarkers 
               <th className="align-right">Without improvement</th>
               <th className="align-right">Final mean</th>
               <th className="align-right">Final diversity</th>
-              <th className="diversity-trend-column">Diversity over time</th>
             </tr>
           </thead>
           <tbody>
@@ -307,7 +307,7 @@ function Convergence({ result, showStagnationMarkers, onToggleStagnationMarkers 
                   <td className="align-right">
                     {own ? (
                       <>
-                        gen {own.generation}
+                        Generation {own.generation}
                         {own.evaluations !== null && <span className="muted"> · {compactNumber.format(own.evaluations)} evals</span>}
                       </>
                     ) : (
@@ -319,9 +319,6 @@ function Convergence({ result, showStagnationMarkers, onToggleStagnationMarkers 
                   </td>
                   <td className="align-right">{fitness(lastOf(mean))}</td>
                   <td className="align-right">{formatDiversity(lastOf(diversity))}</td>
-                  <td className="diversity-trend-column">
-                    <Sparkline values={diversity} color={islandColor(island)} label={`Island ${island} diversity over time`} />
-                  </td>
                 </tr>
               );
             })}

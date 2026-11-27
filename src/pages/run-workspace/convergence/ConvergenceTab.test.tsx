@@ -72,7 +72,7 @@ describe('ConvergenceTab', () => {
     );
     await renderWorkspace('convergence', { result });
     expect(flagged()).toEqual(['Island 2']);
-    expect(document.querySelector('.stagnation-flag')!.parentElement!.textContent).toBe('2 gens (40%)Stagnated');
+    expect(document.querySelector('.stagnation-flag')!.parentElement!.textContent).toBe('2 generations (40%)Stagnated');
 
     cleanup();
     await renderWorkspace('convergence', { result: makeResult({ island_ends: [] }) });

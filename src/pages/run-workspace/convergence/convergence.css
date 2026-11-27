@@ -178,10 +178,6 @@
 .islands-table tr.island-row-highlighted td {
   background: var(--hover);
 }
-.islands-table .diversity-trend-column {
-  width: 22%;
-  min-width: 140px;
-}
 .island-cell {
   display: inline-flex;
   align-items: center;
